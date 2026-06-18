@@ -1,0 +1,16 @@
+# 依赖与构建产物
+node_modules
+dist
+
+# 日志
+logs
+
+# 环境变量（敏感）
+.env
+.env.local
+*.local
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store

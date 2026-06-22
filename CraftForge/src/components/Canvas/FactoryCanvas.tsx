@@ -248,8 +248,15 @@ export const FactoryCanvas: React.FC = () => {
     // 右下
     ctx.beginPath(); ctx.moveTo(w - corner, h); ctx.lineTo(w, h); ctx.lineTo(w, h - corner); ctx.stroke();
 
-    // 焊装场景额外画 2 条横向安全通道（黄虚线）
+      // 焊装场景额外画 2 条横向安全通道（黄虚线）
     if (activeTemplate === 'welding') {
+      // 🎯 版本水印：右下角显示版本号，浏览器看到这个就代表加载了最新代码
+      ctx.fillStyle = '#22d3ee';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v6.1 layout', w - 30, h - 8);
+
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);

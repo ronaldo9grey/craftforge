@@ -3,7 +3,10 @@
 // - /api/health：健康检查
 // - /api/ai/chat：DeepSeek SSE 代理（鉴权 + 限流）
 // - 全局异常捕获，全部记录到日志
-import 'dotenv/config';
+// 注意：dotenv 用 override:true 强制让 .env 覆盖系统环境变量
+//       否则用户 Windows 系统环境变量里的 DEEPSEEK_API_KEY 会压住 .env 的值
+import dotenv from 'dotenv';
+dotenv.config({ override: true });
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import aiRouter from './routes/ai';

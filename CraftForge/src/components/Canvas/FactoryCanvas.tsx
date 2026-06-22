@@ -163,7 +163,7 @@ export const FactoryCanvas: React.FC = () => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationRef.current);
     };
-  }, [equipments, pipelines, selectedEquipmentId, isDrillRunning, currentFault, calculateScale]);
+  }, [equipments, pipelines, selectedEquipmentId, isDrillRunning, currentFault, calculateScale, activeTemplate, designSize]);
 
   const drawBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     // 填充画布外深色底（设备区外部）

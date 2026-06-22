@@ -6,13 +6,10 @@ import { EquipmentRenderer } from './EquipmentRenderer';
 import { PipelineRenderer } from './PipelineRenderer';
 import type { Equipment } from '@/types';
 
-// 设计分辨率按场景动态调整：
-// - FCC 催化裂化：1200×680（横向流程为主，但要给加热炉/分馏塔等高大设备留充足头部空间）
-// - 汽车焊装：1280×760（设备多、机器人垂直分布，需要更大画布）
-// FactoryCanvas 内部根据 activeTemplate 自动选用
-const DESIGN_SIZE_FCC = { width: 1200, height: 680 };
-const DESIGN_SIZE_WELDING = { width: 1280, height: 700 };
-const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
+// 设计分辨率：从场景注册中心读取（templates/<id>/meta.ts）
+// 这样新增场景只需新建 meta.ts，FactoryCanvas 无需任何改动
+import { getSceneMeta } from '@/templates';
+const FALLBACK_DESIGN_SIZE = { width: 1200, height: 680 };
 
 export const FactoryCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,11 +26,8 @@ export const FactoryCanvas: React.FC = () => {
   const isDrillRunning = useDrillStore((state) => state.isRunning);
   const currentFault = useDrillStore((state) => state.currentFault);
 
-  // 当前场景的设计尺寸
-  const designSize =
-    activeTemplate === 'welding' ? DESIGN_SIZE_WELDING :
-    activeTemplate === 'fcc'     ? DESIGN_SIZE_FCC :
-    DESIGN_SIZE_DEFAULT;
+  // 当前场景的设计尺寸（从注册中心读取）
+  const designSize = getSceneMeta(activeTemplate ?? 'fcc')?.designSize ?? FALLBACK_DESIGN_SIZE;
 
   // 计算自适应缩放 - 使用统一的缩放比例，保持设备不变形
   const calculateScale = useCallback((canvasWidth: number, canvasHeight: number): { scale: number; offsetX: number; offsetY: number } => {

@@ -10,7 +10,7 @@ export interface Equipment {
   status: 'normal' | 'warning' | 'danger' | 'offline' | 'highlight';
   parameters: Parameter[];
   rotation?: number;
-  template: 'fcc' | 'welding';
+  template: string;  // 场景 ID（'fcc' | 'welding' | 'cnc' | ...），不再硬编码枚举
 }
 
 export interface Parameter {
@@ -178,4 +178,42 @@ export interface SubtitlePiece {
   StableIndex?: number;
   PhoneBeginTime?: number;
   PhoneEndTime?: number;
+}
+
+// =============================================================
+// 场景包标准（Scene Pack v1）
+// 一个完整场景由 5 部分组成：meta + coach + config + faults + (可选) dynamics
+// 新增场景只需在 src/templates/<id>/ 下放齐这几个文件，再到 templates/index.ts 注册一行
+// =============================================================
+
+/** 场景元数据：基本信息 + 画布尺寸 + 视觉主色 */
+export interface SceneMeta {
+  id: string;                       // 场景唯一 ID，与目录名一致
+  name: string;                     // 显示名（如"催化裂化装置"）
+  shortName: string;                // 短名（用于卡片，如"FCC"）
+  icon: string;                     // 单字符 emoji 图标（如"🛢️"/"🔧"）
+  description: string;              // 一句话描述
+  designSize: { width: number; height: number };  // 画布设计尺寸
+  primaryColor: string;             // 主色调（用于卡片高亮等）
+  difficulty: 'beginner' | 'intermediate' | 'advanced'; // 推荐难度
+  status: 'available' | 'coming-soon';
+}
+
+/** 师傅人设：把"老张/老王/老李"这种角色信息归到场景包里 */
+export interface SceneCoach {
+  name: string;                     // 师傅名字（如"老张"）
+  title: string;                    // 头衔（如"FCC 老师傅 · 20 年"）
+  systemPrompt: string;             // 给大模型的人设 prompt（完整版）
+  greeting: string;                 // 试听/初次问候语
+  avatarKey?: string;               // 头像组件 key，预留多头像支持
+}
+
+/** 场景包：把上面 5 类资产合并成一个可注册的对象 */
+export interface ScenePack {
+  meta: SceneMeta;
+  coach: SceneCoach;
+  equipments: Equipment[];
+  pipelines: Pipeline[];
+  faults: Fault[];
+  knowledge?: KnowledgeItem[];      // 知识条目，可选
 }

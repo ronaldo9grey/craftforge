@@ -5,7 +5,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { AvatarOldZhang } from '@/components/AI/AvatarOldZhang';
 import { ttsService } from '@/services/ttsService';
-import { getCoachName, getCoachTitle } from '@/services/aiCoach';
+import { getCoachName, getCoachTitle, getCoachGreeting } from '@/services/aiCoach';
 
 /** 把长文本按中文句号 / 问号 / 感叹号切句；过长再按逗号细切，确保 ≤140 字 */
 function splitToSentences(text: string, maxLen = 140): string[] {
@@ -178,11 +178,7 @@ export const RightSidebar: React.FC = () => {
             {/* 试听按钮：方便用户主动触发，同时满足浏览器自动播放策略 */}
             <button
               onClick={() => {
-                const isWelding = useUIStore.getState().activeTemplate === 'welding';
-                const greeting = isWelding
-                  ? '你好，我是老王，干汽车焊装十五年。有啥问题随时问。'
-                  : '你好，我是老张，催化裂化干了二十年。有啥问题随时问我。';
-                void speak(greeting);
+                void speak(getCoachGreeting());
               }}
               disabled={!voiceEnabled || isSpeaking}
               className="px-2 py-1 text-xs rounded-md bg-bg-tertiary hover:bg-primary/20 text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"

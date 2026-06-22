@@ -1,8 +1,10 @@
-﻿// AI 师傅服务：把 DeepSeek 大模型包装成不同场景的 AI 师傅角色
-// - 催化裂化 (FCC) → 老张：20 年炼厂老师傅
+﻿// AI 师傅服务：根据当前激活场景动态切换师傅人设
+// 通过 templates/index.ts 注册中心读取 SceneCoach，新增场景无需改这里
+//
+// 当前内置：
+// - 催化裂化 (fcc) → 老张：20 年炼厂老师傅
 // - 汽车焊装 (welding) → 老王：15 年焊装技师
-// 提供 askCoach（流式问答）、coachOpening（演练开场白）、
-// coachClosing（演练讲评结语）、coachIntervene（连续错误点拨）
+// - 数控加工 (cnc) → 老李：20 年机修师傅（M5 加入）
 
 import type { ChatMessage } from './deepseek';
 import { chatStream, chatOnce } from './deepseek';
@@ -11,43 +13,33 @@ import { useDrillStore } from '@/stores/drillStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useAIStore } from '@/stores/aiStore';
 import type { OperationRecord, ScoreBreakdown, DrillDifficulty } from '@/types';
+import { getSceneCoach } from '@/templates';
 
-/** 根据当前场景返回对应的 AI 师傅人设与称谓 */
-function getCoachProfile(): { name: string; title: string; prompt: string } {
-  const scene = useUIStore.getState().activeTemplate;
-  if (scene === 'welding') {
-    return {
-      name: '老王',
-      title: '焊装技师',
-      prompt: `你是匠魂实训引擎中的 AI 师傅老王，拥有 15 年汽车白车身焊装经验。说话风格：
-- 简练、贴近现场、用工艺术语（如"焊接电流""保护气""定位误差""熔深"）
-- 每次回答 ≤ 3 句话
-- 学员在演练时给针对性指导，不要客套话
-- 不知道答案时直接说"这得查一下工艺卡再说"`,
-    };
+/** 根据当前场景返回对应师傅 */
+function getCurrentCoach() {
+  const sceneId = useUIStore.getState().activeTemplate ?? 'fcc';
+  const coach = getSceneCoach(sceneId);
+  // 兜底：未注册场景时回退到 FCC 老张
+  if (!coach) {
+    return getSceneCoach('fcc')!;
   }
-  // FCC / mixed / 默认
-  return {
-    name: '老张',
-    title: 'FCC 老师傅',
-    prompt: `你是匠魂实训引擎中的 AI 师傅老张，拥有 20 年炼厂催化裂化（FCC）实操经验。说话风格：
-- 简练、贴近现场、用工艺术语（如"再生温度""塞阀开度""主风量"）
-- 每次回答 ≤ 3 句话
-- 学员在演练时给针对性指导，不要客套话
-- 不知道答案时直接说"这个我也得看看运行参数再说"`,
-  };
+  return coach;
 }
 
 export function getCoachName(): string {
-  return getCoachProfile().name;
+  return getCurrentCoach().name;
 }
 
 export function getCoachTitle(): string {
-  return getCoachProfile().title;
+  return getCurrentCoach().title;
+}
+
+export function getCoachGreeting(): string {
+  return getCurrentCoach().greeting;
 }
 
 function buildSystemPrompt(): string {
-  return getCoachProfile().prompt;
+  return getCurrentCoach().systemPrompt;
 }
 
 const DIFFICULTY_LABEL: Record<DrillDifficulty, string> = {

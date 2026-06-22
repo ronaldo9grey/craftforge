@@ -53,6 +53,18 @@ export class EquipmentRenderer {
         case 'conveyor':
           fillColor = '#422006';
           break;
+        case 'fixture':
+          fillColor = '#1e293b';
+          break;
+        case 'weld_gun':
+          fillColor = '#7c2d12';
+          break;
+        case 'control_box':
+          fillColor = '#334155';
+          break;
+        case 'station':
+          fillColor = '#3f3f46';
+          break;
         default:
           fillColor = '#475569';
       }
@@ -76,9 +88,11 @@ export class EquipmentRenderer {
     ctx.textBaseline = 'middle';
 
     // 名称显示在设备上方 - 加大与设备图形的间距，避免被塞阀阀杆/加热炉烟囱/分馏塔顶塔盘等顶部装饰物覆盖
+    // 阀门顶部有阀杆+手轮（占 24px 高），标签需再上移
+    const nameOffset = type === 'valve' ? 38 : 22;
     ctx.fillStyle = '#f1f5f9';
     ctx.font = 'bold 12px Inter, sans-serif';
-    ctx.fillText(name, x + width / 2, y - 22);
+    ctx.fillText(name, x + width / 2, y - nameOffset);
 
     // 设备ID显示在设备下方 - 与上方间距保持一致
     ctx.fillStyle = '#94a3b8';
@@ -416,46 +430,145 @@ export class EquipmentRenderer {
         break;
         
       case 'robot':
-        // 机器人 - 矩形 + 底座
-        this.roundRect(ctx, x, y + 20, width, height - 20, 6);
-        ctx.fill();
-        ctx.stroke();
+        // 焊接机器人 - 机身(矩形)+手臂(倾斜)+焊枪头+底座
         // 底座
-        ctx.fillStyle = '#475569';
-        ctx.fillRect(x + 10, y + height - 10, width - 20, 10);
-        // 头部
-        ctx.beginPath();
-        ctx.arc(x + width / 2, y + 15, 12, 0, Math.PI * 2);
-        ctx.fillStyle = '#60a5fa';
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(x + 12, y + height - 8, width - 24, 8);
+        ctx.strokeRect(x + 12, y + height - 8, width - 24, 8);
+        // 机身
+        this.roundRect(ctx, x + 8, y + 22, width - 16, height - 30, 4);
         ctx.fill();
         ctx.stroke();
+        // 手臂（斜线表示关节臂）
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + width / 2, y + 22);
+        ctx.lineTo(x + width / 2 + 14, y - 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + width / 2 + 14, y - 2);
+        ctx.lineTo(x + width / 2 + 20, y - 14);
+        ctx.stroke();
+        // 焊枪头
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(x + width / 2 + 20, y - 14, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // 头部指示灯
+        ctx.fillStyle = '#22d3ee';
+        ctx.beginPath();
+        ctx.arc(x + width / 2, y + 26, 3, 0, Math.PI * 2);
+        ctx.fill();
         break;
-        
+
       case 'conveyor':
-        // 传送带 - 长矩形
-        this.roundRect(ctx, x, y, width, height, 4);
+        // 传送带 - 长矩形 + 滚轮 + 中间线
+        this.roundRect(ctx, x, y + 6, width, height - 12, 3);
         ctx.fill();
         ctx.stroke();
-        // 滚轮线
+        // 滚轮（等距小圆）
+        ctx.fillStyle = this.lightenColor(fillColor, 20);
         ctx.strokeStyle = '#64748b';
-        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1;
+        for (let rx = x + 15; rx < x + width - 10; rx += 35) {
+          ctx.beginPath();
+          ctx.arc(rx, y + height / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        // 承载线
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(x, y + height / 2);
-        ctx.lineTo(x + width, y + height / 2);
+        ctx.moveTo(x + 8, y + height / 2 + 8);
+        ctx.lineTo(x + width - 8, y + height / 2 + 8);
         ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x + 8, y + height / 2 - 8);
+        ctx.lineTo(x + width - 8, y + height / 2 - 8);
+        ctx.stroke();
         break;
-        
+
       case 'fixture':
-        // 夹具 - 矩形 + 夹爪
-        ctx.fillRect(x, y + 10, width, height - 20);
-        ctx.strokeRect(x, y + 10, width, height - 20);
+        // 夹紧定位夹具 - 底板 + 双夹爪 + 定位销
+        // 底板
+        ctx.fillRect(x + 4, y + height - 8, width - 8, 8);
+        ctx.strokeRect(x + 4, y + height - 8, width - 8, 8);
         // 左夹爪
-        ctx.fillRect(x - 5, y, 10, height);
-        ctx.strokeRect(x - 5, y, 10, height);
+        ctx.fillRect(x, y + 4, 8, height - 12);
+        ctx.strokeRect(x, y + 4, 8, height - 12);
         // 右夹爪
-        ctx.fillRect(x + width - 5, y, 10, height);
-        ctx.strokeRect(x + width - 5, y, 10, height);
+        ctx.fillRect(x + width - 8, y + 4, 8, height - 12);
+        ctx.strokeRect(x + width - 8, y + 4, 8, height - 12);
+        // 定位销（小圆）
+        ctx.fillStyle = this.lightenColor(fillColor, 30);
+        ctx.beginPath();
+        ctx.arc(x + width / 2, y + height / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'weld_gun':
+        // 焊枪 - 枪身 + 喷嘴 + 线缆
+        ctx.fillRect(x + 4, y + 6, width - 8, height - 12);
+        ctx.strokeRect(x + 4, y + 6, width - 8, height - 12);
+        // 喷嘴（锥形）
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(x + 6, y + 6);
+        ctx.lineTo(x + width / 2, y);
+        ctx.lineTo(x + width - 6, y + 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // 线缆（圆）
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.arc(x + width / 2, y + height - 4, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'control_box':
+        // 控制柜 - 矩形 + 屏幕 + 按钮
+        this.roundRect(ctx, x + 4, y + 2, width - 8, height - 4, 4);
+        ctx.fill();
+        ctx.stroke();
+        // 屏幕
+        ctx.fillStyle = '#1e293b';
+        this.roundRect(ctx, x + 10, y + 6, width - 20, 20, 2);
+        ctx.fill();
+        // 屏幕亮条
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(x + 14, y + 10, 4, 4);
+        ctx.fillRect(x + 14, y + 18, 4, 3);
+        // 按钮列
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(x + 20, y + height - 12, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(x + 34, y + height - 12, 3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+
+      case 'station':
+        // 工位台 - 台面 + 支柱 + 信号灯
+        // 台面
+        ctx.fillRect(x + 2, y + 10, width - 4, height - 14);
+        ctx.strokeRect(x + 2, y + 10, width - 4, height - 14);
+        // 支柱
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(x + 6, y + height - 6, width - 12, 6);
+        // 信号灯
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(x + width / 2, y + 6, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
         break;
         
       default:

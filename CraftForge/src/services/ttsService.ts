@@ -168,12 +168,17 @@ class InternalSession implements TtsSession {
 
 /**
  * 合成并播放一段文本（≤150 字）
- * 若当前已有音频在播，会先 stop 掉再播新内容（避免抢嘴）
+ * 直接调用：等当前队列清空后立即播放（用于试听按钮等单次场景）
+ * 注意：演练 / 聊天里推荐用 enqueue() 排队，避免抢嘴
  */
 async function speak(text: string): Promise<TtsSession> {
   // 停止上一段
   stopCurrent();
+  return doSpeak(text);
+}
 
+/** 内部播放实现：不主动 stop，调用方保证时序 */
+async function doSpeak(text: string): Promise<TtsSession> {
   const { baseUrl, appToken } = readEnv();
   const resp = await fetch(`${baseUrl}/ai/tts`, {
     method: 'POST',
@@ -222,8 +227,82 @@ function isPlaying(): boolean {
   return !!currentAudio && !currentAudio.paused && !currentAudio.ended;
 }
 
+/* =================== 队列模式 =================== */
+// 演练 / 聊天场景：多次请求按提交顺序串行播放，绝不抢嘴
+interface QueueItem {
+  text: string;
+  onBoundary?: (text: string, beginMs: number, endMs: number) => void;
+  onStart?: () => void;
+  onEnd?: () => void;
+  onError?: (msg: string) => void;
+}
+const queue: QueueItem[] = [];
+let queueRunning = false;
+
+/**
+ * 排队播放：与 speak() 的区别在于不会打断当前正在播的内容，
+ * 而是等其播完后接着播。适合演练里多次操作产生的连续点拨。
+ */
+function enqueue(item: QueueItem): void {
+  queue.push(item);
+  if (!queueRunning) {
+    void runQueue();
+  }
+}
+
+async function runQueue(): Promise<void> {
+  if (queueRunning) return;
+  queueRunning = true;
+  try {
+    while (queue.length > 0) {
+      const item = queue.shift()!;
+      try {
+        const session = await doSpeak(item.text);
+        if (item.onStart) item.onStart();
+        if (item.onBoundary) {
+          session.on('boundary', ((text: unknown, b: unknown, e: unknown) => {
+            item.onBoundary?.(String(text ?? ''), Number(b ?? 0), Number(e ?? 0));
+          }) as unknown as (...args: unknown[]) => void);
+        }
+        await new Promise<void>((resolve) => {
+          session.on('end', () => {
+            item.onEnd?.();
+            resolve();
+          });
+          session.on('error', (msg) => {
+            item.onError?.(String(msg ?? '播放失败'));
+            resolve();
+          });
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        item.onError?.(msg);
+        // 单条失败不阻塞后续，继续队列
+      }
+    }
+  } finally {
+    queueRunning = false;
+    currentAudio = null;
+    currentSession = null;
+  }
+}
+
+/** 清空队列并停止当前播放（关语音 / 切换页面时调用） */
+function clearQueue(): void {
+  queue.length = 0;
+  stopCurrent();
+}
+
+/** 队列里是否还有未播完的内容（含当前正在播的） */
+function isBusy(): boolean {
+  return queueRunning || queue.length > 0 || isPlaying();
+}
+
 export const ttsService = {
   speak,
+  enqueue,
   stopCurrent,
+  clearQueue,
   isPlaying,
+  isBusy,
 };

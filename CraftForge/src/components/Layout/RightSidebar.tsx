@@ -63,42 +63,41 @@ export const RightSidebar: React.FC = () => {
   }, [messages]);
 
   /**
-   * 朗读一整段文本（自动切句，逐句调腾讯云 TTS）
-   * 字级时间戳 -> mouthIntensity；播放期间 isSpeaking=true
+   * 朗读一整段文本（自动切句，逐句排队入 ttsService.enqueue）
+   * 多次调用会按调用顺序串行播放，绝不抢嘴
+   * 字级时间戳 -> mouthIntensity；任何一段开始时 isSpeaking=true，全部播完才 false
    */
-  const speak = async (text: string) => {
+  const speak = (text: string) => {
     const sentences = splitToSentences(text);
     if (sentences.length === 0) return;
-    setIsSpeaking(true);
-    try {
-      for (const sentence of sentences) {
-        const session = await ttsService.speak(sentence);
-        await new Promise<void>((resolve) => {
-          // 每收到一个字级时间戳，按字符在句中的位置切换嘴型强度
-          let openIdx = 0;
-          session.on('boundary', () => {
-            // 0、1、2 三档循环：闭 → 半 → 全 → 半 → 闭…
-            const seq: (0 | 1 | 2)[] = [1, 2, 1, 0];
-            setMouthIntensity(seq[openIdx % seq.length]);
-            openIdx++;
-          });
-          session.on('end', () => {
-            setMouthIntensity(0);
-            resolve();
-          });
-          session.on('error', () => {
-            setMouthIntensity(0);
-            resolve();
-          });
-        });
-      }
-    } catch (e) {
-      // 兼容首次播放被浏览器阻止 / TTS 失败：静默降级，不打扰用户
-      console.warn('[TTS] speak failed', e);
-    } finally {
-      setIsSpeaking(false);
-      setMouthIntensity(0);
-    }
+    sentences.forEach((sentence, idx) => {
+      const isLast = idx === sentences.length - 1;
+      let openIdx = 0;
+      ttsService.enqueue({
+        text: sentence,
+        onStart: () => setIsSpeaking(true),
+        onBoundary: () => {
+          // 0、1、2 三档循环：闭 → 半 → 全 → 半 → 闭…
+          const seq: (0 | 1 | 2)[] = [1, 2, 1, 0];
+          setMouthIntensity(seq[openIdx % seq.length]);
+          openIdx++;
+        },
+        onEnd: () => {
+          setMouthIntensity(0);
+          // 队列里还有内容时不要把 isSpeaking 设回 false，避免头像闪烁
+          if (isLast && !ttsService.isBusy()) {
+            setIsSpeaking(false);
+          }
+        },
+        onError: (msg) => {
+          console.warn('[TTS] enqueue failed', msg);
+          setMouthIntensity(0);
+          if (isLast && !ttsService.isBusy()) {
+            setIsSpeaking(false);
+          }
+        },
+      });
+    });
   };
 
   // 监听 ttsRequest：seq 变更即触发朗读，覆盖所有场景（聊天回复、演练开场白、讲评、点拨等）
@@ -111,19 +110,19 @@ export const RightSidebar: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ttsRequest, voiceEnabled]);
 
-  // 关闭语音开关时，立即停止当前正在播放的会话
+  // 关闭语音开关时，立即清空队列并停止当前正在播放的会话
   useEffect(() => {
     if (!voiceEnabled) {
-      ttsService.stopCurrent();
+      ttsService.clearQueue();
       setIsSpeaking(false);
       setMouthIntensity(0);
     }
   }, [voiceEnabled]);
 
-  // 组件卸载时停止 TTS
+  // 组件卸载时清空队列
   useEffect(() => {
     return () => {
-      ttsService.stopCurrent();
+      ttsService.clearQueue();
     };
   }, []);
 

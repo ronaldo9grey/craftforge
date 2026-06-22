@@ -5,6 +5,13 @@ import { useEquipmentStore } from './equipmentStore';
 import { useAIStore } from './aiStore';
 import { coachClosing, coachIntervene } from '@/services/aiCoach';
 
+// 演练点拨节流：coachIntervene 正在生成或语音未播完时，不再触发新一次
+// 用模块级标志位而非 zustand state，避免触发 UI 重渲
+let intervenePending = false;
+// 最近一次成功触发点拨的时间戳，用于"冷却时间"窗口（最近 N 秒内不再触发）
+let lastInterveneAt = 0;
+const INTERVENE_COOLDOWN_MS = 8000;
+
 // 难度配置：错误扣分系数 / 基础工况分倍率 / 总分上限 / 中文名
 // 新手：错误轻扣，基础分不放大，分数封顶 80（保留 A 级，避免简单模式刷高分）
 // 进阶：和原模型一致
@@ -95,6 +102,9 @@ export const useDrillStore = create<DrillState>((set, get) => ({
 
   startDrill: () => {
     const randomFault = fccFaults[Math.floor(Math.random() * fccFaults.length)];
+    // 重置点拨节流状态，避免上一局残留影响新局
+    intervenePending = false;
+    lastInterveneAt = 0;
     // 把当前 difficulty 拷贝到 activeDifficulty，本次演练全程使用这个值
     set((state) => ({
       isRunning: true,
@@ -274,6 +284,14 @@ export const useDrillStore = create<DrillState>((set, get) => ({
     if (!isCorrect) {
       const newStreak = get().wrongStreak;
       if (newStreak >= 2) {
+        // 节流：上一次点拨还在生成中、或处于冷却时间内（避免连续拖动多个滑块时反复触发），跳过这次
+        const inCooldown = Date.now() - lastInterveneAt < INTERVENE_COOLDOWN_MS;
+        if (intervenePending || inCooldown) {
+          set({ wrongStreak: 0 });
+          return;
+        }
+        intervenePending = true;
+        lastInterveneAt = Date.now();
         const ai = useAIStore.getState();
         // 占位空 ai 消息 + 流式 append
         ai.sendMessage('', 'ai');
@@ -297,6 +315,12 @@ export const useDrillStore = create<DrillState>((set, get) => ({
               ai.flushStream(targetId);
             }
             ai.requestSpeak(fallback);
+          })
+          .finally(() => {
+            // 释放节流：API 完成即可释放（语音播完时间由 ttsService 队列接管）
+            // 语音队列里这一段播完之前，并发触发的请求会走"上面 if (intervenePending)"被忽略，
+            // 这里在 API 成功后就释放，让后续真正"新一批连续错"能尽快触发下一次点拨
+            intervenePending = false;
           });
         // 清零，避免反复打扰
         set({ wrongStreak: 0 });

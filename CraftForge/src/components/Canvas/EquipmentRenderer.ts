@@ -435,9 +435,8 @@ export class EquipmentRenderer {
         break;
         
       case 'robot': {
-        // 六轴关节机器人 v3：底座 + 转台 + 大臂 + 肘关节 + 前臂 + 焊枪
-        // 动画：机器人在 ±15° 范围内缓慢摆动，模拟点焊轨迹
-        const armSwing = Math.sin(animTime * 0.03) * 0.2; // 摆动相位
+        // 六轴关节机器人 v4：宽矮造型 (110×80)，底座+转台+机身+大臂+肘关节+前臂+焊枪
+        const armSwing = Math.sin(animTime * 0.03) * 0.15; // 微摆
         const cx = x + width / 2;
         const baseY = y + height - 10;
         // 底座
@@ -446,53 +445,52 @@ export class EquipmentRenderer {
         ctx.fill();
         ctx.strokeStyle = '#64748b';
         ctx.stroke();
-        // 转台（圆盘）
+        // 转台
         ctx.fillStyle = '#334155';
         ctx.beginPath();
-        ctx.arc(cx, baseY - 6, 14, 0, Math.PI * 2);
+        ctx.arc(cx, baseY - 6, 12, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // 机身
+        // 机身（宽扁）
         ctx.fillStyle = fillColor;
-        this.roundRect(ctx, x + 14, y + 30, width - 28, baseY - 30 - 6, 4);
+        this.roundRect(ctx, x + 14, y + 18, width - 28, height - 42, 4);
         ctx.fill();
         ctx.strokeStyle = '#475569';
         ctx.stroke();
-        // 大臂（从机身中上部伸出，向下弯折）
+        // 大臂
         ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 4;
         ctx.lineCap = 'round';
+        const shoulderX = cx + armSwing * 5;
+        const shoulderY = y + 28;
         ctx.beginPath();
-        const shoulderX = cx + armSwing * 6;
-        const shoulderY = y + 40;
         ctx.moveTo(shoulderX, shoulderY);
-        const elbowX = shoulderX + 18 + armSwing * 8;
-        const elbowY = shoulderY + 30;
+        const elbowX = shoulderX + 14 + armSwing * 6;
+        const elbowY = shoulderY + 22;
         ctx.lineTo(elbowX, elbowY);
         ctx.stroke();
-        // 前臂（从肘关节伸向夹具方向）
+        // 前臂
         ctx.beginPath();
         ctx.moveTo(elbowX, elbowY);
-        const wristX = elbowX + 12;
-        const wristY = elbowY + 22;
+        const wristX = elbowX + 10;
+        const wristY = elbowY + 16;
         ctx.lineTo(wristX, wristY);
         ctx.stroke();
-        // 肘关节圆
+        // 肘关节
         ctx.fillStyle = '#f97316';
         ctx.beginPath();
-        ctx.arc(elbowX, elbowY, 5, 0, Math.PI * 2);
+        ctx.arc(elbowX, elbowY, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // 焊枪电极头
-        ctx.fillStyle = '#f97316';
+        // 焊枪头
         ctx.beginPath();
-        ctx.arc(wristX, wristY, 4, 0, Math.PI * 2);
+        ctx.arc(wristX, wristY, 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         // 指示灯
         ctx.fillStyle = '#22d3ee';
         ctx.beginPath();
-        ctx.arc(cx, y + 36, 3, 0, Math.PI * 2);
+        ctx.arc(cx, y + 24, 3, 0, Math.PI * 2);
         ctx.fill();
         break;
       }

@@ -69,7 +69,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 1：上排两台机器人（y=100，bottom=230，距主输送线顶部 90px）
   {
     id: 'ROB-101', name: '机器人1号', type: 'robot',
-    x: 560, y: 100, width: 90, height: 100,
+    x: 540, y: 100, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 180, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -80,7 +80,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ROB-102', name: '机器人2号', type: 'robot',
-    x: 700, y: 100, width: 90, height: 100,
+    x: 680, y: 100, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 175, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -90,10 +90,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 3：下排机器人 + 焊枪（y=440，bottom=540，距控制柜顶部 100px）
+  // 行 3：下排机器人 + 焊枪（y=440，bottom=520，距控制柜 160px）
   {
     id: 'ROB-103', name: '机器人3号', type: 'robot',
-    x: 560, y: 440, width: 90, height: 100,
+    x: 540, y: 440, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 185, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -155,5 +155,6 @@ export const weldingConfig = {
   equipments: weldingEquipments,
   pipelines: weldingPipelines,
 };
+
 
 

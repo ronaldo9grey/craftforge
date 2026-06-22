@@ -169,3 +169,13 @@ export interface EquipmentManual {
   safetyNotes: string[];   // 安全注意事项（3-5条）
   troubleshooting: { symptom: string; action: string }[];  // 常见故障处理
 }
+
+// 腾讯云 TTS 返回的字级时间戳片段
+export interface SubtitlePiece {
+  Text: string;        // 该片段对应的文字（通常 1-2 个字）
+  BeginTime: number;   // 开始时间（毫秒）
+  EndTime: number;     // 结束时间（毫秒）
+  StableIndex?: number;
+  PhoneBeginTime?: number;
+  PhoneEndTime?: number;
+}

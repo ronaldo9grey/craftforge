@@ -1,9 +1,11 @@
 // /api/ai/chat 路由：APP_TOKEN 鉴权 + 限流 + SSE 流式转发到 DeepSeek
+// /api/ai/tts  路由：APP_TOKEN 鉴权 + 限流 + 腾讯云 TTS 合成
 import { Router, Request, Response } from 'express';
 import { requireAppToken } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { streamDeepSeek, ChatMessage } from '../services/deepseek';
-import { writeAccessLog } from '../utils/logger';
+import { synthesizeVoice } from '../services/tencentTts';
+import { writeAccessLog, writeErrorLog } from '../utils/logger';
 
 const router = Router();
 
@@ -105,6 +107,69 @@ router.post('/chat', requireAppToken, rateLimit, async (req: Request, res: Respo
       messagesIn: validated.ok ? validated.messages.length : undefined,
       charsOut,
       errorMsg,
+    });
+  }
+});
+
+/**
+ * POST /api/ai/tts
+ * Header: Authorization: Bearer <APP_TOKEN>
+ * Body  : { text: string }   单次 ≤150 字
+ * Resp  : 200  { audio: <base64 mp3>, subtitles: [{Text,BeginTime,EndTime}], sessionId }
+ *         400  { error }
+ *         502  { error }
+ */
+router.post('/tts', requireAppToken, rateLimit, async (req: Request, res: Response) => {
+  const startedAt = Date.now();
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+
+  const text = typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!text.trim()) {
+    res.status(400).json({ error: 'text 必填且不能为空' });
+    writeAccessLog({
+      time: new Date().toISOString(),
+      ip,
+      method: req.method,
+      path: req.originalUrl,
+      status: 400,
+      durationMs: Date.now() - startedAt,
+      errorMsg: 'empty text',
+    });
+    return;
+  }
+  if (text.length > 150) {
+    res.status(400).json({ error: 'text 长度超过 150 字，请前端切句后再调用' });
+    return;
+  }
+
+  try {
+    const result = await synthesizeVoice(text);
+    res.json({
+      audio: result.audio,
+      subtitles: result.subtitles,
+      sessionId: result.sessionId,
+    });
+    writeAccessLog({
+      time: new Date(startedAt).toISOString(),
+      ip,
+      method: req.method,
+      path: req.originalUrl,
+      status: 200,
+      durationMs: Date.now() - startedAt,
+      charsOut: text.length,
+    });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    writeErrorLog('tts_failed', { msg, ip });
+    res.status(502).json({ error: 'tts_failed', detail: msg });
+    writeAccessLog({
+      time: new Date(startedAt).toISOString(),
+      ip,
+      method: req.method,
+      path: req.originalUrl,
+      status: 502,
+      durationMs: Date.now() - startedAt,
+      errorMsg: msg,
     });
   }
 });

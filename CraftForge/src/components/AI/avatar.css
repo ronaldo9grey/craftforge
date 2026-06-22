@@ -1,0 +1,70 @@
+/* ===========================================================
+ * 老张数字人头像 - 动画样式
+ * 仅依赖 CSS 关键帧，避免 React 频繁 setState 导致重绘抖动
+ * =========================================================== */
+
+/* 呼吸：整体上下浮动 ±1.5px */
+@keyframes oz-breathe-calm {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-1.5px); }
+}
+@keyframes oz-breathe-think {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-1.5px); }
+}
+@keyframes oz-breathe-alert {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-1px); }
+}
+
+.oz-breathe-calm     { animation: oz-breathe-calm 3.5s ease-in-out infinite; }
+.oz-breathe-thinking { animation: oz-breathe-think 2s ease-in-out infinite; }
+.oz-breathe-alert    { animation: oz-breathe-alert 1s ease-in-out infinite; }
+.oz-breathe-guiding  { animation: oz-breathe-calm 3.5s ease-in-out infinite; }
+.oz-breathe-praising { animation: oz-breathe-calm 2.6s ease-in-out infinite; }
+
+/* 头部摇摆 / 倾斜（作用在 <g class="oz-head"> 上） */
+@keyframes oz-head-think {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50%       { transform: rotate(1.5deg); }
+}
+@keyframes oz-head-alert {
+  0%   { transform: rotate(-3deg)  translateY(0); }
+  50%  { transform: rotate(0deg)   translateY(-0.5px); }
+  100% { transform: rotate(-3deg)  translateY(0); }
+}
+
+.oz-head { transform-origin: 50px 45px; transform-box: fill-box; }
+.oz-head.thinking { animation: oz-head-think 1.6s ease-in-out infinite; transform-origin: 50px 55px; }
+.oz-head.alert    { animation: oz-head-alert 0.4s ease-in-out infinite; transform-origin: 50px 55px; }
+
+/* 外环光晕 */
+@keyframes oz-ring-pulse-soft {
+  0%, 100% { opacity: 0.55; r: 46; }
+  50%       { opacity: 0.85; r: 47.5; }
+}
+@keyframes oz-ring-pulse-fast {
+  0%, 100% { opacity: 0.4;  r: 46; }
+  50%       { opacity: 1;    r: 48; }
+}
+@keyframes oz-ring-pulse-warm {
+  0%, 100% { opacity: 0.55; r: 46; }
+  50%       { opacity: 0.85; r: 47; }
+}
+
+.oz-ring-calm     { animation: oz-ring-pulse-soft 3.5s ease-in-out infinite; }
+.oz-ring-thinking { animation: oz-ring-pulse-warm 2s ease-in-out infinite; }
+.oz-ring-alert    { animation: oz-ring-pulse-fast 0.7s ease-in-out infinite; }
+.oz-ring-guiding  { animation: oz-ring-pulse-soft 3s ease-in-out infinite; }
+.oz-ring-praising { animation: oz-ring-pulse-warm 2s ease-in-out infinite; }
+
+/* 表扬态闪烁星点 */
+@keyframes oz-star-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.1); }
+}
+.oz-star { transform-origin: center; transform-box: fill-box; animation: oz-star-twinkle 1.2s ease-in-out infinite; }
+.oz-star-1 { animation-delay: 0s; }
+.oz-star-2 { animation-delay: 0.3s; }
+.oz-star-3 { animation-delay: 0.6s; }
+.oz-star-4 { animation-delay: 0.9s; }

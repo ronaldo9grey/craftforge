@@ -3,6 +3,37 @@ import { Send, Paperclip, Volume2, VolumeX, User, Bot, Sparkles } from 'lucide-r
 import { useAIStore } from '@/stores/aiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { AvatarOldZhang } from '@/components/AI/AvatarOldZhang';
+import { ttsService } from '@/services/ttsService';
+
+/** 把长文本按中文句号 / 问号 / 感叹号切句；过长再按逗号细切，确保 ≤140 字 */
+function splitToSentences(text: string, maxLen = 140): string[] {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return [];
+  const raw = cleaned.match(/[^。！？\n.!?]+[。！？.!?]?/g) || [cleaned];
+  const out: string[] = [];
+  for (const s of raw) {
+    const t = s.trim();
+    if (!t) continue;
+    if (t.length <= maxLen) {
+      out.push(t);
+    } else {
+      // 再按逗号切
+      const sub = t.split(/[，,；;]/).map((x) => x.trim()).filter(Boolean);
+      let buf = '';
+      for (const piece of sub) {
+        if ((buf + piece).length > maxLen) {
+          if (buf) out.push(buf);
+          buf = piece;
+        } else {
+          buf = buf ? `${buf}，${piece}` : piece;
+        }
+      }
+      if (buf) out.push(buf);
+    }
+  }
+  return out;
+}
 
 export const RightSidebar: React.FC = () => {
   const messages = useAIStore((state) => state.messages);
@@ -14,9 +45,15 @@ export const RightSidebar: React.FC = () => {
   const equipments = useEquipmentStore((state) => state.equipments);
 
   const [inputValue, setInputValue] = useState('');
+  // 老张是否正在朗读（独立于 isProcessing；流式结束后才开始朗读）
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  // 嘴型强度：由 TTS 字级时间戳事件实时更新
+  const [mouthIntensity, setMouthIntensity] = useState<0 | 1 | 2>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // 上一帧 isProcessing 用于检测"true → false"的下降沿，触发语音合成
   const prevProcessingRef = useRef<boolean>(isProcessing);
+  // 已朗读过的消息 id 集合，避免重复朗读
+  const spokenIdsRef = useRef<Set<string>>(new Set());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,17 +63,77 @@ export const RightSidebar: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  /**
+   * 朗读一整段文本（自动切句，逐句调腾讯云 TTS）
+   * 字级时间戳 -> mouthIntensity；播放期间 isSpeaking=true
+   */
+  const speak = async (text: string) => {
+    const sentences = splitToSentences(text);
+    if (sentences.length === 0) return;
+    setIsSpeaking(true);
+    try {
+      for (const sentence of sentences) {
+        const session = await ttsService.speak(sentence);
+        await new Promise<void>((resolve) => {
+          // 每收到一个字级时间戳，按字符在句中的位置切换嘴型强度
+          let openIdx = 0;
+          session.on('boundary', () => {
+            // 0、1、2 三档循环：闭 → 半 → 全 → 半 → 闭…
+            const seq: (0 | 1 | 2)[] = [1, 2, 1, 0];
+            setMouthIntensity(seq[openIdx % seq.length]);
+            openIdx++;
+          });
+          session.on('end', () => {
+            setMouthIntensity(0);
+            resolve();
+          });
+          session.on('error', () => {
+            setMouthIntensity(0);
+            resolve();
+          });
+        });
+      }
+    } catch (e) {
+      // 兼容首次播放被浏览器阻止 / TTS 失败：静默降级，不打扰用户
+      console.warn('[TTS] speak failed', e);
+    } finally {
+      setIsSpeaking(false);
+      setMouthIntensity(0);
+    }
+  };
+
   // 流式结束时（isProcessing 由 true 变 false）自动朗读最新一条 ai 消息
   useEffect(() => {
     if (prevProcessingRef.current && !isProcessing) {
       // 找到最后一条 ai 消息
       const latestAi = [...messages].reverse().find((m) => m.role === 'ai');
-      if (voiceEnabled && latestAi?.content) {
-        speak(latestAi.content);
+      if (
+        voiceEnabled &&
+        latestAi?.content &&
+        !spokenIdsRef.current.has(latestAi.id)
+      ) {
+        spokenIdsRef.current.add(latestAi.id);
+        void speak(latestAi.content);
       }
     }
     prevProcessingRef.current = isProcessing;
   }, [isProcessing, messages, voiceEnabled]);
+
+  // 关闭语音开关时，立即停止当前正在播放的会话
+  useEffect(() => {
+    if (!voiceEnabled) {
+      ttsService.stopCurrent();
+      setIsSpeaking(false);
+      setMouthIntensity(0);
+    }
+  }, [voiceEnabled]);
+
+  // 组件卸载时停止 TTS
+  useEffect(() => {
+    return () => {
+      ttsService.stopCurrent();
+    };
+  }, []);
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -45,16 +142,6 @@ export const RightSidebar: React.FC = () => {
     setInputValue('');
     // 使用流式问答；askCoachAsync 内部完成 user 消息写入、占位 ai 消息、流式追加、降级
     void useAIStore.getState().askCoachAsync(userMessage);
-  };
-
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'zh-CN';
-      utterance.rate = 0.9;
-      utterance.pitch = 1.0;
-      speechSynthesis.speak(utterance);
-    }
   };
 
   const handleEquipmentRef = (equipmentName: string) => {
@@ -66,45 +153,23 @@ export const RightSidebar: React.FC = () => {
     }
   };
 
-  const getAvatarColor = () => {
-    switch (avatarMood) {
-      case 'calm': return '#3b82f6';
-      case 'thinking': return '#f59e0b';
-      case 'alert': return '#ef4444';
-      case 'guiding': return '#10b981';
-      case 'praising': return '#10b981';
-      default: return '#3b82f6';
-    }
-  };
-
-  const getAvatarAnimation = () => {
-    switch (avatarMood) {
-      case 'calm': return 'animate-breathe';
-      case 'alert': return 'animate-alert';
-      default: return '';
-    }
-  };
+  // 数字人头像：流式中显示"思考态"循环嘴型，朗读中显示精确字级嘴型
+  const speakingForAvatar = isSpeaking || isProcessing;
 
   // 右侧边栏始终显示，不再支持关闭
   return (
     <div className="w-80 bg-bg-secondary border-l border-border flex flex-col h-full">
-      {/* 数字人头像区域 */}
+      {/* 数字人头像区域 - 老张 SVG 形象 */}
       <div className="p-4 border-b border-border">
         <div className="flex flex-col items-center">
-          <div className="relative">
-            <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl ${getAvatarAnimation()}`}
-              style={{ backgroundColor: `${getAvatarColor()}30`, border: `2px solid ${getAvatarColor()}` }}
-            >
-              {avatarMood === 'alert' ? '◣◢' : '◠◠'}
-            </div>
-            <div
-              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-bg-secondary"
-              style={{ backgroundColor: getAvatarColor() }}
-            />
-          </div>
-          <h3 className="mt-2 font-medium text-text-primary">王师傅</h3>
-          <p className="text-xs text-text-secondary">高级工艺师</p>
+          <AvatarOldZhang
+            mood={avatarMood}
+            speaking={speakingForAvatar}
+            size={96}
+            mouthIntensity={isSpeaking ? mouthIntensity : undefined}
+          />
+          <h3 className="mt-2 font-medium text-text-primary">老张</h3>
+          <p className="text-xs text-text-secondary">催化裂化老师傅 · 20 年实操</p>
           <div className="flex items-center gap-2 mt-2">
             <button
               onClick={toggleVoice}

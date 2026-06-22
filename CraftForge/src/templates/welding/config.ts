@@ -113,10 +113,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 4：产线控制柜（y=640，bottom=720，距画布底部 40px，距 ROB-103 100px）
+  // 行 4：产线控制柜（y=680，bottom=760，刚好压画布底边，与 ROB-103 间距 140px）
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 640, width: 120, height: 80,
+    x: 580, y: 680, width: 120, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [] },

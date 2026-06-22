@@ -11,7 +11,7 @@ import type { Equipment } from '@/types';
 // - 汽车焊装：1280×760（设备多、机器人垂直分布，需要更大画布）
 // FactoryCanvas 内部根据 activeTemplate 自动选用
 const DESIGN_SIZE_FCC = { width: 1200, height: 680 };
-const DESIGN_SIZE_WELDING = { width: 1280, height: 760 };
+const DESIGN_SIZE_WELDING = { width: 1280, height: 780 };
 const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
 
 export const FactoryCanvas: React.FC = () => {
@@ -129,7 +129,7 @@ export const FactoryCanvas: React.FC = () => {
       // 🔍 版本标记：检查浏览器是否加载了最新代码
       // 如果控制台没有这条日志，说明浏览器用了缓存
       const WELDING_ROB3_Y = 440;
-      const WELDING_CTRL_Y = 640;
+      const WELDING_CTRL_Y = 680;
       if (activeTemplate === 'welding') {
         const rob3 = equipments.find(e => e.id === 'ROB-103');
         const ctrl = equipments.find(e => e.id === 'CTRL-101');

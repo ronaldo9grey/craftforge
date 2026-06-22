@@ -1,17 +1,21 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// 数控加工车间布局 v1：1280×700 网格化布局
-// 设计思路：
-//  - 行 1（y=120）：两台数控机床（车床 + 铣床）作为主作业
-//  - 行 2（y=340）：物料流水线 ─ 来料→上料→工件位→测量仪→下料
-//  - 行 3（y=480）：辅助系统 ─ 冷却液泵、排屑器、数控操作面板
-//  - 行 4（y=620）：总控柜
-//  - 所有坐标严格 ≤ (1260, 690)
+// 数控加工车间布局 v2：1280×700，强化"物料流路径 + 功能分区"两条主线
+// 设计思路（俯视厂房布局）：
+//   ┌─────────────────────────────────────────────────────────┐
+//   │ 行 1 (y=110~250) ：双工位加工区  ─ 数控车床/数控铣床并列 │
+//   │ 行 2 (y=300~370) ：物流主线      ─ 来料 → 上料 → 工件 → 测量 → 下料  │
+//   │ 行 3 (y=420~500) ：辅助系统区    ─ 冷却液泵 / 排屑器 / 数控面板    │
+//   │ 行 4 (y=580~660) ：电气控制区    ─ 总控柜                    │
+//   └─────────────────────────────────────────────────────────┘
+//   物料流：ST-201 → FIX-201 → CNC-101 ⇆ CNC-102 → INST-201 → ST-202
+//   夹具位居中：工件从夹具同时分送给两台机床
+//   所有坐标严格 ≤ (1260, 690)
 export const cncEquipments: Equipment[] = [
-  // —— 行 1：两台数控机床 ——
+  // —— 行 1：双工位加工区（两台数控机床并列） ——
   {
     id: 'CNC-101', name: '数控车床', type: 'reactor',
-    x: 220, y: 120, width: 220, height: 160,
+    x: 290, y: 110, width: 200, height: 140,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'spindle_speed', name: '主轴转速', value: 1800, unit: 'rpm', min: 500, max: 4000, normalMin: 1500, normalMax: 2200, trend: [] },
@@ -24,7 +28,7 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'CNC-102', name: '数控铣床', type: 'reactor',
-    x: 720, y: 120, width: 220, height: 160,
+    x: 790, y: 110, width: 200, height: 140,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'spindle_speed', name: '主轴转速', value: 6000, unit: 'rpm', min: 1000, max: 12000, normalMin: 5500, normalMax: 7000, trend: [] },
@@ -36,10 +40,10 @@ export const cncEquipments: Equipment[] = [
     ],
   },
 
-  // —— 行 2：物料流水线（中心线 y=365）——
+  // —— 行 2：物流主线（中心线 y=335，所有元素居中对齐） ——
   {
     id: 'ST-201', name: '来料区', type: 'station',
-    x: 60, y: 320, width: 90, height: 90,
+    x: 50, y: 300, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'stock_count', name: '毛坯数量', value: 35, unit: '件', min: 0, max: 100, normalMin: 10, normalMax: 80, trend: [] },
@@ -47,7 +51,7 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'FIX-201', name: '工件夹具', type: 'fixture',
-    x: 480, y: 330, width: 80, height: 70,
+    x: 600, y: 305, width: 80, height: 70,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'clamp_force', name: '夹紧力', value: 8000, unit: 'N', min: 5000, max: 12000, normalMin: 7500, normalMax: 9500, trend: [] },
@@ -56,7 +60,7 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'INST-201', name: '在线测量仪', type: 'instrument',
-    x: 970, y: 330, width: 80, height: 70,
+    x: 1030, y: 305, width: 80, height: 70,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'dimension_error', name: '尺寸偏差', value: 0.01, unit: 'mm', min: -0.5, max: 0.5, normalMin: -0.05, normalMax: 0.05, trend: [] },
@@ -66,17 +70,17 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'ST-202', name: '下料区', type: 'station',
-    x: 1170, y: 320, width: 90, height: 90,
+    x: 1170, y: 300, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'finished_count', name: '成品数量', value: 12, unit: '件', min: 0, max: 100, normalMin: 0, normalMax: 50, trend: [] },
     ],
   },
 
-  // —— 行 3：辅助系统 ——
+  // —— 行 3：辅助系统区（冷却 + 排屑 + 数控面板） ——
   {
     id: 'PMP-201', name: '冷却液泵', type: 'pump',
-    x: 220, y: 480, width: 90, height: 80,
+    x: 100, y: 430, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'coolant_flow', name: '冷却液流量', value: 12, unit: 'L/min', min: 0, max: 25, normalMin: 10, normalMax: 16, trend: [] },
@@ -86,7 +90,7 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'CONV-201', name: '排屑器', type: 'conveyor',
-    x: 380, y: 495, width: 220, height: 50,
+    x: 470, y: 445, width: 340, height: 50,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'chip_load', name: '切屑负载', value: 35, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 70, trend: [] },
@@ -95,7 +99,7 @@ export const cncEquipments: Equipment[] = [
   },
   {
     id: 'HMI-201', name: '数控操作面板', type: 'instrument',
-    x: 720, y: 480, width: 100, height: 80,
+    x: 1090, y: 430, width: 110, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'program_no', name: '当前程序号', value: 1024, unit: '', min: 0, max: 9999, normalMin: 0, normalMax: 9999, trend: [] },
@@ -104,10 +108,10 @@ export const cncEquipments: Equipment[] = [
     ],
   },
 
-  // —— 行 4：总控柜 ——
+  // —— 行 4：电气控制区 ——
   {
     id: 'CTRL-201', name: '机床总控柜', type: 'control_box',
-    x: 560, y: 600, width: 160, height: 80,
+    x: 560, y: 580, width: 160, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [] },
@@ -117,28 +121,35 @@ export const cncEquipments: Equipment[] = [
   },
 ];
 
-// 流程管线：物料流向 + 冷却液 + 控制信号
-// 配色：毛坯（钢灰）/ 工件（青蓝）/ 冷却液（蓝）/ 切屑（橙）/ 控制（紫）
+// 物料流主线 + 冷却/排屑/控制辅助线
+// 配色统一：钢灰=毛坯 / 青蓝=工件 / 蓝=冷却 / 橙=切屑 / 紫=控制
 export const cncPipelines: Pipeline[] = [
-  // —— 物料主线 ——
-  { id: 'CP-001', from: 'ST-201',  to: 'FIX-201',  fromPoint: 'right', toPoint: 'left',   medium: '毛坯', flowRate: 1.0, color: '#94a3b8' },
-  { id: 'CP-002', from: 'FIX-201', to: 'CNC-101',  fromPoint: 'top',   toPoint: 'bottom', medium: '工件', flowRate: 1.0, color: '#22d3ee' },
-  { id: 'CP-003', from: 'FIX-201', to: 'CNC-102',  fromPoint: 'top',   toPoint: 'bottom', medium: '工件', flowRate: 1.0, color: '#22d3ee' },
-  { id: 'CP-004', from: 'FIX-201', to: 'INST-201', fromPoint: 'right', toPoint: 'left',   medium: '工件', flowRate: 1.0, color: '#22d3ee' },
-  { id: 'CP-005', from: 'INST-201', to: 'ST-202',  fromPoint: 'right', toPoint: 'left',   medium: '成品', flowRate: 1.0, color: '#22d3ee' },
+  // —— ① 物料主线（左→右，走中心线 y=335） ——
+  { id: 'CP-001', from: 'ST-201',  to: 'FIX-201',  fromPoint: 'right', toPoint: 'left',  medium: '毛坯',  flowRate: 1.0, color: '#94a3b8' },
 
-  // —— 冷却液 ——
+  // 夹具 ↑ 上料到车床、铣床（两台同时取件）
+  { id: 'CP-002', from: 'FIX-201', to: 'CNC-101',  fromPoint: 'top',   toPoint: 'bottom', medium: '装夹→车床', flowRate: 0.8, color: '#22d3ee' },
+  { id: 'CP-003', from: 'FIX-201', to: 'CNC-102',  fromPoint: 'top',   toPoint: 'bottom', medium: '装夹→铣床', flowRate: 0.8, color: '#22d3ee' },
+
+  // 机床 → 测量（加工完成回到物流线再去测量）
+  { id: 'CP-004', from: 'CNC-101', to: 'INST-201', fromPoint: 'right', toPoint: 'left',  medium: '加工件→测量', flowRate: 0.8, color: '#22d3ee' },
+  { id: 'CP-005', from: 'CNC-102', to: 'INST-201', fromPoint: 'bottom', toPoint: 'top', medium: '加工件→测量', flowRate: 0.8, color: '#22d3ee' },
+
+  // 测量 → 下料
+  { id: 'CP-006', from: 'INST-201', to: 'ST-202',  fromPoint: 'right', toPoint: 'left',  medium: '合格件', flowRate: 1.0, color: '#22d3ee' },
+
+  // —— ② 冷却液回路（泵 → 两台机床） ——
   { id: 'CP-101', from: 'PMP-201', to: 'CNC-101', fromPoint: 'top', toPoint: 'bottom', medium: '冷却液', flowRate: 0.6, color: '#3b82f6' },
   { id: 'CP-102', from: 'PMP-201', to: 'CNC-102', fromPoint: 'top', toPoint: 'bottom', medium: '冷却液', flowRate: 0.6, color: '#3b82f6' },
 
-  // —— 排屑 ——
+  // —— ③ 切屑排放（两台机床 → 排屑器） ——
   { id: 'CP-201', from: 'CNC-101', to: 'CONV-201', fromPoint: 'bottom', toPoint: 'top', medium: '切屑', flowRate: 0.5, color: '#f97316' },
   { id: 'CP-202', from: 'CNC-102', to: 'CONV-201', fromPoint: 'bottom', toPoint: 'top', medium: '切屑', flowRate: 0.5, color: '#f97316' },
 
-  // —— 控制信号 ——
+  // —— ④ 控制信号（总控柜 → 机床/面板，紫色虚线感） ——
   { id: 'CP-301', from: 'CTRL-201', to: 'CNC-101', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
   { id: 'CP-302', from: 'CTRL-201', to: 'CNC-102', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'CP-303', from: 'CTRL-201', to: 'HMI-201', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
+  { id: 'CP-303', from: 'CTRL-201', to: 'HMI-201', fromPoint: 'right', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
 ];
 
 export const cncConfig = {

@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { soundService } from '@/services/soundService';
 
 interface UIState {
-  activeTemplate: 'fcc' | 'welding' | 'mixed' | null;
+  // 场景 ID：与场景注册中心 (templates/index.ts) 的 key 对应。
+  // 不再硬编码枚举，便于扩展新场景（如 cnc / chemical / power 等）
+  activeTemplate: string | null;
   sidebarLeftOpen: boolean;
   sidebarRightOpen: boolean;
   selectedEquipmentId: string | null;
@@ -13,7 +15,7 @@ interface UIState {
   soundEnabled: boolean;
 
   // Actions
-  setActiveTemplate: (template: 'fcc' | 'welding' | 'mixed' | null) => void;
+  setActiveTemplate: (template: string | null) => void;
   toggleSidebarLeft: () => void;
   toggleSidebarRight: () => void;
   selectEquipment: (id: string | null) => void;

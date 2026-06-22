@@ -253,9 +253,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v6.4 compact', w - 30, h - 8);
+      ctx.fillText('v7 welding', w - 30, h - 8);
 
-      // 安全通道（黄虚线，在机器人上下区之间 y=415）
+      // 安全通道（黄虚线 y=415，已与上下设备拉开 90px+ 间距）
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);
@@ -272,6 +272,59 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'top';
       ctx.fillText('▎ 物流/安全通道', 25, 420);
       ctx.fillText('▎ 控制区', 25, 588);
+    }
+
+    // CNC 场景：4 大功能分区底色 + 区域标签
+    if (activeTemplate === 'cnc') {
+      // 区域 1：加工区（y=90~270）- 浅紫
+      ctx.fillStyle = 'rgba(167, 139, 250, 0.06)';
+      ctx.fillRect(0, 90, w, 180);
+      // 区域 2：物流主线区（y=280~390）- 浅青
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.06)';
+      ctx.fillRect(0, 280, w, 110);
+      // 区域 3：辅助系统区（y=410~520）- 浅蓝灰
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.10)';
+      ctx.fillRect(0, 410, w, 110);
+      // 区域 4：电气控制区（y=560~660）- 暗蓝
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+      ctx.fillRect(0, 560, w, 100);
+
+      // 区域分隔细虚线
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      [275, 400, 550].forEach((yy) => {
+        ctx.beginPath();
+        ctx.moveTo(20, yy);
+        ctx.lineTo(w - 20, yy);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // 区域标签（左侧浅色文字）
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('▎ 加工区', 25, 100);
+      ctx.fillText('▎ 物流主线', 25, 282);
+      ctx.fillText('▎ 辅助系统', 25, 412);
+      ctx.fillText('▎ 电气控制', 25, 562);
+
+      // 物料流主方向箭头提示（在物流区右上角画一个大箭头说明）
+      ctx.strokeStyle = '#22d3ee';
+      ctx.fillStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('物料流向 →', w - 30, 286);
+
+      // 🎯 版本水印
+      ctx.fillStyle = '#a78bfa';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v2 cnc', w - 30, h - 8);
     }
   };
 

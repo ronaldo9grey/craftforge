@@ -6,9 +6,13 @@ import { EquipmentRenderer } from './EquipmentRenderer';
 import { PipelineRenderer } from './PipelineRenderer';
 import type { Equipment } from '@/types';
 
-// 固定设计分辨率
-const DESIGN_WIDTH = 1200;
-const DESIGN_HEIGHT = 600;
+// 设计分辨率按场景动态调整：
+// - FCC 催化裂化：1200×600（高度紧凑、横向流程）
+// - 汽车焊装：1280×720（设备多、机器人垂直分布，需要更大画布）
+// FactoryCanvas 内部根据 activeTemplate 自动选用
+const DESIGN_SIZE_FCC = { width: 1200, height: 600 };
+const DESIGN_SIZE_WELDING = { width: 1280, height: 720 };
+const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
 
 export const FactoryCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,26 +25,34 @@ export const FactoryCanvas: React.FC = () => {
   const pipelines = useEquipmentStore((state) => state.pipelines);
   const selectedEquipmentId = useUIStore((state) => state.selectedEquipmentId);
   const selectEquipment = useUIStore((state) => state.selectEquipment);
+  const activeTemplate = useUIStore((state) => state.activeTemplate);
   const isDrillRunning = useDrillStore((state) => state.isRunning);
   const currentFault = useDrillStore((state) => state.currentFault);
+
+  // 当前场景的设计尺寸
+  const designSize =
+    activeTemplate === 'welding' ? DESIGN_SIZE_WELDING :
+    activeTemplate === 'fcc'     ? DESIGN_SIZE_FCC :
+    DESIGN_SIZE_DEFAULT;
 
   // 计算自适应缩放 - 使用统一的缩放比例，保持设备不变形
   const calculateScale = useCallback((canvasWidth: number, canvasHeight: number): { scale: number; offsetX: number; offsetY: number } => {
     if (equipments.length === 0) return { scale: 1, offsetX: 0, offsetY: 0 };
 
-    // 使用统一的缩放比例，保持宽高比
-    const scaleX = canvasWidth / DESIGN_WIDTH;
-    const scaleY = canvasHeight / DESIGN_HEIGHT;
+    // 使用统一的缩放比例，保持宽高比；预留 20px 内边距
+    const padding = 20;
+    const scaleX = (canvasWidth - padding * 2) / designSize.width;
+    const scaleY = (canvasHeight - padding * 2) / designSize.height;
     const scale = Math.min(scaleX, scaleY);
 
     // 计算偏移使内容居中
-    const contentWidth = DESIGN_WIDTH * scale;
-    const contentHeight = DESIGN_HEIGHT * scale;
+    const contentWidth = designSize.width * scale;
+    const contentHeight = designSize.height * scale;
     const offsetX = (canvasWidth - contentWidth) / 2;
     const offsetY = (canvasHeight - contentHeight) / 2;
 
     return { scale, offsetX, offsetY };
-  }, [equipments]);
+  }, [equipments, designSize]);
 
   const getEquipmentAtPosition = useCallback((x: number, y: number): Equipment | null => {
     const scale = scaleRef.current;
@@ -124,6 +136,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.translate(offsetRef.current.x, offsetRef.current.y);
       ctx.scale(scaleRef.current, scaleRef.current);
 
+      // 在 design 坐标系下绘制地面网格 / 工区 / 安全通道
+      drawDesignArea(ctx);
+
       // 更新流动偏移
       flowOffsetRef.current += 0.5;
 
@@ -151,19 +166,96 @@ export const FactoryCanvas: React.FC = () => {
   }, [equipments, pipelines, selectedEquipmentId, isDrillRunning, currentFault, calculateScale]);
 
   const drawBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // 填充背景色
-    ctx.fillStyle = '#0f172a';
+    // 填充画布外深色底（设备区外部）
+    ctx.fillStyle = '#0a0f1c';
     ctx.fillRect(0, 0, width, height);
+  };
 
-    // 绘制网格点
-    ctx.fillStyle = '#1e293b';
-    const gridSize = 20;
-    for (let x = 0; x < width; x += gridSize) {
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.arc(x, y, 1, 0, Math.PI * 2);
-        ctx.fill();
-      }
+  /**
+   * 在 design 坐标系（缩放/位移已经应用）下绘制工厂地面：
+   * 1. 工区底色（亮一点，区分场外深色）
+   * 2. 大格 100px / 小格 25px 网格线，类似车间地砖
+   * 3. 工区外边框 + 四角"L"型加重，模拟划线区
+   * 4. 焊装场景额外画虚线"安全通道"
+   */
+  const drawDesignArea = (ctx: CanvasRenderingContext2D) => {
+    const w = designSize.width;
+    const h = designSize.height;
+
+    // 工区底色（比场外略亮，模拟地坪漆）
+    ctx.fillStyle = '#111c30';
+    ctx.fillRect(0, 0, w, h);
+
+    // 小格网格（25px，浅色）
+    ctx.strokeStyle = '#1a2740';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 25) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+    }
+    for (let y = 0; y <= h; y += 25) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+
+    // 大格网格（100px，重一点）
+    ctx.strokeStyle = '#243352';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 100) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+    }
+    for (let y = 0; y <= h; y += 100) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+
+    // 工区外边框
+    ctx.strokeStyle = '#3b4b7a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+
+    // 四角加重 L 型角标
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 3;
+    const corner = 24;
+    // 左上
+    ctx.beginPath(); ctx.moveTo(0, corner); ctx.lineTo(0, 0); ctx.lineTo(corner, 0); ctx.stroke();
+    // 右上
+    ctx.beginPath(); ctx.moveTo(w - corner, 0); ctx.lineTo(w, 0); ctx.lineTo(w, corner); ctx.stroke();
+    // 左下
+    ctx.beginPath(); ctx.moveTo(0, h - corner); ctx.lineTo(0, h); ctx.lineTo(corner, h); ctx.stroke();
+    // 右下
+    ctx.beginPath(); ctx.moveTo(w - corner, h); ctx.lineTo(w, h); ctx.lineTo(w, h - corner); ctx.stroke();
+
+    // 焊装场景额外画 2 条横向安全通道（黄虚线）
+    if (activeTemplate === 'welding') {
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([10, 8]);
+      // 上通道（机器人区与车身输送区之间）
+      ctx.beginPath();
+      ctx.moveTo(20, 245);
+      ctx.lineTo(w - 20, 245);
+      ctx.stroke();
+      // 下通道（机器人区与控制柜区之间）
+      ctx.beginPath();
+      ctx.moveTo(20, 560);
+      ctx.lineTo(w - 20, 560);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 工区标签文字（不参与拖拽，只是装饰）
+      ctx.fillStyle = '#475569';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('▎ 物流通道', 25, 250);
+      ctx.fillText('▎ 安全通道', 25, 565);
     }
   };
 

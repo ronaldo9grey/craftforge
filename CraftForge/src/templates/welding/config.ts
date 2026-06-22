@@ -1,16 +1,16 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// 汽车焊装车间布局 v4：1280×720 网格化布局
+// 汽车焊装车间布局 v5：1280×760 网格化布局（彻底解决纵向越界）
 // 设计原则：
-// - 严格分 4 行水平对齐：上排机器人 (y=140) / 主输送线 (y=320) / 下排机器人+焊枪 (y=450) / 控制柜 (y=600)
-// - 主输送线中心线在 y=345，所有传送/工位/夹具/检测沿这条线对齐
-// - 设备 ID 编号从左到右递增，便于学员对照视觉位置找参数
-// - 所有坐标 + 尺寸严格 ≤ (1260, 700)，预留 20px 边距
+// - 严格分 4 行水平对齐：上排机器人 (y=100) / 主输送线 (y=320~340) / 下排机器人+焊枪 (y=410) / 控制柜 (y=620)
+// - 主输送线中心线在 y=365，所有传送/工位/夹具/检测沿这条线对齐
+// - ROB-103 底部 540 与 CTRL-101 顶部 620 之间留 80px 净距，绝不重叠
+// - 所有坐标 + 尺寸严格 ≤ (1260, 720)，预留 40px 底部安全边距
 export const weldingEquipments: Equipment[] = [
-  // 行 2：主输送线（左 → 右）
+  // 行 2：主输送线（左 → 右，中心线 y=365）
   {
     id: 'ST-101', name: '上件工位', type: 'station',
-    x: 60, y: 300, width: 80, height: 90,
+    x: 60, y: 320, width: 80, height: 90,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'feed_rate', name: '上件节拍', value: 60, unit: 's/件', min: 30, max: 120, normalMin: 50, normalMax: 70, trend: [] },
@@ -19,7 +19,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-101', name: '输入输送带', type: 'conveyor',
-    x: 180, y: 320, width: 230, height: 50,
+    x: 180, y: 340, width: 230, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0, normalMin: 1.0, normalMax: 1.5, trend: [] },
@@ -28,7 +28,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'FIX-101', name: '定位夹具', type: 'fixture',
-    x: 450, y: 310, width: 80, height: 70,
+    x: 450, y: 330, width: 80, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'clamp_force', name: '夹紧力', value: 5000, unit: 'N', min: 3000, max: 8000, normalMin: 4500, normalMax: 5500, trend: [] },
@@ -38,7 +38,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'INST-101', name: '焊缝检测仪', type: 'instrument',
-    x: 820, y: 310, width: 70, height: 70,
+    x: 820, y: 330, width: 70, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_quality', name: '焊缝质量', value: 95, unit: '%', min: 0, max: 100, normalMin: 90, normalMax: 100, trend: [] },
@@ -48,7 +48,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-102', name: '输出输送带', type: 'conveyor',
-    x: 920, y: 320, width: 220, height: 50,
+    x: 920, y: 340, width: 220, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0, normalMin: 1.0, normalMax: 1.5, trend: [] },
@@ -57,7 +57,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ST-102', name: '下件工位', type: 'station',
-    x: 1170, y: 300, width: 80, height: 90,
+    x: 1170, y: 320, width: 80, height: 90,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'output_rate', name: '下件节拍', value: 60, unit: 's/件', min: 30, max: 120, normalMin: 50, normalMax: 70, trend: [] },
@@ -65,10 +65,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 1：上排两台机器人（围绕夹具上方）
+  // 行 1：上排两台机器人（y=100，bottom=230，距主输送线顶部 90px）
   {
     id: 'ROB-101', name: '机器人1号', type: 'robot',
-    x: 560, y: 140, width: 90, height: 130,
+    x: 560, y: 100, width: 90, height: 130,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 180, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -79,7 +79,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ROB-102', name: '机器人2号', type: 'robot',
-    x: 700, y: 140, width: 90, height: 130,
+    x: 700, y: 100, width: 90, height: 130,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 175, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -89,10 +89,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 3：下排机器人 + 焊枪总成
+  // 行 3：下排机器人 + 焊枪（y=410，bottom=540，距控制柜顶部 80px）
   {
     id: 'ROB-103', name: '机器人3号', type: 'robot',
-    x: 560, y: 420, width: 90, height: 130,
+    x: 560, y: 410, width: 90, height: 130,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 185, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -103,7 +103,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'WG-101', name: '焊枪总成', type: 'weld_gun',
-    x: 720, y: 440, width: 60, height: 110,
+    x: 720, y: 430, width: 60, height: 110,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'gas_flow', name: '保护气流量', value: 15, unit: 'L/min', min: 5, max: 30, normalMin: 12, normalMax: 18, trend: [] },
@@ -112,10 +112,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 4：产线控制柜（居中）
+  // 行 4：产线控制柜（y=620，bottom=700，距画布底部 60px）
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 600, width: 120, height: 80,
+    x: 580, y: 620, width: 120, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [] },

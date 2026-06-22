@@ -8,10 +8,10 @@ import type { Equipment } from '@/types';
 
 // 设计分辨率按场景动态调整：
 // - FCC 催化裂化：1200×600（高度紧凑、横向流程）
-// - 汽车焊装：1280×720（设备多、机器人垂直分布，需要更大画布）
+// - 汽车焊装：1280×760（设备多、机器人垂直分布，需要更大画布）
 // FactoryCanvas 内部根据 activeTemplate 自动选用
 const DESIGN_SIZE_FCC = { width: 1200, height: 600 };
-const DESIGN_SIZE_WELDING = { width: 1280, height: 720 };
+const DESIGN_SIZE_WELDING = { width: 1280, height: 760 };
 const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
 
 export const FactoryCanvas: React.FC = () => {
@@ -237,15 +237,15 @@ export const FactoryCanvas: React.FC = () => {
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);
-      // 上通道（机器人区与车身输送区之间）
+      // 上通道（上排机器人区与主输送线之间）
       ctx.beginPath();
-      ctx.moveTo(20, 245);
-      ctx.lineTo(w - 20, 245);
+      ctx.moveTo(20, 255);
+      ctx.lineTo(w - 20, 255);
       ctx.stroke();
-      // 下通道（机器人区与控制柜区之间）
+      // 下通道（下排机器人区与控制柜区之间）
       ctx.beginPath();
-      ctx.moveTo(20, 560);
-      ctx.lineTo(w - 20, 560);
+      ctx.moveTo(20, 575);
+      ctx.lineTo(w - 20, 575);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -254,8 +254,8 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 物流通道', 25, 250);
-      ctx.fillText('▎ 安全通道', 25, 565);
+      ctx.fillText('▎ 物流通道', 25, 260);
+      ctx.fillText('▎ 安全通道', 25, 580);
     }
   };
 

@@ -1,4 +1,4 @@
-import type { Equipment, Pipeline } from '@/types';
+﻿import type { Equipment, Pipeline } from '@/types';
 
 // 汽车焊装车间布局 v5：1280×760 网格化布局（彻底解决纵向越界）
 // 设计原则：
@@ -68,7 +68,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 1：上排两台机器人（y=100，bottom=230，距主输送线顶部 90px）
   {
     id: 'ROB-101', name: '机器人1号', type: 'robot',
-    x: 560, y: 100, width: 90, height: 130,
+    x: 560, y: 100, width: 90, height: 100,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 180, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -79,7 +79,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ROB-102', name: '机器人2号', type: 'robot',
-    x: 700, y: 100, width: 90, height: 130,
+    x: 700, y: 100, width: 90, height: 100,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 175, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -89,10 +89,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 3：下排机器人 + 焊枪（y=410，bottom=540，距控制柜顶部 80px）
+  // 行 3：下排机器人 + 焊枪（y=440，bottom=540，距控制柜顶部 100px）
   {
     id: 'ROB-103', name: '机器人3号', type: 'robot',
-    x: 560, y: 410, width: 90, height: 130,
+    x: 560, y: 440, width: 90, height: 100,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 185, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -112,10 +112,10 @@ export const weldingEquipments: Equipment[] = [
     ],
   },
 
-  // 行 4：产线控制柜（y=620，bottom=700，距画布底部 60px）
+  // 行 4：产线控制柜（y=640，bottom=720，距画布底部 40px，距 ROB-103 100px）
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 620, width: 120, height: 80,
+    x: 580, y: 640, width: 120, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [] },
@@ -154,3 +154,5 @@ export const weldingConfig = {
   equipments: weldingEquipments,
   pipelines: weldingPipelines,
 };
+
+

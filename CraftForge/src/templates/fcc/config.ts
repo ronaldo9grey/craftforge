@@ -1,4 +1,4 @@
-import type { Equipment, Pipeline } from '@/types';
+﻿import type { Equipment, Pipeline } from '@/types';
 
 // 工艺动力学时间常数（秒）— 按参数物理特性分类，引擎据此实现一阶滞后逼近
 //   流量类：tau=5     —— 流量变化通过泵/阀门快速响应，5 秒级
@@ -16,7 +16,7 @@ export const fccEquipments: Equipment[] = [
     name: '原料油泵',
     type: 'pump',
     x: 80,
-    y: 420,
+    y: 450,
     width: 80,
     height: 80,
     status: 'normal',
@@ -31,7 +31,7 @@ export const fccEquipments: Equipment[] = [
     name: '原料油换热器',
     type: 'exchanger',
     x: 260,
-    y: 400,
+    y: 430,
     width: 100,
     height: 100,
     status: 'normal',
@@ -46,7 +46,7 @@ export const fccEquipments: Equipment[] = [
     name: '加热炉',
     type: 'heater',
     x: 420,
-    y: 200,
+    y: 230,
     width: 120,
     height: 100,
     status: 'normal',
@@ -61,7 +61,7 @@ export const fccEquipments: Equipment[] = [
     name: '提升管反应器',
     type: 'reactor',
     x: 620,
-    y: 180,
+    y: 210,
     width: 100,
     height: 140,
     status: 'normal',
@@ -77,7 +77,7 @@ export const fccEquipments: Equipment[] = [
     name: '再生器',
     type: 'regenerator',
     x: 820,
-    y: 180,
+    y: 210,
     width: 100,
     height: 140,
     status: 'normal',
@@ -95,7 +95,7 @@ export const fccEquipments: Equipment[] = [
     name: '分馏塔',
     type: 'fractionator',
     x: 1020,
-    y: 160,
+    y: 190,
     width: 90,
     height: 180,
     status: 'normal',
@@ -113,7 +113,7 @@ export const fccEquipments: Equipment[] = [
     name: '主风机',
     type: 'compressor',
     x: 940,
-    y: 470,
+    y: 500,
     width: 100,
     height: 100,
     status: 'normal',
@@ -128,7 +128,7 @@ export const fccEquipments: Equipment[] = [
     name: '塞阀',
     type: 'valve',
     x: 720,
-    y: 20,
+    y: 50,
     width: 50,
     height: 50,
     status: 'normal',
@@ -142,7 +142,7 @@ export const fccEquipments: Equipment[] = [
     name: '反应压力表',
     type: 'instrument',
     x: 520,
-    y: 20,
+    y: 50,
     width: 60,
     height: 60,
     status: 'normal',
@@ -171,3 +171,4 @@ export const fccConfig = {
   equipments: fccEquipments,
   pipelines: fccPipelines,
 };
+

@@ -149,7 +149,7 @@ export async function synthesizeVoice(text: string): Promise<TtsResult> {
     Response?: {
       Audio?: string;
       SessionId?: string;
-      Subtitle?: SubtitlePiece[];
+      Subtitles?: SubtitlePiece[];  // 腾讯云返回字段是 Subtitles（复数）
       Error?: { Code: string; Message: string };
       RequestId?: string;
     };
@@ -162,7 +162,7 @@ export async function synthesizeVoice(text: string): Promise<TtsResult> {
 
   return {
     audio: r.Audio,
-    subtitles: r.Subtitle || [],
+    subtitles: r.Subtitles || [],
     sessionId: r.SessionId || sessionId,
   };
 }

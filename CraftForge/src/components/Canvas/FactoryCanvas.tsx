@@ -248,37 +248,32 @@ export const FactoryCanvas: React.FC = () => {
     // 右下
     ctx.beginPath(); ctx.moveTo(w - corner, h); ctx.lineTo(w, h); ctx.lineTo(w, h - corner); ctx.stroke();
 
-      // 焊装场景额外画 2 条横向安全通道（黄虚线）
+    // 焊装场景额外画 1 条横向安全通道（黄虚线）：只画上方一条（输送线与下排机器人之间）
+    // 不画下排机器人与控制柜之间的那条，避免与机器人 3 号标签视觉冲突
     if (activeTemplate === 'welding') {
-      // 🎯 版本水印：右下角显示版本号，浏览器看到这个就代表加载了最新代码
+      // 🎯 版本水印：右下角显示版本号
       ctx.fillStyle = '#22d3ee';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v6.1 layout', w - 30, h - 8);
+      ctx.fillText('v6.2 clean', w - 30, h - 8);
 
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);
-      // 上通道（上排机器人区与主输送线之间）
+      // 仅上通道（主输送线下方与下排机器人之间，y=415）
       ctx.beginPath();
-      ctx.moveTo(20, 255);
-      ctx.lineTo(w - 20, 255);
-      ctx.stroke();
-      // 下通道（下排机器人区与控制柜区之间）
-      ctx.beginPath();
-      ctx.moveTo(20, 575);
-      ctx.lineTo(w - 20, 575);
+      ctx.moveTo(20, 415);
+      ctx.lineTo(w - 20, 415);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 工区标签文字（不参与拖拽，只是装饰）
+      // 工区标签文字
       ctx.fillStyle = '#475569';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 物流通道', 25, 260);
-      ctx.fillText('▎ 安全通道', 25, 580);
+      ctx.fillText('▎ 物流/安全通道', 25, 420);
     }
   };
 

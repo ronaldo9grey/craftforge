@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { Equipment, Pipeline, Alarm, OperationRecord } from '@/types';
-import { fccConfig } from '@/templates/fcc/config';
-import { weldingConfig } from '@/templates/welding/config';
+import { getScenePack } from '@/templates';
 
 interface EquipmentState {
   equipments: Equipment[];
@@ -11,7 +10,7 @@ interface EquipmentState {
   operationHistory: Record<string, OperationRecord[]>;
 
   // Actions
-  loadTemplate: (template: 'fcc' | 'welding') => void;
+  loadTemplate: (template: string) => void;
   // 更新参数实际值；silent=true 时跳过 operationHistory 写入（供动力学引擎内部演化使用）
   updateParameter: (equipmentId: string, paramId: string, value: number, silent?: boolean) => void;
   // 仅更新参数 setpoint（目标值），不触发任何副作用，由动力学引擎驱动 value 逐步逼近
@@ -32,34 +31,31 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   operationHistory: {},
 
   loadTemplate: (template) => {
-    if (template === 'fcc') {
+    const pack = getScenePack(template);
+    if (!pack) {
+      console.warn(`[equipmentStore] 场景 "${template}" 未注册，回退到 fcc`);
+      const fallback = getScenePack('fcc');
+      if (!fallback) return;
       set({
-        // 初始化时把 setpoint 默认为 value，保证存量配置兼容
-        equipments: fccConfig.equipments.map((e) => ({
+        equipments: fallback.equipments.map((e) => ({
           ...e,
-          parameters: e.parameters.map((p) => ({
-            ...p,
-            setpoint: p.setpoint ?? p.value,
-          })),
+          parameters: e.parameters.map((p) => ({ ...p, setpoint: p.setpoint ?? p.value })),
         })),
-        pipelines: fccConfig.pipelines,
+        pipelines: fallback.pipelines,
         alarms: [],
         operationHistory: {},
       });
-    } else if (template === 'welding') {
-      set({
-        equipments: weldingConfig.equipments.map((e) => ({
-          ...e,
-          parameters: e.parameters.map((p) => ({
-            ...p,
-            setpoint: p.setpoint ?? p.value,
-          })),
-        })),
-        pipelines: weldingConfig.pipelines,
-        alarms: [],
-        operationHistory: {},
-      });
+      return;
     }
+    set({
+      equipments: pack.equipments.map((e) => ({
+        ...e,
+        parameters: e.parameters.map((p) => ({ ...p, setpoint: p.setpoint ?? p.value })),
+      })),
+      pipelines: pack.pipelines,
+      alarms: [],
+      operationHistory: {},
+    });
   },
 
   // 写入参数"实际值"。

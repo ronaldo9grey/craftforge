@@ -19,6 +19,12 @@ import { weldingFaults } from './welding/faults';
 import { weldingMeta } from './welding/meta';
 import { weldingCoach } from './welding/coach';
 
+// —— 数控加工 ——
+import { cncEquipments, cncPipelines } from './cnc/config';
+import { cncFaults } from './cnc/faults';
+import { cncMeta } from './cnc/meta';
+import { cncCoach } from './cnc/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -36,6 +42,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: weldingEquipments,
     pipelines: weldingPipelines,
     faults: weldingFaults,
+  },
+  cnc: {
+    meta: cncMeta,
+    coach: cncCoach,
+    equipments: cncEquipments,
+    pipelines: cncPipelines,
+    faults: cncFaults,
   },
 };
 

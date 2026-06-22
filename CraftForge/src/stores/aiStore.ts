@@ -144,6 +144,9 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ knowledgeBase: fccKnowledge });
     } else if (template === 'welding') {
       set({ knowledgeBase: weldingKnowledge });
+    } else {
+      // 其他场景暂无知识库，置空（不影响演练逻辑）
+      set({ knowledgeBase: [] });
     }
   },
 

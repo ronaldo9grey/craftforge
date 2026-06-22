@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { Fault, DrillRecord, OperationRecord, ScoreBreakdown, ScoreDimension, DrillDifficulty } from '@/types';
-import { fccFaults } from '@/templates/fcc/faults';
-import { weldingFaults } from '@/templates/welding/faults';
+import { getScenePack } from '@/templates';
 import { useEquipmentStore } from './equipmentStore';
 import { useAIStore } from './aiStore';
 import { useUIStore } from './uiStore';
@@ -109,12 +108,14 @@ export const useDrillStore = create<DrillState>((set, get) => ({
   },
 
   startDrill: () => {
-    // 根据当前激活模板选用对应故障库；未匹配时默认 fcc
-    const activeTpl = useUIStore.getState().activeTemplate;
-    const pool: Fault[] =
-      activeTpl === 'welding' ? weldingFaults :
-      activeTpl === 'mixed'   ? [...fccFaults, ...weldingFaults] :
-      fccFaults;
+    // 根据当前激活场景选用对应故障库（直接从注册中心读）
+    const activeTpl = useUIStore.getState().activeTemplate ?? 'fcc';
+    const pack = getScenePack(activeTpl);
+    const pool: Fault[] = pack?.faults ?? [];
+    if (pool.length === 0) {
+      console.warn(`[drillStore] 场景 "${activeTpl}" 无可用故障库`);
+      return;
+    }
     const randomFault = pool[Math.floor(Math.random() * pool.length)];
     // 重置点拨节流状态，避免上一局残留影响新局
     intervenePending = false;

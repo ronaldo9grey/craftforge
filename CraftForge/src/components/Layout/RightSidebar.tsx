@@ -176,12 +176,24 @@ export const RightSidebar: React.FC = () => {
               className={`p-1.5 rounded-md transition-colors ${
                 voiceEnabled ? 'bg-primary text-white' : 'bg-bg-tertiary text-text-muted'
               }`}
+              title={voiceEnabled ? '点击关闭语音' : '点击开启语音'}
             >
               {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>
             <span className="text-xs text-text-muted">
               {voiceEnabled ? '语音开启' : '语音关闭'}
             </span>
+            {/* 试听按钮：方便用户主动触发，同时满足浏览器自动播放策略 */}
+            <button
+              onClick={() => {
+                void speak('你好，我是老张，催化裂化干了二十年。有啥问题随时问我。');
+              }}
+              disabled={!voiceEnabled || isSpeaking}
+              className="px-2 py-1 text-xs rounded-md bg-bg-tertiary hover:bg-primary/20 text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title="点击试听老张的声音"
+            >
+              试听
+            </button>
           </div>
         </div>
       </div>

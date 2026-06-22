@@ -45,7 +45,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     },
   ],
   avatarMood: 'calm',
-  voiceEnabled: false,
+  voiceEnabled: true,
   knowledgeBase: [],
   isProcessing: false,
 

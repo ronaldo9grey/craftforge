@@ -148,11 +148,14 @@ export const useDrillStore = create<DrillState>((set, get) => ({
           // 一次性 set（coachClosing 是 chatOnce），借用 streamMessage 把全文写入占位
           ai.streamMessage(targetId, finalText);
           ai.flushStream(targetId);
+          // 触发 TTS 朗读讲评
+          ai.requestSpeak(finalText);
         })
         .catch((err) => {
           console.warn('[drillStore] coachClosing 失败，使用兜底点评', err instanceof Error ? err.message : err);
           ai.streamMessage(targetId, breakdown.coachComment || '本次演练已结束。');
           ai.flushStream(targetId);
+          ai.requestSpeak(breakdown.coachComment || '本次演练已结束。');
         });
     }
   },
@@ -284,13 +287,16 @@ export const useDrillStore = create<DrillState>((set, get) => ({
               ai.streamMessage(targetId, finalText);
               ai.flushStream(targetId);
             }
+            ai.requestSpeak(finalText);
           })
           .catch((err) => {
             console.warn('[drillStore] coachIntervene 失败，使用兜底点拨', err instanceof Error ? err.message : err);
+            const fallback = '停一下，先看异常参数的方向：症状偏高就调小，偏低就调大。';
             if (targetId) {
-              ai.streamMessage(targetId, '停一下，先看异常参数的方向：症状偏高就调小，偏低就调大。');
+              ai.streamMessage(targetId, fallback);
               ai.flushStream(targetId);
             }
+            ai.requestSpeak(fallback);
           });
         // 清零，避免反复打扰
         set({ wrongStreak: 0 });

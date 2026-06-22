@@ -180,6 +180,8 @@ export const TopBar: React.FC = () => {
             const text = opening?.trim();
             if (text) {
               useAIStore.getState().sendMessage(text, 'ai');
+              // 触发 TTS 朗读演练开场白
+              useAIStore.getState().requestSpeak(text);
             }
           })
           .catch((err) => {

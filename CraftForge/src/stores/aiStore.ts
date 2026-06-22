@@ -10,6 +10,12 @@ interface AIState {
   voiceEnabled: boolean;
   knowledgeBase: KnowledgeItem[];
   isProcessing: boolean;
+  /**
+   * TTS 朗读请求：每次设置新对象就触发一次朗读。
+   * 单调递增 seq 保证即使内容相同也能触发；content 是要播的整段文本。
+   * 演练开场白、讲评、点拨、用户问答 等任意场景都可以调 requestSpeak()。
+   */
+  ttsRequest: { seq: number; content: string } | null;
 
   // Actions
   sendMessage: (content: string, role: 'user' | 'ai', equipmentRefs?: string[]) => void;
@@ -27,6 +33,8 @@ interface AIState {
   findAnswer: (question: string) => KnowledgeItem | null;
   // 流式提问 AI 师傅；返回最终 ai 消息 id 便于外部完成态读取
   askCoachAsync: (userText: string) => Promise<string>;
+  // 主动请求朗读一段文本（由 RightSidebar 订阅）
+  requestSpeak: (content: string) => void;
 }
 
 // —— 流式渲染节流：按消息 id 维护未 flush 的 buffer 与上次 flush 时间戳 ——
@@ -48,6 +56,7 @@ export const useAIStore = create<AIState>((set, get) => ({
   voiceEnabled: true,
   knowledgeBase: [],
   isProcessing: false,
+  ttsRequest: null,
 
   sendMessage: (content, role, equipmentRefs) => {
     const message: Message = {
@@ -214,8 +223,21 @@ export const useAIStore = create<AIState>((set, get) => ({
       // 5. 完成态：guiding，关闭 processing
       get().setProcessing(false);
       get().setAvatarMood('guiding');
+      // 6. 触发 TTS 朗读完整回复（演练讲评/开场白等也走 requestSpeak，此处统一）
+      const finalMsg = get().messages.find((m) => m.id === aiId);
+      if (finalMsg?.content) {
+        get().requestSpeak(finalMsg.content);
+      }
     }
 
     return aiId;
+  },
+
+  // 单调递增 seq 保证：即使先后两次播相同文字，也会被 RightSidebar 识别为新请求
+  requestSpeak: (content) => {
+    const trimmed = (content || '').trim();
+    if (!trimmed) return;
+    const prev = get().ttsRequest;
+    set({ ttsRequest: { seq: (prev?.seq ?? 0) + 1, content: trimmed } });
   },
 }));

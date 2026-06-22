@@ -40,6 +40,7 @@ export const RightSidebar: React.FC = () => {
   const avatarMood = useAIStore((state) => state.avatarMood);
   const voiceEnabled = useAIStore((state) => state.voiceEnabled);
   const isProcessing = useAIStore((state) => state.isProcessing);
+  const ttsRequest = useAIStore((state) => state.ttsRequest);
   const toggleVoice = useAIStore((state) => state.toggleVoice);
   const selectEquipment = useUIStore((state) => state.selectEquipment);
   const equipments = useEquipmentStore((state) => state.equipments);
@@ -50,10 +51,8 @@ export const RightSidebar: React.FC = () => {
   // 嘴型强度：由 TTS 字级时间戳事件实时更新
   const [mouthIntensity, setMouthIntensity] = useState<0 | 1 | 2>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // 上一帧 isProcessing 用于检测"true → false"的下降沿，触发语音合成
-  const prevProcessingRef = useRef<boolean>(isProcessing);
-  // 已朗读过的消息 id 集合，避免重复朗读
-  const spokenIdsRef = useRef<Set<string>>(new Set());
+  // 记录已处理过的 ttsRequest.seq，避免重复朗读（同一 seq 只播一次）
+  const lastSeqRef = useRef<number>(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -102,22 +101,15 @@ export const RightSidebar: React.FC = () => {
     }
   };
 
-  // 流式结束时（isProcessing 由 true 变 false）自动朗读最新一条 ai 消息
+  // 监听 ttsRequest：seq 变更即触发朗读，覆盖所有场景（聊天回复、演练开场白、讲评、点拨等）
   useEffect(() => {
-    if (prevProcessingRef.current && !isProcessing) {
-      // 找到最后一条 ai 消息
-      const latestAi = [...messages].reverse().find((m) => m.role === 'ai');
-      if (
-        voiceEnabled &&
-        latestAi?.content &&
-        !spokenIdsRef.current.has(latestAi.id)
-      ) {
-        spokenIdsRef.current.add(latestAi.id);
-        void speak(latestAi.content);
-      }
-    }
-    prevProcessingRef.current = isProcessing;
-  }, [isProcessing, messages, voiceEnabled]);
+    if (!voiceEnabled) return;
+    if (!ttsRequest) return;
+    if (ttsRequest.seq <= lastSeqRef.current) return;
+    lastSeqRef.current = ttsRequest.seq;
+    void speak(ttsRequest.content);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ttsRequest, voiceEnabled]);
 
   // 关闭语音开关时，立即停止当前正在播放的会话
   useEffect(() => {

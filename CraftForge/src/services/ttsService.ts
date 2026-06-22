@@ -59,6 +59,9 @@ class InternalSession implements TtsSession {
   private rafId: number | null = null;
   private nextSubtitleIndex = 0;
   private stopped = false;
+  // 当 subtitles 为空时（超自然大模型音色不返回字级时间戳），用定时器保底
+  private fallbackIntervalId: number | null = null;
+  private fallbackStep: number = 0;
 
   constructor(audio: HTMLAudioElement, subtitles: SubtitlePiece[], blobUrl: string, sessionId: string) {
     this.audio = audio;
@@ -71,9 +74,27 @@ class InternalSession implements TtsSession {
     audio.addEventListener('error', () => this.emit('error', '音频播放错误'));
   }
 
-  /** 启动 rAF 循环，驱动字级 boundary 事件 */
+  /** 启动 rAF 循环，驱动字级 boundary 事件；无 subtitles 时启动 fallback 定时器 */
   start() {
-    this.tick();
+    if (this.subtitles.length === 0) {
+      this.startFallback();
+    } else {
+      this.tick();
+    }
+  }
+
+  /** 无字幕时：每 200ms 发一次 boundary，让上层按节奏切换嘴型，直到音频结束 */
+  private startFallback() {
+    this.fallbackStep = 0;
+    this.fallbackIntervalId = window.setInterval(() => {
+      if (this.stopped) return;
+      if (this.audio.ended || this.audio.paused) {
+        this.handleEnd();
+        return;
+      }
+      this.emit('boundary', '', Date.now(), Date.now() + 200);
+      this.fallbackStep++;
+    }, 200);
   }
 
   private tick = () => {
@@ -97,6 +118,10 @@ class InternalSession implements TtsSession {
     if (this.stopped) return;
     this.stopped = true;
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+    if (this.fallbackIntervalId !== null) {
+      clearInterval(this.fallbackIntervalId);
+      this.fallbackIntervalId = null;
+    }
     URL.revokeObjectURL(this.blobUrl);
     this.emit('end');
   }
@@ -105,6 +130,10 @@ class InternalSession implements TtsSession {
     if (this.stopped) return;
     this.stopped = true;
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+    if (this.fallbackIntervalId !== null) {
+      clearInterval(this.fallbackIntervalId);
+      this.fallbackIntervalId = null;
+    }
     try {
       this.audio.pause();
       this.audio.src = '';

@@ -11,7 +11,7 @@ import type { Equipment } from '@/types';
 // - 汽车焊装：1280×760（设备多、机器人垂直分布，需要更大画布）
 // FactoryCanvas 内部根据 activeTemplate 自动选用
 const DESIGN_SIZE_FCC = { width: 1200, height: 680 };
-const DESIGN_SIZE_WELDING = { width: 1280, height: 780 };
+const DESIGN_SIZE_WELDING = { width: 1280, height: 700 };
 const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
 
 export const FactoryCanvas: React.FC = () => {
@@ -129,7 +129,7 @@ export const FactoryCanvas: React.FC = () => {
       // 🔍 版本标记：检查浏览器是否加载了最新代码
       // 如果控制台没有这条日志，说明浏览器用了缓存
       const WELDING_ROB3_Y = 440;
-      const WELDING_CTRL_Y = 680;
+      const WELDING_CTRL_Y = 610;
       if (activeTemplate === 'welding') {
         const rob3 = equipments.find(e => e.id === 'ROB-103');
         const ctrl = equipments.find(e => e.id === 'CTRL-101');
@@ -250,16 +250,16 @@ export const FactoryCanvas: React.FC = () => {
 
     // 焊装场景额外画安全通道 + 控制柜区底色分隔
     if (activeTemplate === 'welding') {
-      // 控制柜区域浅底色（明确标出"控制区"，与机器人区视觉隔开）
+      // 控制柜区域浅底色（紧凑型：y=580 起，仅 120px 高）
       ctx.fillStyle = '#0a1629';
-      ctx.fillRect(0, 550, w, h - 550);
+      ctx.fillRect(0, 580, w, h - 580);
 
       // 🎯 版本水印
       ctx.fillStyle = '#22d3ee';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v6.3 clean', w - 30, h - 8);
+      ctx.fillText('v6.4 compact', w - 30, h - 8);
 
       // 安全通道（黄虚线，在机器人上下区之间 y=415）
       ctx.strokeStyle = '#facc15';
@@ -277,7 +277,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText('▎ 物流/安全通道', 25, 420);
-      ctx.fillText('▎ 控制区', 25, 558);
+      ctx.fillText('▎ 控制区', 25, 588);
     }
   };
 

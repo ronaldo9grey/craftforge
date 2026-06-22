@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { soundService } from '@/services/soundService';
 
 interface UIState {
   activeTemplate: 'fcc' | 'welding' | 'mixed' | null;
@@ -8,7 +9,9 @@ interface UIState {
   showParameterPanel: boolean;
   showScoreBoard: boolean;
   systemStatus: 'normal' | 'warning' | 'danger';
-  
+  // 现场音效总开关；与 aiStore.voiceEnabled（老张语音）独立
+  soundEnabled: boolean;
+
   // Actions
   setActiveTemplate: (template: 'fcc' | 'welding' | 'mixed' | null) => void;
   toggleSidebarLeft: () => void;
@@ -17,9 +20,10 @@ interface UIState {
   toggleParameterPanel: () => void;
   toggleScoreBoard: () => void;
   setSystemStatus: (status: 'normal' | 'warning' | 'danger') => void;
+  toggleSound: () => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
+export const useUIStore = create<UIState>((set, get) => ({
   activeTemplate: null,
   sidebarLeftOpen: true,
   sidebarRightOpen: true,
@@ -27,6 +31,7 @@ export const useUIStore = create<UIState>((set) => ({
   showParameterPanel: false,
   showScoreBoard: false,
   systemStatus: 'normal',
+  soundEnabled: true,
 
   setActiveTemplate: (template) => set({ 
     activeTemplate: template, 
@@ -42,4 +47,15 @@ export const useUIStore = create<UIState>((set) => ({
   toggleParameterPanel: () => set((state) => ({ showParameterPanel: !state.showParameterPanel })),
   toggleScoreBoard: () => set((state) => ({ showScoreBoard: !state.showScoreBoard })),
   setSystemStatus: (status) => set({ systemStatus: status }),
+  toggleSound: () => {
+    const next = !get().soundEnabled;
+    set({ soundEnabled: next });
+    // 关闭音效时立刻静音并停掉环境音；开启时取消静音
+    if (next) {
+      soundService.unmute();
+    } else {
+      soundService.mute();
+      soundService.stopAmbient();
+    }
+  },
 }));

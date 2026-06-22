@@ -3,7 +3,9 @@ import type { Fault, DrillRecord, OperationRecord, ScoreBreakdown, ScoreDimensio
 import { fccFaults } from '@/templates/fcc/faults';
 import { useEquipmentStore } from './equipmentStore';
 import { useAIStore } from './aiStore';
+import { useUIStore } from './uiStore';
 import { coachClosing, coachIntervene } from '@/services/aiCoach';
+import { soundService } from '@/services/soundService';
 
 // 演练点拨节流：coachIntervene 正在生成或语音未播完时，不再触发新一次
 // 用模块级标志位而非 zustand state，避免触发 UI 重渲
@@ -11,6 +13,11 @@ let intervenePending = false;
 // 最近一次成功触发点拨的时间戳，用于"冷却时间"窗口（最近 N 秒内不再触发）
 let lastInterveneAt = 0;
 const INTERVENE_COOLDOWN_MS = 8000;
+
+/** 当前 UI 是否允许播放音效（音效开关 + 用户已交互） */
+function soundOn(): boolean {
+  return useUIStore.getState().soundEnabled;
+}
 
 // 难度配置：错误扣分系数 / 基础工况分倍率 / 总分上限 / 中文名
 // 新手：错误轻扣，基础分不放大，分数封顶 80（保留 A 级，避免简单模式刷高分）
@@ -117,6 +124,17 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       activeDifficulty: state.difficulty,
       wrongStreak: 0,
     }));
+    // 音效：先来一声启动音，紧接着开启工厂环境底噪，再用报警声标识故障已发生
+    if (soundOn()) {
+      soundService.playStartup();
+      setTimeout(() => {
+        if (soundOn()) soundService.playAmbient();
+      }, 600);
+      // 1.2s 后报警一声（中等级别），代表故障已生效
+      setTimeout(() => {
+        if (soundOn()) soundService.playAlarm(2);
+      }, 1200);
+    }
   },
 
   endDrill: () => {
@@ -140,6 +158,11 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         isRunning: false,
         history: [...state.history, record],
       }));
+      // 音效：停止环境底噪，播放停机下扫音，提示演练结束
+      if (soundOn()) {
+        soundService.stopAmbient();
+        soundService.playShutdown();
+      }
 
       // 任务 6：异步通过大模型生成"师傅讲评"，流式推到右侧消息面板
       // 失败降级：使用 breakdown.coachComment 作为兜底文本
@@ -280,6 +303,16 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       wrongStreak: isCorrect ? 0 : state.wrongStreak + 1,
     }));
 
+    // 操作音效反馈：正确"叮"、错误"嗡"。仅在该参数关联到故障 symptom/step 时才播，
+    // 避免学员"乱拖一个无关参数"也被音效骚扰
+    if (soundOn() && (symptom || matchedStep)) {
+      if (isCorrect) {
+        soundService.playCorrect();
+      } else {
+        soundService.playWrong();
+      }
+    }
+
     // 任务 7：连续 2 次错误 → 调 coachIntervene 推送一句点拨，然后 wrongStreak 清零避免反复打扰
     if (!isCorrect) {
       const newStreak = get().wrongStreak;
@@ -292,6 +325,8 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         }
         intervenePending = true;
         lastInterveneAt = Date.now();
+        // 老张介入时给一声轻警告，提示学员"师傅要说话了"
+        if (soundOn()) soundService.playAlarm(1);
         const ai = useAIStore.getState();
         // 占位空 ai 消息 + 流式 append
         ai.sendMessage('', 'ai');

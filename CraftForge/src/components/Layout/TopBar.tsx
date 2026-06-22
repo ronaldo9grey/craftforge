@@ -1,4 +1,4 @@
-import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, User, Menu, X, AlertTriangle, Sprout, Settings2, Target } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, User, Menu, X, AlertTriangle, Sprout, Settings2, Target, Bell, BellOff } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useDrillStore } from '@/stores/drillStore';
 import { useAIStore } from '@/stores/aiStore';
@@ -61,6 +61,8 @@ export const TopBar: React.FC = () => {
   const toggleVoice = useAIStore((state) => state.toggleVoice);
   const sendMessage = useAIStore((state) => state.sendMessage);
   const setAvatarMood = useAIStore((state) => state.setAvatarMood);
+  const soundEnabled = useUIStore((state) => state.soundEnabled);
+  const toggleSound = useUIStore((state) => state.toggleSound);
   
   const setEquipmentStatus = useEquipmentStore((state) => state.setEquipmentStatus);
   // 故障注入走 setpoint：把症状 value 写到对应参数的 setpoint，
@@ -357,6 +359,16 @@ export const TopBar: React.FC = () => {
           }`}
         >
           {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </button>
+
+        <button
+          onClick={toggleSound}
+          title={soundEnabled ? '关闭提示音' : '开启提示音'}
+          className={`p-2 rounded-lg transition-colors ${
+            soundEnabled ? 'text-primary bg-primary/20' : 'text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          {soundEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </button>
         
         <button className="p-2 text-text-muted hover:text-text-secondary transition-colors">

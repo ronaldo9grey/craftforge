@@ -85,7 +85,7 @@ function App() {
                     欢迎使用匠魂实训引擎
                   </h2>
                   <p className="text-text-secondary mb-4">
-                    请从左侧选择工业场景模板开始实训
+                    请从左侧选择工业场景开始实训
                   </p>
                   <div className="flex gap-4 justify-center">
                     <div className="text-center">

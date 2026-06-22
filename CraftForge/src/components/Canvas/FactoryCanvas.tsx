@@ -130,11 +130,11 @@ export const FactoryCanvas: React.FC = () => {
       // 绘制管道
       PipelineRenderer.render(ctx, pipelines, flowOffsetRef.current);
 
-      // 绘制设备
+      // 绘制设备（把 flowOffset 当作动画时间相位传入，驱动机器人/传送带动画）
       equipments.forEach((equipment) => {
         const isSelected = equipment.id === selectedEquipmentId;
         const isFaulty = !!(isDrillRunning && currentFault?.affectedEquipments.includes(equipment.id));
-        EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty);
+        EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty, flowOffsetRef.current);
       });
 
       ctx.restore();

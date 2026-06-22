@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type { Message, KnowledgeItem } from '@/types';
 import { fccKnowledge } from '@/templates/fcc/knowledge';
 import { weldingKnowledge } from '@/templates/welding/knowledge';
@@ -48,7 +48,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     {
       id: 'welcome',
       role: 'ai',
-      content: '你好！我是 AI 师傅老张，干 FCC 二十年。有问题直接问，演练时也会盯你的操作给提示。',
+      content: '你好！我是 AI 师傅。请先在左侧选择工业场景；选好后会自动切换对应的师傅人设（FCC→老张 / 焊装→老王）。',
       timestamp: Date.now(),
     },
   ],
@@ -153,7 +153,7 @@ export const useAIStore = create<AIState>((set, get) => ({
     messages: [{
       id: 'welcome',
       role: 'ai',
-      content: '你好！我是 AI 师傅老张，干 FCC 二十年。有问题直接问，演练时也会盯你的操作给提示。',
+      content: '你好！我是 AI 师傅。请先在左侧选择工业场景；选好后会自动切换对应的师傅人设（FCC→老张 / 焊装→老王）。',
       timestamp: Date.now(),
     }],
   }),
@@ -241,3 +241,4 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ ttsRequest: { seq: (prev?.seq ?? 0) + 1, content: trimmed } });
   },
 }));
+

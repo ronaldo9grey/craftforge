@@ -48,7 +48,7 @@ export const LeftSidebar: React.FC = () => {
     
     // 演练中禁止切换模板
     if (isDrillRunning) {
-      alert('演练进行中，请先结束当前演练再切换模板！');
+      alert('演练进行中，请先结束当前演练再切换场景！');
       return;
     }
     
@@ -66,9 +66,9 @@ export const LeftSidebar: React.FC = () => {
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <Factory className="w-5 h-5 text-primary" />
-          模板选择器
+          场景选择器
         </h2>
-        <p className="text-xs text-text-muted mt-1">选择工业场景模板</p>
+        <p className="text-xs text-text-muted mt-1">选择工业实训场景</p>
         {isDrillRunning && (
           <div className="mt-2 flex items-center gap-1.5 px-2 py-1 bg-danger/20 text-danger rounded text-xs">
             <Lock className="w-3 h-3" />
@@ -139,7 +139,7 @@ export const LeftSidebar: React.FC = () => {
       >
         <div className="flex items-center gap-2 text-xs text-text-muted">
           <AlertCircle className="w-4 h-4" />
-          <span>点击模板加载对应场景</span>
+          <span>点击场景卡片加载对应工况</span>
         </div>
       </div>
     </div>

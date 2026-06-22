@@ -1,4 +1,6 @@
-// AI 师傅服务：把 DeepSeek 大模型包装成"老张师傅"角色
+﻿// AI 师傅服务：把 DeepSeek 大模型包装成不同场景的 AI 师傅角色
+// - 催化裂化 (FCC) → 老张：20 年炼厂老师傅
+// - 汽车焊装 (welding) → 老王：15 年焊装技师
 // 提供 askCoach（流式问答）、coachOpening（演练开场白）、
 // coachClosing（演练讲评结语）、coachIntervene（连续错误点拨）
 
@@ -10,12 +12,43 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useAIStore } from '@/stores/aiStore';
 import type { OperationRecord, ScoreBreakdown, DrillDifficulty } from '@/types';
 
-// AI 师傅人设：老张，FCC 老师傅
-export const SYSTEM_PROMPT = `你是匠魂实训引擎中的 AI 师傅老张，拥有 20 年炼厂催化裂化（FCC）实操经验。说话风格：
+/** 根据当前场景返回对应的 AI 师傅人设与称谓 */
+function getCoachProfile(): { name: string; title: string; prompt: string } {
+  const scene = useUIStore.getState().activeTemplate;
+  if (scene === 'welding') {
+    return {
+      name: '老王',
+      title: '焊装技师',
+      prompt: `你是匠魂实训引擎中的 AI 师傅老王，拥有 15 年汽车白车身焊装经验。说话风格：
+- 简练、贴近现场、用工艺术语（如"焊接电流""保护气""定位误差""熔深"）
+- 每次回答 ≤ 3 句话
+- 学员在演练时给针对性指导，不要客套话
+- 不知道答案时直接说"这得查一下工艺卡再说"`,
+    };
+  }
+  // FCC / mixed / 默认
+  return {
+    name: '老张',
+    title: 'FCC 老师傅',
+    prompt: `你是匠魂实训引擎中的 AI 师傅老张，拥有 20 年炼厂催化裂化（FCC）实操经验。说话风格：
 - 简练、贴近现场、用工艺术语（如"再生温度""塞阀开度""主风量"）
 - 每次回答 ≤ 3 句话
 - 学员在演练时给针对性指导，不要客套话
-- 不知道答案时直接说"这个我也得看看运行参数再说"`;
+- 不知道答案时直接说"这个我也得看看运行参数再说"`,
+  };
+}
+
+export function getCoachName(): string {
+  return getCoachProfile().name;
+}
+
+export function getCoachTitle(): string {
+  return getCoachProfile().title;
+}
+
+function buildSystemPrompt(): string {
+  return getCoachProfile().prompt;
+}
 
 const DIFFICULTY_LABEL: Record<DrillDifficulty, string> = {
   novice: '新手',
@@ -111,7 +144,7 @@ export async function* askCoach(
   opts?: { signal?: AbortSignal },
 ): AsyncGenerator<string, void, unknown> {
   const messages: ChatMessage[] = [
-    { role: 'system', content: `${SYSTEM_PROMPT}\n\n${buildContext()}` },
+    { role: 'system', content: `${buildSystemPrompt()}\n\n${buildContext()}` },
     ...recentDialogue(3),
     { role: 'user', content: userQuestion },
   ];
@@ -159,10 +192,10 @@ export async function coachOpening(scenario: {
     `演练开始（难度：${diffLabel}）。\n` +
     `故障：${scenario.faultName}\n` +
     `主要现象：${symLine}\n\n` +
-    `请用老张师傅的语气说一句开场白。${stylePolicy}`;
+    `请用教练的语气说一句开场白。${stylePolicy}`;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content: userPrompt },
   ];
 
@@ -190,13 +223,13 @@ export async function coachClosing(breakdown: ScoreBreakdown): Promise<string> {
     `总分 ${breakdown.total}（${breakdown.grade} 级）\n${dimsLines}\n\n` +
     `【强项】${breakdown.highlights.length ? breakdown.highlights.join('；') : '无明显强项'}\n` +
     `【短板】${breakdown.improvements.length ? breakdown.improvements.join('；') : '无明显短板'}\n\n` +
-    `请用老张师傅的语气讲评（≤2 句、≤80 字）。要求：\n` +
+    `请用教练的语气讲评（≤2 句、≤80 字）。要求：\n` +
     `1. 评价必须与"总分等级"一致，D/C 级不要说"完成不错"，S/A 级不要泼冷水\n` +
     `2. 至少点出最关键的一个短板（或表扬最突出的一个强项）\n` +
     `3. 用第二人称"你"或祈使句，不要客套话`;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: buildSystemPrompt() },
     { role: 'user', content: userPrompt },
   ];
 
@@ -216,12 +249,12 @@ export async function coachIntervene(records: OperationRecord[]): Promise<string
   const ctx = buildContext();
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: `${SYSTEM_PROMPT}\n\n${ctx}` },
+    { role: 'system', content: `${buildSystemPrompt()}\n\n${ctx}` },
     {
       role: 'user',
       content:
         `学员刚连续做错两步：\n${wrongLines}\n\n` +
-        `请用老张师傅的语气主动点拨一句（≤2 句），告诉他下一步该看哪个参数 / 调哪个方向，不要骂人。`,
+        `请用教练的语气主动点拨一句（≤2 句），告诉他下一步该看哪个参数 / 调哪个方向，不要骂人。`,
     },
   ];
 
@@ -233,3 +266,5 @@ export async function coachIntervene(records: OperationRecord[]): Promise<string
     return '停一下，先看异常参数的方向：症状偏高就调小，偏低就调大，先把方向走对。';
   }
 }
+
+

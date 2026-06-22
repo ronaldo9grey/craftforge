@@ -5,9 +5,13 @@ export class EquipmentRenderer {
     ctx: CanvasRenderingContext2D,
     equipment: Equipment,
     isSelected: boolean,
-    isFaulty: boolean
+    isFaulty: boolean,
+    time: number = 0
   ) {
     ctx.save();
+
+    // 动画时间相位（用于传送带、机器人摆动等）
+    const animTime = time ?? 0;
     
     const { x, y, width, height, status, type, name, id } = equipment;
     
@@ -80,8 +84,8 @@ export class EquipmentRenderer {
       ctx.shadowBlur = 15;
     }
     
-    // 绘制设备形状
-    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor);
+    // 绘制设备形状（传入动画相位，驱动机器人/传送带动画）
+    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime);
     
     // 绘制设备标签
     ctx.textAlign = 'center';
@@ -119,7 +123,8 @@ export class EquipmentRenderer {
     width: number,
     height: number,
     fillColor: string,
-    strokeColor: string
+    strokeColor: string,
+    animTime: number = 0
   ) {
     ctx.fillStyle = fillColor;
     ctx.strokeStyle = strokeColor;
@@ -429,67 +434,123 @@ export class EquipmentRenderer {
         ctx.fill();
         break;
         
-      case 'robot':
-        // 焊接机器人 - 机身(矩形)+手臂(倾斜)+焊枪头+底座
+      case 'robot': {
+        // 六轴关节机器人 v3：底座 + 转台 + 大臂 + 肘关节 + 前臂 + 焊枪
+        // 动画：机器人在 ±15° 范围内缓慢摆动，模拟点焊轨迹
+        const armSwing = Math.sin(animTime * 0.03) * 0.2; // 摆动相位
+        const cx = x + width / 2;
+        const baseY = y + height - 10;
         // 底座
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(x + 12, y + height - 8, width - 24, 8);
-        ctx.strokeRect(x + 12, y + height - 8, width - 24, 8);
-        // 机身
-        this.roundRect(ctx, x + 8, y + 22, width - 16, height - 30, 4);
+        ctx.fillStyle = '#475569';
+        this.roundRect(ctx, x + 10, baseY, width - 20, 10, 3);
+        ctx.fill();
+        ctx.strokeStyle = '#64748b';
+        ctx.stroke();
+        // 转台（圆盘）
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(cx, baseY - 6, 14, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // 手臂（斜线表示关节臂）
+        // 机身
+        ctx.fillStyle = fillColor;
+        this.roundRect(ctx, x + 14, y + 30, width - 28, baseY - 30 - 6, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.stroke();
+        // 大臂（从机身中上部伸出，向下弯折）
         ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(x + width / 2, y + 22);
-        ctx.lineTo(x + width / 2 + 14, y - 2);
+        const shoulderX = cx + armSwing * 6;
+        const shoulderY = y + 40;
+        ctx.moveTo(shoulderX, shoulderY);
+        const elbowX = shoulderX + 18 + armSwing * 8;
+        const elbowY = shoulderY + 30;
+        ctx.lineTo(elbowX, elbowY);
         ctx.stroke();
+        // 前臂（从肘关节伸向夹具方向）
         ctx.beginPath();
-        ctx.moveTo(x + width / 2 + 14, y - 2);
-        ctx.lineTo(x + width / 2 + 20, y - 14);
+        ctx.moveTo(elbowX, elbowY);
+        const wristX = elbowX + 12;
+        const wristY = elbowY + 22;
+        ctx.lineTo(wristX, wristY);
         ctx.stroke();
-        // 焊枪头
+        // 肘关节圆
         ctx.fillStyle = '#f97316';
         ctx.beginPath();
-        ctx.arc(x + width / 2 + 20, y - 14, 5, 0, Math.PI * 2);
+        ctx.arc(elbowX, elbowY, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // 头部指示灯
+        // 焊枪电极头
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(wristX, wristY, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // 指示灯
         ctx.fillStyle = '#22d3ee';
         ctx.beginPath();
-        ctx.arc(x + width / 2, y + 26, 3, 0, Math.PI * 2);
+        ctx.arc(cx, y + 36, 3, 0, Math.PI * 2);
         ctx.fill();
         break;
+      }
 
-      case 'conveyor':
-        // 传送带 - 长矩形 + 滚轮 + 中间线
+      case 'conveyor': {
+        // 传送带 v3：长矩形 + 旋转滚轮（动画） + 走马灯式承载线 + 物料块
         this.roundRect(ctx, x, y + 6, width, height - 12, 3);
         ctx.fill();
         ctx.stroke();
-        // 滚轮（等距小圆）
-        ctx.fillStyle = this.lightenColor(fillColor, 20);
+        // 旋转滚轮（每个滚轮按相位旋转）
+        const rollerR = 6;
+        const rollerSpin = animTime * 0.08; // 角速度
         ctx.strokeStyle = '#64748b';
         ctx.lineWidth = 1;
-        for (let rx = x + 15; rx < x + width - 10; rx += 35) {
+        for (let rx = x + 15; rx < x + width - 10; rx += 32) {
+          // 滚轮主圆
+          ctx.fillStyle = this.lightenColor(fillColor, 30);
           ctx.beginPath();
-          ctx.arc(rx, y + height / 2, 5, 0, Math.PI * 2);
+          ctx.arc(rx, y + height / 2, rollerR, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
+          // 滚轮上的十字线（旋转视觉）
+          ctx.save();
+          ctx.translate(rx, y + height / 2);
+          ctx.rotate(rollerSpin);
+          ctx.strokeStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.moveTo(-rollerR + 1, 0);
+          ctx.lineTo(rollerR - 1, 0);
+          ctx.moveTo(0, -rollerR + 1);
+          ctx.lineTo(0, rollerR - 1);
+          ctx.stroke();
+          ctx.restore();
         }
-        // 承载线
+        // 走马灯式承载线（虚线偏移产生流动感）
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 1;
+        ctx.setLineDash([8, 4]);
+        ctx.lineDashOffset = -animTime * 0.5;
         ctx.beginPath();
-        ctx.moveTo(x + 8, y + height / 2 + 8);
-        ctx.lineTo(x + width - 8, y + height / 2 + 8);
+        ctx.moveTo(x + 8, y + height / 2 + 9);
+        ctx.lineTo(x + width - 8, y + height / 2 + 9);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x + 8, y + height / 2 - 8);
-        ctx.lineTo(x + width - 8, y + height / 2 - 8);
+        ctx.moveTo(x + 8, y + height / 2 - 9);
+        ctx.lineTo(x + width - 8, y + height / 2 - 9);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+        // 物料块（一个小车身在传送带上随时间从左到右移动并循环）
+        const carPhase = ((animTime * 0.7) % (width - 30)) + 10;
+        ctx.fillStyle = '#cbd5e1';
+        ctx.strokeStyle = '#475569';
+        this.roundRect(ctx, x + carPhase, y + height / 2 - 4, 18, 8, 2);
+        ctx.fill();
         ctx.stroke();
         break;
+      }
 
       case 'fixture':
         // 夹紧定位夹具 - 底板 + 双夹爪 + 定位销

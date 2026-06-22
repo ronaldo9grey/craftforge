@@ -217,7 +217,7 @@ export const TopBar: React.FC = () => {
     switch (activeTemplate) {
       case 'fcc': return '催化裂化装置';
       case 'welding': return '汽车焊装车间';
-      default: return '未选择模板';
+      default: return '未选择场景';
     }
   };
 

@@ -650,16 +650,51 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       },
     ];
 
-    // 强项：单项得分 ≥ 80% 满分
+    // 强项：每条都必须同时满足"维度分高 + 与总分等级自洽"
+    // 关键修复：避免"总分 34 但工况平稳 18/21"这种自相矛盾的描述
+    // 思路：只有 B 级以上 (total >= 70) 才认可"工况整体平稳"，否则视为故障未真正处置完
     const highlights: string[] = [];
-    if (baseScore >= 32) highlights.push(`工况整体平稳（${normalCount}/${totalParams} 参数 normal）`);
+
+    // 故障相关参数是否还有异常：以 fault.symptoms 涉及的参数为基准
+    const symptomParamKeys = new Set(
+      currentFault.symptoms.map((s) => `${s.equipmentId}.${s.param}`),
+    );
+    const symptomEquipments = new Map<string, { name: string; abnormal: boolean }>();
+    equipments.forEach((eq) => {
+      eq.parameters.forEach((p) => {
+        const key = `${eq.id}.${p.id}`;
+        if (symptomParamKeys.has(key)) {
+          const off = p.value < p.normalMin || p.value > p.normalMax;
+          // 同一台设备只要有一个故障参数没回到 normal，就标记该设备未处置完
+          const prev = symptomEquipments.get(eq.id);
+          symptomEquipments.set(eq.id, {
+            name: eq.name,
+            abnormal: (prev?.abnormal ?? false) || off,
+          });
+        }
+      });
+    });
+    const symptomAllNormal = Array.from(symptomEquipments.values()).every((v) => !v.abnormal);
+
+    // ① 工况平稳：basetScore 高 + 总分 B 级以上 + 故障参数全部回正
+    if (baseScore >= 32 && total >= 70 && symptomAllNormal) {
+      highlights.push(`工况整体平稳（${normalCount}/${totalParams} 参数 normal）`);
+    }
+    // ② 完整执行所有正确步骤
     if (correctSteps.length > 0 && completed.length >= correctSteps.length) {
       highlights.push(`完整执行了全部 ${correctSteps.length} 步建议处置`);
-    } else if (correctSteps.length > 0 && completed.length / correctSteps.length >= 0.6) {
+    } else if (correctSteps.length > 0 && completed.length / correctSteps.length >= 0.6 && total >= 60) {
+      // 仅在 C 级以上才把"完成 60%"视为强项
       highlights.push(`完成了 ${completed.length}/${correctSteps.length} 步关键处置`);
     }
-    if (speedScore >= 16) highlights.push(`响应迅速，${durationSec}s 内完成处置`);
-    if (wrongCount === 0 && records.length > 0) highlights.push('全程零错误操作');
+    // ③ 响应迅速：需配合"已完成全部步骤"才有意义
+    if (speedScore >= 16 && completed.length >= correctSteps.length && correctSteps.length > 0) {
+      highlights.push(`响应迅速，${durationSec}s 内完成处置`);
+    }
+    // ④ 全程零错误：需要有过有效操作（避免"啥都没干"也被算优秀）
+    if (wrongCount === 0 && records.length >= 2 && total >= 60) {
+      highlights.push('全程零错误操作');
+    }
 
     // 短板：单项得分 < 60% 满分
     const improvements: string[] = [];
@@ -672,12 +707,25 @@ export const useDrillStore = create<DrillState>((set, get) => ({
     });
 
     // AI 师傅点评 - 按等级分语气，并补充难度提示
+    // 注意：这里只是"兜底文本"，正常会被 coachClosing(LLM) 流式覆盖
     let coachComment: string;
     if (grade === 'S') coachComment = '满分级别！工况控制、步骤执行、速度都拿捏到位，可以挑战更复杂故障了。';
     else if (grade === 'A') coachComment = '操作老练。再精进的话，把响应速度提一提，争取 S 级。';
     else if (grade === 'B') coachComment = '思路对了，但还有提升空间。重点看看"短板"里给的建议。';
     else if (grade === 'C') coachComment = '基本完成，但处置不够全面。建议重做一次，参考【建议步骤】逐项执行。';
-    else coachComment = '本次得分较低，强烈建议先看 AI 师傅推送的"故障简报"再操作，不要瞎调参数。';
+    else {
+      // D 级：明确指出问题；避免"工况平稳但分数低"的认知矛盾
+      const undoneEqs = Array.from(symptomEquipments.values()).filter((v) => v.abnormal).map((v) => v.name);
+      if (completed.length === 0 && records.length === 0) {
+        coachComment = '本次几乎没有有效操作，故障还摆在那儿。先看右上角"故障简报"，了解症状和建议步骤再开始。';
+      } else if (undoneEqs.length > 0) {
+        coachComment = `分数偏低主要因为故障没真正解决——${undoneEqs.slice(0, 2).join('、')} 的关键参数还没回到正常区间。建议重做一次，按建议步骤逐项处置。`;
+      } else if (wrongCount >= 3) {
+        coachComment = `这次错误操作偏多（${wrongCount} 次），方向没找对。下次调参前先看【现象】，症状偏高就调小、偏低就调大。`;
+      } else {
+        coachComment = '本次得分较低，强烈建议先看 AI 师傅推送的"故障简报"再操作，按建议步骤逐项处置。';
+      }
+    }
     // 难度上下文备注
     if (activeDifficulty === 'novice') {
       coachComment += '（新手模式：分数封顶 80，可挑战进阶模式冲击 S 级）';

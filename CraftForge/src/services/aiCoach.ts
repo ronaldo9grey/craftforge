@@ -180,22 +180,28 @@ export async function coachOpening(scenario: {
 
 /** 演练讲评：基于 breakdown 生成一句话点评 */
 export async function coachClosing(breakdown: ScoreBreakdown): Promise<string> {
-  const summary =
-    `本次得分 ${breakdown.total}（${breakdown.grade}），` +
-    `强项：${breakdown.highlights.slice(0, 2).join('、') || '无'}；` +
-    `短板：${breakdown.improvements.slice(0, 2).join('、') || '无'}。`;
+  // 维度详情，让模型看到"各项满分多少 / 实际得多少"，避免在 D 级时夸"工况平稳"等空话
+  const dimsLines = breakdown.dimensions
+    .map((d) => `- ${d.label}：${d.score}/${d.max}`)
+    .join('\n');
+
+  const userPrompt =
+    `【本次演练评分】\n` +
+    `总分 ${breakdown.total}（${breakdown.grade} 级）\n${dimsLines}\n\n` +
+    `【强项】${breakdown.highlights.length ? breakdown.highlights.join('；') : '无明显强项'}\n` +
+    `【短板】${breakdown.improvements.length ? breakdown.improvements.join('；') : '无明显短板'}\n\n` +
+    `请用老张师傅的语气讲评（≤2 句、≤80 字）。要求：\n` +
+    `1. 评价必须与"总分等级"一致，D/C 级不要说"完成不错"，S/A 级不要泼冷水\n` +
+    `2. 至少点出最关键的一个短板（或表扬最突出的一个强项）\n` +
+    `3. 用第二人称"你"或祈使句，不要客套话`;
 
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
-    {
-      role: 'user',
-      content:
-        `${summary}\n请用老张师傅的语气，给一句话讲评（≤2 句），既点出做得好的地方也点出需要改的地方，不要客套话。`,
-    },
+    { role: 'user', content: userPrompt },
   ];
 
   try {
-    const text = await chatOnce(messages, { temperature: 0.5, maxTokens: 160 });
+    const text = await chatOnce(messages, { temperature: 0.5, maxTokens: 200 });
     return text.trim();
   } catch (err: unknown) {
     console.warn('[aiCoach] coachClosing 失败', err instanceof Error ? err.message : err);

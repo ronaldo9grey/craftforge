@@ -7,10 +7,10 @@ import { PipelineRenderer } from './PipelineRenderer';
 import type { Equipment } from '@/types';
 
 // 设计分辨率按场景动态调整：
-// - FCC 催化裂化：1200×600（高度紧凑、横向流程）
+// - FCC 催化裂化：1200×680（横向流程为主，但要给加热炉/分馏塔等高大设备留充足头部空间）
 // - 汽车焊装：1280×760（设备多、机器人垂直分布，需要更大画布）
 // FactoryCanvas 内部根据 activeTemplate 自动选用
-const DESIGN_SIZE_FCC = { width: 1200, height: 600 };
+const DESIGN_SIZE_FCC = { width: 1200, height: 680 };
 const DESIGN_SIZE_WELDING = { width: 1280, height: 760 };
 const DESIGN_SIZE_DEFAULT = DESIGN_SIZE_FCC;
 

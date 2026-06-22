@@ -126,6 +126,22 @@ export const FactoryCanvas: React.FC = () => {
     const animate = () => {
       if (!ctx || !canvas) return;
 
+      // 🔍 版本标记：检查浏览器是否加载了最新代码
+      // 如果控制台没有这条日志，说明浏览器用了缓存
+      const WELDING_ROB3_Y = 440;
+      const WELDING_CTRL_Y = 640;
+      if (activeTemplate === 'welding') {
+        const rob3 = equipments.find(e => e.id === 'ROB-103');
+        const ctrl = equipments.find(e => e.id === 'CTRL-101');
+        if (rob3 && ctrl) {
+          if (rob3.y !== WELDING_ROB3_Y || ctrl.y !== WELDING_CTRL_Y) {
+            console.warn(
+              `[FactoryCanvas] ⚠️ 坐标异常！期望 ROB-103.y=${WELDING_ROB3_Y} 实际=${rob3.y}, CTRL-101.y=${WELDING_CTRL_Y} 实际=${ctrl.y}`
+            );
+          }
+        }
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 绘制背景

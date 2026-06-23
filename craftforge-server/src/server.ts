@@ -10,6 +10,7 @@ dotenv.config({ override: true });
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import aiRouter from './routes/ai';
+import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
 import { writeAccessLog, writeErrorLog } from './utils/logger';
 
 const PORT = Number(process.env.PORT || 3001);

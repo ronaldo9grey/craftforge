@@ -14,6 +14,7 @@ import { DynamicsEngine } from '@/engine/dynamics';
 import { fccCouplings } from '@/templates/fcc/dynamics';
 import { weldingCouplings } from '@/templates/welding/dynamics';
 import { cncCouplings } from '@/templates/cnc/dynamics';
+import { injectionCouplings } from '@/templates/injection/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -53,6 +54,12 @@ function App() {
       engineRef.current = engine;
     } else if (activeTemplate === 'cnc') {
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, cncCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'injection') {
+      // 注塑模板：螺杆→压力 / 模温→周期 / 冷却水→模温 / 含水→缺陷 等约 15 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, injectionCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

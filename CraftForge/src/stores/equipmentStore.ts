@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Equipment, Pipeline, Alarm, OperationRecord } from '@/types';
 import { getScenePack } from '@/templates';
+import { ttsService } from '@/services/ttsService';
 
 interface EquipmentState {
   equipments: Equipment[];
@@ -31,6 +32,8 @@ export const useEquipmentStore = create<EquipmentState>((set, get) => ({
   operationHistory: {},
 
   loadTemplate: (template) => {
+    // P2+ bug 修复：切换场景时强制中断 TTS 播放，防止上一场景的师傅讲评语音串场
+    try { ttsService.clearQueue(); ttsService.stopCurrent(); } catch { /* ignore */ }
     const pack = getScenePack(template);
     if (!pack) {
       console.warn(`[equipmentStore] 场景 "${template}" 未注册，回退到 fcc`);

@@ -25,6 +25,12 @@ import { cncFaults } from './cnc/faults';
 import { cncMeta } from './cnc/meta';
 import { cncCoach } from './cnc/coach';
 
+// —— 注塑成型 ——
+import { injectionEquipments, injectionPipelines } from './injection/config';
+import { injectionFaults } from './injection/faults';
+import { injectionMeta } from './injection/meta';
+import { injectionCoach } from './injection/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -49,6 +55,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: cncEquipments,
     pipelines: cncPipelines,
     faults: cncFaults,
+  },
+  injection: {
+    meta: injectionMeta,
+    coach: injectionCoach,
+    equipments: injectionEquipments,
+    pipelines: injectionPipelines,
+    faults: injectionFaults,
   },
 };
 

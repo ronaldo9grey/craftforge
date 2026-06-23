@@ -2,7 +2,9 @@
 import type { Message, KnowledgeItem } from '@/types';
 import { fccKnowledge } from '@/templates/fcc/knowledge';
 import { weldingKnowledge } from '@/templates/welding/knowledge';
+import { injectionKnowledge } from '@/templates/injection/knowledge';
 import { askCoach } from '@/services/aiCoach';
+import { ttsService } from '@/services/ttsService';
 
 interface AIState {
   messages: Message[];
@@ -27,7 +29,7 @@ interface AIState {
   flushStream: (prefixMessageId: string) => void;
   setAvatarMood: (mood: AIState['avatarMood']) => void;
   toggleVoice: () => void;
-  loadKnowledge: (template: 'fcc' | 'welding') => void;
+  loadKnowledge: (template: 'fcc' | 'welding' | 'injection' | string) => void;
   setProcessing: (processing: boolean) => void;
   clearMessages: () => void;
   findAnswer: (question: string) => KnowledgeItem | null;
@@ -144,6 +146,8 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ knowledgeBase: fccKnowledge });
     } else if (template === 'welding') {
       set({ knowledgeBase: weldingKnowledge });
+    } else if (template === 'injection') {
+      set({ knowledgeBase: injectionKnowledge });
     } else {
       // 其他场景暂无知识库，置空（不影响演练逻辑）
       set({ knowledgeBase: [] });
@@ -152,14 +156,24 @@ export const useAIStore = create<AIState>((set, get) => ({
 
   setProcessing: (processing) => set({ isProcessing: processing }),
 
-  clearMessages: () => set({
-    messages: [{
-      id: 'welcome',
-      role: 'ai',
-      content: '你好！我是 AI 师傅。请先在左侧选择工业场景；选好后会自动切换对应的师傅人设（FCC→老张 / 焊装→老王）。',
-      timestamp: Date.now(),
-    }],
-  }),
+  clearMessages: () => {
+    // P2+ bug 修复：清空 AI 消息时必须同时清掉 TTS 播放队列 + 停止当前发声
+    // 否则切换场景后，上一次演练遗留的"师傅讲评语音"还会自动响起（语音串场 bug）
+    try {
+      ttsService.clearQueue();
+      ttsService.stopCurrent();
+    } catch {
+      /* tts 不可用时静默忽略 */
+    }
+    set({
+      messages: [{
+        id: 'welcome',
+        role: 'ai',
+        content: '你好！我是 AI 师傅。请先在左侧选择工业场景；选好后会自动切换对应的师傅人设（FCC→老张 / 焊装→老王）。',
+        timestamp: Date.now(),
+      }],
+    });
+  },
 
   findAnswer: (question) => {
     const knowledge = get().knowledgeBase;

@@ -10,6 +10,7 @@ dotenv.config({ override: true });
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import aiRouter from './routes/ai';
+import authRouter from './routes/auth';
 import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
 import { writeAccessLog, writeErrorLog } from './utils/logger';
 
@@ -39,6 +40,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // AI 路由
 app.use('/api/ai', aiRouter);
+
+// 用户认证路由
+app.use('/api/auth', authRouter);
 
 // 404
 app.use((req: Request, res: Response) => {

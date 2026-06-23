@@ -5,6 +5,7 @@ import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useDrillStore } from '@/stores/drillStore';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 import { fccManuals } from '@/templates/fcc/manuals';
+import { injectionManuals } from '@/templates/injection/manuals';
 
 // 弹窗内三种视图：参数 / 操作手册 / 历史记录
 type ViewMode = 'params' | 'manual' | 'history';
@@ -80,8 +81,12 @@ export const ParameterPanel: React.FC = () => {
     }
   };
 
-  // 仅 FCC 模板下查询手册；其它模板暂未提供
-  const manual = equipment.template === 'fcc' ? fccManuals[equipment.id] : undefined;
+  // 各场景手册查表：按 template 路由到对应 manuals 词典
+  // 注塑场景已提供 8 件设备手册；其它场景后续可补充
+  const manual =
+    equipment.template === 'fcc'       ? fccManuals[equipment.id]
+    : equipment.template === 'injection' ? injectionManuals[equipment.id]
+    : undefined;
   // 当前设备的历史记录（最近 20 条，倒序）
   const history = (operationHistory[equipment.id] ?? []).slice(-20).reverse();
 

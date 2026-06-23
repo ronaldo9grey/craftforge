@@ -12,6 +12,7 @@ import cors from 'cors';
 import aiRouter from './routes/ai';
 import authRouter from './routes/auth';
 import classesRouter from './routes/classes';
+import { drillRecordsRouter, achievementsRouter, teacherRouter } from './routes/drillRecords';
 import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
 import { writeAccessLog, writeErrorLog } from './utils/logger';
 
@@ -47,6 +48,11 @@ app.use('/api/auth', authRouter);
 
 // 班级管理路由
 app.use('/api/classes', classesRouter);
+
+// 演练记录 / 成就 / 教师统计
+app.use('/api/drill-records', drillRecordsRouter);
+app.use('/api/achievements', achievementsRouter);
+app.use('/api/teacher', teacherRouter);
 
 // 404
 app.use((req: Request, res: Response) => {

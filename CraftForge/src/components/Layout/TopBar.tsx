@@ -1,8 +1,10 @@
-import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, User, Menu, X, AlertTriangle, Sprout, Settings2, Target, Bell, BellOff } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, Menu, X, AlertTriangle, Sprout, Settings2, Target, Bell, BellOff, LogOut, KeyRound } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useDrillStore } from '@/stores/drillStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
+import { useAuthStore } from '@/stores/authStore';
 import { coachOpening } from '@/services/aiCoach';
 import type { DrillDifficulty, Fault, Equipment } from '@/types';
 
@@ -375,10 +377,137 @@ export const TopBar: React.FC = () => {
           <HelpCircle className="w-4 h-4" />
         </button>
         
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-bg-tertiary rounded-lg">
-          <User className="w-4 h-4 text-text-secondary" />
-          <span className="text-xs text-text-secondary">学员</span>
+        <UserMenu />
+      </div>
+    </div>
+  );
+};
+
+// =============================================================
+// 用户菜单：头像 + 下拉（角色标签、改密、退出）
+// =============================================================
+const ROLE_LABEL: Record<string, string> = {
+  student: '学员',
+  teacher: '教师',
+  admin: '管理员',
+};
+
+const UserMenu: React.FC = () => {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const [open, setOpen] = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  if (!user) return null;
+  const roleLabel = ROLE_LABEL[user.role] ?? user.role;
+  const initial = (user.display_name || user.username).slice(0, 1).toUpperCase();
+
+  return (
+    <div ref={menuRef} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 px-2 py-1 bg-bg-tertiary hover:bg-bg-tertiary/60 rounded-lg transition-colors"
+      >
+        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
+          {initial}
         </div>
+        <div className="text-left leading-tight pr-1">
+          <div className="text-xs text-text-primary">{user.display_name}</div>
+          <div className="text-[10px] text-text-muted">{roleLabel}</div>
+        </div>
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-56 bg-bg-secondary border border-border rounded-lg shadow-2xl z-50 overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-border bg-bg-tertiary/40">
+            <div className="text-xs text-text-primary font-medium">{user.display_name}</div>
+            <div className="text-[11px] text-text-muted">
+              @{user.username} · {roleLabel}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setOpen(false);
+              setShowChangePw(true);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary text-left"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            修改密码
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              void logout();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-danger hover:bg-danger/10 text-left border-t border-border"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            退出登录
+          </button>
+        </div>
+      )}
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
+    </div>
+  );
+};
+
+// 修改密码弹窗（已登录状态下主动修改）
+const ChangePasswordModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const changePassword = useAuthStore((s) => s.changePassword);
+  const [oldPw, setOldPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [newPw2, setNewPw2] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    if (newPw.length < 6) { setErr('新密码至少 6 位'); return; }
+    if (newPw !== newPw2) { setErr('两次新密码不一致'); return; }
+    setBusy(true);
+    try {
+      await changePassword(oldPw, newPw);
+      onClose();
+      alert('密码修改成功');
+    } catch (e: any) {
+      setErr(e?.message || '修改失败');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="w-[380px] bg-bg-secondary border border-border rounded-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-text-primary">修改密码</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <input type="password" placeholder="当前密码" value={oldPw} onChange={(e) => setOldPw(e.target.value)} className="w-full px-3 py-2 bg-bg-tertiary border border-border rounded text-sm" />
+          <input type="password" placeholder="新密码（≥6 位）" value={newPw} onChange={(e) => setNewPw(e.target.value)} className="w-full px-3 py-2 bg-bg-tertiary border border-border rounded text-sm" />
+          <input type="password" placeholder="再次输入新密码" value={newPw2} onChange={(e) => setNewPw2(e.target.value)} className="w-full px-3 py-2 bg-bg-tertiary border border-border rounded text-sm" />
+          {err && <div className="px-2 py-1.5 bg-danger/15 border border-danger/40 rounded text-xs text-danger">{err}</div>}
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary">取消</button>
+            <button type="submit" disabled={busy} className="px-3 py-1.5 bg-primary text-white text-xs rounded disabled:opacity-50">{busy ? '提交...' : '确认'}</button>
+          </div>
+        </form>
       </div>
     </div>
   );

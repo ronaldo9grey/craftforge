@@ -34,8 +34,8 @@ if (corsOrigin === '*' || corsOrigin === '') {
 // 信任前置代理（拿到真实 IP 用于日志和限流）
 app.set('trust proxy', true);
 
-// JSON body
-app.use(express.json({ limit: '1mb' }));
+// JSON body（5mb 上限，足够容纳 1000+ 操作记录的演练 payload）
+app.use(express.json({ limit: '5mb' }));
 
 // 健康检查
 app.get('/api/health', (_req: Request, res: Response) => {

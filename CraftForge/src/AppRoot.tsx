@@ -5,6 +5,8 @@ import { LoginPage } from '@/pages/LoginPage';
 import { ChangePasswordRequiredPage } from '@/pages/ChangePasswordRequiredPage';
 import { StudentDashboard } from '@/pages/StudentDashboard';
 import { TeacherDashboard } from '@/pages/TeacherDashboard';
+import { HistoryListPage } from '@/pages/HistoryListPage';
+import { HistoryDetailPage } from '@/pages/HistoryDetailPage';
 import App from './App';
 
 /**
@@ -12,8 +14,10 @@ import App from './App';
  * - 应用启动先调 bootstrap() 恢复登录态
  * - 未登录 → LoginPage
  * - 已登录但 must_change_pw → ChangePasswordRequiredPage
- * - 已登录 + page='dashboard' → StudentDashboard / TeacherDashboard (根据角色)
- * - 已登录 + page='workbench' → App (工作台)
+ * - 已登录 + page='dashboard' → StudentDashboard / TeacherDashboard
+ * - page='workbench' → App
+ * - page='history' → HistoryListPage
+ * - page='history-detail' → HistoryDetailPage
  */
 export const AppRoot: React.FC = () => {
   const status = useAuthStore((s) => s.status);
@@ -26,7 +30,7 @@ export const AppRoot: React.FC = () => {
     void bootstrap();
   }, [bootstrap]);
 
-  // 登录后默认强制进 Dashboard（避免直接进工作台错过个人成长信息）
+  // 登录后默认进 Dashboard
   useEffect(() => {
     if (user) setPage('dashboard');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,11 +50,13 @@ export const AppRoot: React.FC = () => {
   if (!user) return <LoginPage />;
   if (user.must_change_pw) return <ChangePasswordRequiredPage />;
 
-  // 工作台
   if (page === 'workbench') return <App />;
+  if (page === 'history') return <HistoryListPage />;
+  if (page === 'history-detail') return <HistoryDetailPage />;
 
-  // Dashboard：按角色分发
+  // page === 'dashboard'
   if (user.role === 'student') return <StudentDashboard />;
   return <TeacherDashboard />;
 };
+
 

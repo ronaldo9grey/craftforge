@@ -4,6 +4,8 @@ import { getScenePack } from '@/templates';
 import { useEquipmentStore } from './equipmentStore';
 import { useAIStore } from './aiStore';
 import { useUIStore } from './uiStore';
+import { useAuthStore } from './authStore';
+import { drillApi } from '@/services/api';
 import { coachClosing, coachIntervene } from '@/services/aiCoach';
 import { soundService } from '@/services/soundService';
 
@@ -170,6 +172,47 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       if (soundOn()) {
         soundService.stopAmbient();
         soundService.playShutdown();
+      }
+
+      // 任务 9：演练结束后，把记录同步上报到后端（仅当用户已登录）
+      // 失败降级：本地仍保留 history，控制台输出错误即可
+      const authedUser = useAuthStore.getState().user;
+      if (authedUser) {
+        const sceneId = useUIStore.getState().activeTemplate ?? 'fcc';
+        const startMs = startTime ?? record.startTime;
+        const endMs = record.endTime;
+        const durationSec = Math.max(0, Math.round((endMs - startMs) / 1000));
+        drillApi
+          .submit({
+            scene_id: sceneId,
+            fault_id: currentFault.id,
+            fault_name: currentFault.name,
+            start_time: startMs,
+            end_time: endMs,
+            duration_sec: durationSec,
+            score: Math.round(record.score),
+            grade: record.grade,
+            difficulty: activeDifficulty,
+            score_breakdown: breakdown,
+            operations: records,
+          })
+          .then((resp) => {
+            if (resp.new_achievements && resp.new_achievements.length > 0) {
+              // 简单弹窗提示新解锁的成就（D10 会替换为更精致的 toast）
+              console.info('[drillStore] 新解锁成就:', resp.new_achievements);
+              try {
+                const text = `🎉 解锁新成就：${resp.new_achievements.length} 项`;
+                window.dispatchEvent(new CustomEvent('drill:achievement', { detail: resp.new_achievements }));
+                // 兜底通知：用 AI 消息（type='ai'）走"老师"频道
+                useAIStore.getState().sendMessage(text, 'ai');
+              } catch {
+                /* ignore */
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn('[drillStore] 上报演练记录失败', err);
+          });
       }
 
       // 任务 6：异步通过大模型生成"师傅讲评"，流式推到右侧消息面板

@@ -1,16 +1,18 @@
 ﻿import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-22-V7
-// 汽车焊装车间布局 v7：主输送线上移 40px，与黄色虚线拉开清晰距离
+// VERSION: 2026-06-22-V8
+// 汽车焊装车间布局 v8：再次上移上区，确保黄虚线 (y=365) 与下排机器人 (y=440) 有 75px 净距
 // 设计原则：
-// - 严格分 4 行水平对齐：上排机器人 (y=80) / 主输送线 (y=280~300) / 下排机器人+焊枪 (y=440) / 控制柜 (y=610)
-// - 主输送线中心线在 y=325（比之前的 365 上移 40px），与黄色虚线（y=415）间距 90px
+// - 严格分 4 行水平对齐：上排机器人 (y=40) / 主输送线 (y=230~250) / 下排机器人+焊枪 (y=440) / 控制柜 (y=610)
+// - 主输送线中心线 y=275（再上移 50px），黄虚线 y=365
+// - 主输送线底部 320 → 黄虚线 365：45px 净距 ✅
+// - 黄虚线 365 → 下排机器人 440：75px 净距 ✅
 // - 所有坐标 + 尺寸严格 ≤ (1260, 690)
 export const weldingEquipments: Equipment[] = [
-  // 行 2：主输送线（左 → 右，中心线 y=325，上移 40px）
+  // 行 2：主输送线（左 → 右，中心线 y=275）
   {
     id: 'ST-101', name: '上件工位', type: 'station',
-    x: 60, y: 280, width: 80, height: 90,
+    x: 60, y: 230, width: 80, height: 90,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'feed_rate', name: '上件节拍', value: 60, unit: 's/件', min: 30, max: 120, normalMin: 50, normalMax: 70, trend: [] },
@@ -19,7 +21,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-101', name: '输入输送带', type: 'conveyor',
-    x: 180, y: 300, width: 230, height: 50,
+    x: 180, y: 250, width: 230, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0, normalMin: 1.0, normalMax: 1.5, trend: [] },
@@ -28,7 +30,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'FIX-101', name: '定位夹具', type: 'fixture',
-    x: 450, y: 290, width: 80, height: 70,
+    x: 450, y: 240, width: 80, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'clamp_force', name: '夹紧力', value: 5000, unit: 'N', min: 3000, max: 8000, normalMin: 4500, normalMax: 5500, trend: [] },
@@ -38,7 +40,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'INST-101', name: '焊缝检测仪', type: 'instrument',
-    x: 820, y: 290, width: 70, height: 70,
+    x: 820, y: 240, width: 70, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_quality', name: '焊缝质量', value: 95, unit: '%', min: 0, max: 100, normalMin: 90, normalMax: 100, trend: [] },
@@ -48,7 +50,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-102', name: '输出输送带', type: 'conveyor',
-    x: 920, y: 300, width: 220, height: 50,
+    x: 920, y: 250, width: 220, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0, normalMin: 1.0, normalMax: 1.5, trend: [] },
@@ -57,7 +59,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ST-102', name: '下件工位', type: 'station',
-    x: 1170, y: 280, width: 80, height: 90,
+    x: 1170, y: 230, width: 80, height: 90,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'output_rate', name: '下件节拍', value: 60, unit: 's/件', min: 30, max: 120, normalMin: 50, normalMax: 70, trend: [] },
@@ -68,7 +70,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 1：上排两台机器人（y=80，bottom=160，距主输送线顶部 120px）
   {
     id: 'ROB-101', name: '机器人1号', type: 'robot',
-    x: 540, y: 80, width: 110, height: 80,
+    x: 540, y: 40, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 180, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -79,7 +81,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ROB-102', name: '机器人2号', type: 'robot',
-    x: 680, y: 80, width: 110, height: 80,
+    x: 680, y: 40, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流', value: 175, unit: 'A', min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [] },
@@ -154,6 +156,7 @@ export const weldingConfig = {
   equipments: weldingEquipments,
   pipelines: weldingPipelines,
 };
+
 
 
 

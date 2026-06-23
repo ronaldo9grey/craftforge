@@ -31,6 +31,12 @@ import { injectionFaults } from './injection/faults';
 import { injectionMeta } from './injection/meta';
 import { injectionCoach } from './injection/coach';
 
+// —— 电解铝车间 ——
+import { aluminumEquipments, aluminumPipelines } from './aluminum/config';
+import { aluminumFaults } from './aluminum/faults';
+import { aluminumMeta } from './aluminum/meta';
+import { aluminumCoach } from './aluminum/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -62,6 +68,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: injectionEquipments,
     pipelines: injectionPipelines,
     faults: injectionFaults,
+  },
+  aluminum: {
+    meta: aluminumMeta,
+    coach: aluminumCoach,
+    equipments: aluminumEquipments,
+    pipelines: aluminumPipelines,
+    faults: aluminumFaults,
   },
 };
 

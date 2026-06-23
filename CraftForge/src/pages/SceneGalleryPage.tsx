@@ -42,7 +42,7 @@ export const SceneGalleryPage: React.FC = () => {
         name: '更多场景',
         shortName: '即将推出',
         icon: '✨',
-        description: '化工合成、电力变电站、半导体光刻等多个场景正在路上...',
+        description: '阳极焙烧炉、火电厂集控、整流所等场景正在路上...',
         primaryColor: '#64748b',
         designSize: { width: 0, height: 0 },
         difficulty: 'beginner' as const,

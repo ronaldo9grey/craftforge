@@ -15,6 +15,7 @@ import { fccCouplings } from '@/templates/fcc/dynamics';
 import { weldingCouplings } from '@/templates/welding/dynamics';
 import { cncCouplings } from '@/templates/cnc/dynamics';
 import { injectionCouplings } from '@/templates/injection/dynamics';
+import { aluminumCouplings } from '@/templates/aluminum/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -60,6 +61,12 @@ function App() {
     } else if (activeTemplate === 'injection') {
       // 注塑模板：螺杆→压力 / 模温→周期 / 冷却水→模温 / 含水→缺陷 等约 15 条耦合
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, injectionCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'aluminum') {
+      // 电解铝车间：4 槽阵列 + 整流 + 烟气 + 抬包等 ~30 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, aluminumCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

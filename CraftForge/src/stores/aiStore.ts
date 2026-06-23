@@ -3,6 +3,7 @@ import type { Message, KnowledgeItem } from '@/types';
 import { fccKnowledge } from '@/templates/fcc/knowledge';
 import { weldingKnowledge } from '@/templates/welding/knowledge';
 import { injectionKnowledge } from '@/templates/injection/knowledge';
+import { aluminumKnowledge } from '@/templates/aluminum/knowledge';
 import { askCoach } from '@/services/aiCoach';
 import { ttsService } from '@/services/ttsService';
 
@@ -29,7 +30,7 @@ interface AIState {
   flushStream: (prefixMessageId: string) => void;
   setAvatarMood: (mood: AIState['avatarMood']) => void;
   toggleVoice: () => void;
-  loadKnowledge: (template: 'fcc' | 'welding' | 'injection' | string) => void;
+  loadKnowledge: (template: 'fcc' | 'welding' | 'injection' | 'aluminum' | string) => void;
   setProcessing: (processing: boolean) => void;
   clearMessages: () => void;
   findAnswer: (question: string) => KnowledgeItem | null;
@@ -148,6 +149,8 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ knowledgeBase: weldingKnowledge });
     } else if (template === 'injection') {
       set({ knowledgeBase: injectionKnowledge });
+    } else if (template === 'aluminum') {
+      set({ knowledgeBase: aluminumKnowledge });
     } else {
       // 其他场景暂无知识库，置空（不影响演练逻辑）
       set({ knowledgeBase: [] });

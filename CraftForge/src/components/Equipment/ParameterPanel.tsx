@@ -6,6 +6,7 @@ import { useDrillStore } from '@/stores/drillStore';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 import { fccManuals } from '@/templates/fcc/manuals';
 import { injectionManuals } from '@/templates/injection/manuals';
+import { aluminumManuals } from '@/templates/aluminum/manuals';
 
 // 弹窗内三种视图：参数 / 操作手册 / 历史记录
 type ViewMode = 'params' | 'manual' | 'history';
@@ -86,6 +87,7 @@ export const ParameterPanel: React.FC = () => {
   const manual =
     equipment.template === 'fcc'       ? fccManuals[equipment.id]
     : equipment.template === 'injection' ? injectionManuals[equipment.id]
+    : equipment.template === 'aluminum'  ? aluminumManuals[equipment.id]
     : undefined;
   // 当前设备的历史记录（最近 20 条，倒序）
   const history = (operationHistory[equipment.id] ?? []).slice(-20).reverse();

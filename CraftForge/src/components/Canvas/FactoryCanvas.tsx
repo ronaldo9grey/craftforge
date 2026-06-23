@@ -379,6 +379,57 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'bottom';
       ctx.fillText('v4 injection', w - 30, h - 8);
     }
+
+    // 铝电解场景：5 大功能分区底色 + 区域标签
+    if (activeTemplate === 'aluminum') {
+      // 区域 1：电解槽阵列区（y=40~255）- 青色（象征电解质颜色）
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
+      ctx.fillRect(0, 45, w, 210);
+      // 区域 2：物流主线区（y=260~375）- 浅橙（铝水）
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.07)';
+      ctx.fillRect(0, 260, w, 115);
+      // 区域 3：辅助系统区（y=380~540）- 浅灰
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
+      ctx.fillRect(0, 380, w, 160);
+      // 区域 4：电气控制区（y=560~665）- 暗蓝
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+      ctx.fillRect(0, 560, w, 105);
+
+      // 区域分隔细虚线
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      [257, 377, 555].forEach((yy) => {
+        ctx.beginPath();
+        ctx.moveTo(10, yy);
+        ctx.lineTo(w - 10, yy);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+
+      // 区域标签
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('▎ 电解槽阵列', 15, 55);
+      ctx.fillText('▎ 物流主线', 15, 265);
+      ctx.fillText('▎ 辅助系统', 15, 385);
+      ctx.fillText('▎ 电气控制', 15, 565);
+
+      // 物料流向
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('氧化铝粉 → 下料 → 电解 → 铝水 → 抬包 → 铸锭', w - 30, 265);
+
+      // 🎯 版本水印
+      ctx.fillStyle = '#06b6d4';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v1 aluminum', w - 30, h - 8);
+    }
   };
 
   return (

@@ -381,5 +381,12 @@ export const fccFaults: Fault[] = [
       '藏量低了烧焦就不充分，把藏量补一补',
       '光使劲循环没用，剂没烧透越循环越糟',
     ],
+    // P2+ 发散：反应温度自漂 -0.2°C/s（催化剂越来越没活性），不抑制会跌破 460°C
+    // 学员需要把 reactor_temp 的 setpoint 拉回 normal 范围（480-520）才能止跌
+    divergence: {
+      drivers: [
+        { equipmentId: 'R-101', param: 'reactor_temp', rate: -0.2, cap: 460, delaySec: 30 },
+      ],
+    },
   },
 ];

@@ -27,6 +27,12 @@ export const weldingFaults: Fault[] = [
       '电极温度也跟着上来了，冷却水流量加加',
       '电压不能反向加，越加热量越大',
     ],
+    // P2+ 发散：电流自己不断往上飙（电源调节器卡死），不抑制会过 260A
+    divergence: {
+      drivers: [
+        { equipmentId: 'ROB-101', param: 'weld_current', rate: 1.5, cap: 270, delaySec: 30 },
+      ],
+    },
   },
 
   {
@@ -193,5 +199,11 @@ export const weldingFaults: Fault[] = [
       '过滤器多半堵了，停下来清一下',
       '别硬撑，电极烧了换一套耽误一上午',
     ],
+    // P2+ 发散：冷却水继续往下掉到 1 L/min，3 台机器人电极温度一起爆
+    divergence: {
+      drivers: [
+        { equipmentId: 'WG-101', param: 'cooling_water', rate: -0.05, cap: 1.0, delaySec: 30 },
+      ],
+    },
   },
 ];

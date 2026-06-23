@@ -20,6 +20,12 @@ export const cncFaults: Fault[] = [
       { id: 's3', order: 3, action: '继续加工只为完成节拍', correct: false },
     ],
     hints: ['振动 4.8 mm/s 已经超危险线', '别硬撑，崩刃可能损伤工件甚至主轴', '建议先减载再停机换刀'],
+    // P2+ 发散：刀具磨损不停往上爬，触发振动/粗糙度链式恶化
+    divergence: {
+      drivers: [
+        { equipmentId: 'CNC-101', param: 'tool_wear', rate: 0.15, cap: 95, delaySec: 30 },
+      ],
+    },
   },
   {
     id: 'CF002',
@@ -37,6 +43,12 @@ export const cncFaults: Fault[] = [
       { id: 's3', order: 3, action: '加大切深快速完工', correct: false },
     ],
     hints: ['主轴超 75°C 就要警觉', '先看冷却液送没送到', '硬干会烧主轴轴承'],
+    // P2+ 发散：主轴温度自漂 0.3°C/s，并通过现有耦合让磨损/振动一起恶化
+    divergence: {
+      drivers: [
+        { equipmentId: 'CNC-102', param: 'spindle_temp', rate: 0.3, cap: 88, delaySec: 30 },
+      ],
+    },
   },
   {
     id: 'CF003',
@@ -54,6 +66,12 @@ export const cncFaults: Fault[] = [
       { id: 's3', order: 3, action: '继续高速加工等之后处理', correct: false },
     ],
     hints: ['流量已掉到 4 L/min，正常 10+', '冷却不到位刀具马上崩', '先停机查液位'],
+    // P2+ 发散：冷却流量持续往下掉，让温度和磨损双重恶化
+    divergence: {
+      drivers: [
+        { equipmentId: 'PMP-201', param: 'coolant_flow', rate: -0.2, cap: 1.5, delaySec: 30 },
+      ],
+    },
   },
   {
     id: 'CF004',

@@ -193,7 +193,13 @@ export const useDrillStore = create<DrillState>((set, get) => ({
             score: Math.round(record.score),
             grade: record.grade,
             difficulty: activeDifficulty,
-            score_breakdown: breakdown,
+            // P2+ 演练上报扩展：是否本次故障存在"正反馈发散"驱动
+            // 详情页可读 breakdown.divergence_active=true 表示这是一次"自漂故障"
+            score_breakdown: {
+              ...breakdown,
+              divergence_active: !!currentFault.divergence,
+              divergence_drivers: currentFault.divergence?.drivers ?? [],
+            },
             operations: records,
           })
           .then((resp) => {

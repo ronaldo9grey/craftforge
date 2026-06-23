@@ -14,7 +14,7 @@
  */
 import type { useEquipmentStore } from '@/stores/equipmentStore';
 import type { useDrillStore } from '@/stores/drillStore';
-import type { Parameter } from '@/types';
+import type { Parameter, FaultDriver } from '@/types';
 
 // 耦合规则：上游参数值变化按 gain 系数影响下游参数的 setpoint
 export interface CouplingRule {
@@ -35,12 +35,21 @@ const DEFAULT_TAU = 5;
 // 当 |value - effSetpoint| 小于该比例阈值（相对参数自身量程）时，认为已经稳态，不再写回避免抖动
 const STABLE_THRESHOLD_RATIO = 1e-6;
 
+// 各难度的发散速率倍率（Q3 默认）：novice 不发散；standard 半速；expert 1.5 倍速
+const DIVERGENCE_RATE_BY_DIFFICULTY: Record<string, number> = {
+  novice: 0,
+  standard: 0.5,
+  expert: 1.5,
+};
+
 export class DynamicsEngine {
   private equipmentStore: EquipmentStoreLike;
   private drillStore: DrillStoreLike;
   private couplings: CouplingRule[];
   private tickHandle: ReturnType<typeof setInterval> | null = null;
   private tickMs: number;
+  /** 每 tick 被回调，传入当前正在发散的参数 key 集合，UI 可用于标红 */
+  public onDivergenceUpdate?: (keys: Set<string>) => void;
 
   constructor(
     equipmentStore: EquipmentStoreLike,
@@ -78,6 +87,13 @@ export class DynamicsEngine {
     const dt = this.tickMs / 1000; // 秒
     const equipments = this.equipmentStore.getState().equipments;
     if (!equipments || equipments.length === 0) return;
+
+    // ============================================================
+    // 0) 故障"正反馈发散"驱动：把活跃故障的 divergence.drivers 累加到 setpoint
+    //    - 学员若把 setpoint 调回 normal 范围（normalMin ~ normalMax），自动停止该 driver
+    //    - 难度倍率：novice=0（不发散）/ standard=0.5 / expert=1.5
+    // ============================================================
+    this.applyDivergenceDrivers(equipments, dt);
 
     // 1) 先把当前参数快照拍下来（避免在循环内被中途写入污染）
     type ParamRef = {
@@ -162,7 +178,95 @@ export class DynamicsEngine {
       updateParameter(ref.eqId, ref.param.id, next, true);
     });
 
+    // 通知 UI 当前正在发散的参数集合（可能为空）
+    if (this.onDivergenceUpdate) {
+      this.onDivergenceUpdate(new Set(this.activeDivergingParams));
+    }
+
     // drillStore 仅作为引用持有，未来如需"动力学事件" hook 可在此扩展；当前不主动调用
     void this.drillStore;
+  }
+
+  // ============================================================
+  // 故障发散驱动：把 currentFault.divergence.drivers 应用到 setpoint
+  //
+  // 设计要点：
+  //   - 通过 drillStore 获取 currentFault / startTime / activeDifficulty
+  //   - 每个 driver 检查 delaySec、难度倍率，按 rate * dt 把 setpoint 推一点
+  //   - 若该参数当前 setpoint 已经在 normalMin~normalMax 之内，自动停止（学员已抑制）
+  //   - 若 cap 到达，停止推进，避免数值爆炸
+  //   - 记录"当前正在发散的参数 key"集合，供 UI 标记"⚠️ 持续恶化中"
+  // ============================================================
+  private activeDivergingParams = new Set<string>();
+
+  /** 获取当前正在发散的参数 key 集合（"eqId::paramId"），供 UI 标红 */
+  public getActiveDivergingParams(): Set<string> {
+    return new Set(this.activeDivergingParams);
+  }
+
+  private applyDivergenceDrivers(
+    equipments: ReturnType<EquipmentStoreLike['getState']>['equipments'],
+    dt: number,
+  ): void {
+    this.activeDivergingParams.clear();
+
+    const drillState = this.drillStore.getState();
+    const fault = drillState.currentFault;
+    const startTime = drillState.startTime;
+    if (!drillState.isRunning || !fault || !fault.divergence || startTime == null) {
+      return;
+    }
+    const difficulty = drillState.activeDifficulty ?? 'standard';
+    const rateMul = DIVERGENCE_RATE_BY_DIFFICULTY[difficulty] ?? 1;
+    if (rateMul <= 0) return;  // novice 不发散
+
+    const elapsedSec = (Date.now() - startTime) / 1000;
+    const setSetpoint = this.equipmentStore.getState().setSetpoint;
+
+    fault.divergence.drivers.forEach((driver: FaultDriver) => {
+      // delay 检查
+      const delay = driver.delaySec ?? 0;
+      if (elapsedSec < delay) return;
+
+      const eq = equipments.find((e) => e.id === driver.equipmentId);
+      if (!eq) return;
+      const param = eq.parameters.find((p) => p.id === driver.param);
+      if (!param) return;
+
+      const curSp = param.setpoint ?? param.value;
+
+      // Q1+Q2：若学员已经把 setpoint 拉回 normal 范围 → 抑制成功，不再推进
+      // 兼容方向：rate>0 表示参数本来要朝大方向漂，学员需要把 setpoint 调回 ≤ normalMax；
+      //          rate<0 表示朝小方向漂，学员需要把 setpoint 调回 ≥ normalMin。
+      const inNormal = curSp >= param.normalMin && curSp <= param.normalMax;
+      const suppressed = inNormal;
+      if (suppressed) return;
+
+      // cap 检查：达到上限则停（防止参数溢出 max/min）
+      if (driver.cap !== undefined) {
+        if (driver.rate > 0 && curSp >= driver.cap) return;
+        if (driver.rate < 0 && curSp <= driver.cap) return;
+      }
+      // 边界保护：朝 max/min 推时也不要超
+      if (driver.rate > 0 && curSp >= param.max) return;
+      if (driver.rate < 0 && curSp <= param.min) return;
+
+      // 推一步 setpoint
+      const delta = driver.rate * rateMul * dt;
+      let nextSp = curSp + delta;
+
+      // clamp 到 cap 或参数物理量程
+      if (driver.cap !== undefined) {
+        if (driver.rate > 0) nextSp = Math.min(nextSp, driver.cap);
+        if (driver.rate < 0) nextSp = Math.max(nextSp, driver.cap);
+      }
+      nextSp = Math.max(param.min, Math.min(param.max, nextSp));
+      nextSp = Math.round(nextSp * 10000) / 10000;
+
+      if (nextSp !== curSp) {
+        setSetpoint(driver.equipmentId, driver.param, nextSp);
+        this.activeDivergingParams.add(`${driver.equipmentId}::${driver.param}`);
+      }
+    });
   }
 }

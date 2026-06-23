@@ -68,6 +68,29 @@ export interface Fault {
   cause: string;
   steps: DrillStep[];
   hints: string[];
+  /**
+   * 可选：故障的"正反馈发散"配置
+   * 让某些参数在故障发生后持续漂移，如果学员不干预，参数会越来越差
+   * 配合 DynamicsEngine 的发散驱动逻辑实现
+   */
+  divergence?: FaultDivergence;
+}
+
+/** 故障的"正反馈发散"配置：让某些参数自驱动地漂移到危险值 */
+export interface FaultDivergence {
+  /** 多个发散驱动项；可以是多个参数同时发散 */
+  drivers: FaultDriver[];
+}
+
+export interface FaultDriver {
+  equipmentId: string;
+  param: string;
+  /** 每秒漂移量（正/负）。单位 = 参数本身的单位/秒 */
+  rate: number;
+  /** 最大漂到这个值就停（用于防止数值爆炸） */
+  cap?: number;
+  /** 故障开始后 N 秒才启动该 driver（让前期看上去稳定，后续才恶化） */
+  delaySec?: number;
 }
 
 export interface Symptom {

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X, BookOpen, History, Sliders, Check, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, BookOpen, History, Sliders, Check, AlertTriangle, TrendingUp, TrendingDown, Flame } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useDrillStore } from '@/stores/drillStore';
+import { useDivergenceStore } from '@/stores/divergenceStore';
 import { fccManuals } from '@/templates/fcc/manuals';
 
 // 弹窗内三种视图：参数 / 操作手册 / 历史记录
@@ -11,6 +12,7 @@ type ViewMode = 'params' | 'manual' | 'history';
 export const ParameterPanel: React.FC = () => {
   const selectedEquipmentId = useUIStore((state) => state.selectedEquipmentId);
   const showParameterPanel = useUIStore((state) => state.showParameterPanel);
+  const divergingKeys = useDivergenceStore((s) => s.divergingKeys);
   const selectEquipment = useUIStore((state) => state.selectEquipment);
   const getEquipmentById = useEquipmentStore((state) => state.getEquipmentById);
   // setSetpoint：学员调滑块只改"目标值"，由动力学引擎驱动实际 value 逐步逼近
@@ -197,6 +199,13 @@ export const ParameterPanel: React.FC = () => {
                         expert 模式下隐藏（学员需要自己看实际值与 normal 区间判断方向） */}
                     {!isExpertDrill && isHigh && <TrendingUp className="w-3.5 h-3.5 text-danger" />}
                     {!isExpertDrill && isLow && <TrendingDown className="w-3.5 h-3.5 text-danger" />}
+                    {/* P2+ 发散标记：该参数正在被正反馈发散驱动持续恶化 */}
+                    {divergingKeys.has(`${equipment.id}::${param.id}`) && (
+                      <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse">
+                        <Flame className="w-3 h-3" />
+                        持续恶化中
+                      </span>
+                    )}
                   </span>
                   {/* 头部数值：显示"目标 setpoint"（学员调到的位置） */}
                   <span className="text-sm font-mono font-medium text-text-primary">

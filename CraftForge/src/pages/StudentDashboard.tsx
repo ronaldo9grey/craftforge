@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { drillApi, achievementApi, classApi, type Achievement, type ClassRow } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History } from 'lucide-react';
+import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History, BookOpen, Award } from 'lucide-react';
 
 interface Summary {
   total: number;
@@ -47,19 +47,27 @@ export const StudentDashboard: React.FC = () => {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [myClass, setMyClass] = useState<ClassRow | null>(null);
+  const [pendingReq, setPendingReq] = useState<{ class_name: string; status: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [s, a, c] = await Promise.all([
+      const [s, a, c, mr] = await Promise.all([
         drillApi.mySummary(),
         achievementApi.list(),
         classApi.mine(),
+        classApi.myRequest().catch(() => ({ request: null })),
       ]);
       setSummary(s);
       setAchievements(a.achievements);
       setMyClass(c.classes[0] ?? null);
+      // 如果学生有 class_id 就不显示 pending；否则展示最新申请状态（pending/rejected/approved）
+      if (!c.classes[0] && mr.request) {
+        setPendingReq({ class_name: mr.request.class_name, status: mr.request.status });
+      } else {
+        setPendingReq(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -84,13 +92,27 @@ export const StudentDashboard: React.FC = () => {
               欢迎回到匠魂实训引擎 · 看看你的成长轨迹
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => void loadAll()}
               className="px-3 py-2 text-xs text-text-secondary hover:text-text-primary bg-bg-secondary border border-border rounded-lg flex items-center gap-1.5"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               刷新
+            </button>
+            <button
+              onClick={() => setPage('mistakes')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-warning/40 text-warning rounded-lg flex items-center gap-2"
+            >
+              <BookOpen className="w-4 h-4" />
+              错题本
+            </button>
+            <button
+              onClick={() => setPage('leaderboard')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-yellow-400/40 text-yellow-400 rounded-lg flex items-center gap-2"
+            >
+              <Award className="w-4 h-4" />
+              排行榜
             </button>
             <button
               onClick={() => setPage('history')}
@@ -112,6 +134,7 @@ export const StudentDashboard: React.FC = () => {
         {/* 班级状态：未加入显示加入卡，已加入显示班级名 */}
         <ClassStatusCard
           myClass={myClass}
+          pendingReq={pendingReq}
           onJoined={async () => {
             await refreshUser();
             await loadAll();
@@ -326,27 +349,35 @@ const ScoreCurve: React.FC<{
 };
 
 // =============================================================
-// 班级状态卡：未加入 → 加入表单；已加入 → 班级名
+// 班级状态卡：未加入 → 加入表单；申请中 → 等待审批；已加入 → 班级名
 // =============================================================
 const ClassStatusCard: React.FC<{
   myClass: ClassRow | null;
+  pendingReq: { class_name: string; status: string } | null;
   onJoined: () => void | Promise<void>;
-}> = ({ myClass, onJoined }) => {
+}> = ({ myClass, pendingReq, onJoined }) => {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setOkMsg(null);
     if (code.trim().length !== 6) {
       setErr('邀请码应为 6 位');
       return;
     }
     setBusy(true);
     try {
-      await classApi.join(code.trim());
+      const resp = await classApi.join(code.trim());
       setCode('');
+      if (resp.status === 'pending') {
+        setOkMsg(`已提交申请，等待 ${resp.class.name} 的教师审批`);
+      } else if (resp.status === 'already_member') {
+        setOkMsg('你已经在这个班级里了');
+      }
       await onJoined();
     } catch (e: any) {
       setErr(e?.message ?? '加入失败');
@@ -367,6 +398,68 @@ const ClassStatusCard: React.FC<{
     );
   }
 
+  // 申请中 / 被拒
+  if (pendingReq) {
+    if (pendingReq.status === 'pending') {
+      return (
+        <div className="bg-blue-400/10 border border-blue-400/30 rounded-lg p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-400/20 flex items-center justify-center">
+            <UserPlus className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-semibold">申请审批中…</div>
+            <div className="text-xs text-text-muted mt-0.5">
+              已申请加入 <strong className="text-text-primary">{pendingReq.class_name}</strong>，
+              等待教师审批后即可加入班级
+            </div>
+          </div>
+          <button
+            onClick={() => onJoined()}
+            className="text-xs text-blue-400 hover:underline"
+          >
+            刷新
+          </button>
+        </div>
+      );
+    }
+    if (pendingReq.status === 'rejected') {
+      return (
+        <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <UserPlus className="w-4 h-4 text-warning" />
+            <span className="text-sm font-semibold">
+              申请 {pendingReq.class_name} 被拒绝
+            </span>
+          </div>
+          <p className="text-xs text-text-muted mb-3">可重新申请该班级，或填写其他班级的邀请码</p>
+          <form onSubmit={submit} className="flex gap-2">
+            <input
+              type="text"
+              maxLength={6}
+              placeholder="6 位邀请码"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+              className="flex-1 px-3 py-2 bg-bg-tertiary border border-border rounded text-sm font-mono tracking-widest uppercase"
+            />
+            <button
+              type="submit"
+              disabled={busy}
+              className="px-4 py-2 bg-warning text-white rounded text-sm font-medium disabled:opacity-50"
+            >
+              {busy ? '提交中...' : '重新申请'}
+            </button>
+          </form>
+          {err && (
+            <div className="mt-2 px-2 py-1 bg-danger/15 border border-danger/40 rounded text-xs text-danger">
+              {err}
+            </div>
+          )}
+        </div>
+      );
+    }
+  }
+
+  // 未提交申请
   return (
     <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-2">
@@ -374,7 +467,7 @@ const ClassStatusCard: React.FC<{
         <span className="text-sm font-semibold">尚未加入班级</span>
       </div>
       <p className="text-xs text-text-muted mb-3">
-        向你的老师索取 6 位邀请码，加入班级后老师才能查看你的训练进度
+        向你的老师索取 6 位邀请码，提交申请后老师审批通过即可加入班级
       </p>
       <form onSubmit={submit} className="flex gap-2">
         <input
@@ -390,12 +483,17 @@ const ClassStatusCard: React.FC<{
           disabled={busy}
           className="px-4 py-2 bg-warning text-white rounded text-sm font-medium disabled:opacity-50"
         >
-          {busy ? '加入中...' : '加入班级'}
+          {busy ? '提交中...' : '提交申请'}
         </button>
       </form>
       {err && (
         <div className="mt-2 px-2 py-1 bg-danger/15 border border-danger/40 rounded text-xs text-danger">
           {err}
+        </div>
+      )}
+      {okMsg && (
+        <div className="mt-2 px-2 py-1 bg-success/15 border border-success/40 rounded text-xs text-success">
+          {okMsg}
         </div>
       )}
     </div>

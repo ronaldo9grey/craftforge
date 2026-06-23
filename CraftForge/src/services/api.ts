@@ -150,11 +150,29 @@ export const classApi = {
     apiFetch<{ class: ClassRow; member_count: number }>(`/classes/${id}`),
   members: (id: string) =>
     apiFetch<{ members: PublicUser[] }>(`/classes/${id}/members`),
+  /** 申请加入班级（审批制）返回 status: 'pending' | 'already_member' */
   join: (joinCode: string) =>
-    apiFetch<{ class: ClassRow }>('/classes/join', {
+    apiFetch<{ status: string; class: ClassRow; request_id?: string }>('/classes/join', {
       method: 'POST',
       body: { join_code: joinCode.toUpperCase() },
     }),
+  /** 学生查我的最新申请状态 */
+  myRequest: () =>
+    apiFetch<{ request: null | { id: string; class_id: string; status: string; created_at: number; class_name: string; join_code: string } }>('/classes/my-request'),
+  /** 教师查待审批列表 */
+  pendingRequests: (classId: string, status: 'pending' | 'approved' | 'rejected' = 'pending') =>
+    apiFetch<{ requests: Array<{ request_id: string; status: string; created_at: number; user_id: string; username: string; display_name: string; student_no: string | null }> }>(
+      `/classes/${classId}/requests?status=${status}`,
+    ),
+  /** 教师批准 / 拒绝 */
+  reviewRequest: (reqId: string, action: 'approve' | 'reject') =>
+    apiFetch<{ ok: true; status: string }>(`/classes/requests/${reqId}/review`, {
+      method: 'POST',
+      body: { action },
+    }),
+  /** 把学生踢出班级 */
+  kick: (classId: string, userId: string) =>
+    apiFetch<{ ok: true }>(`/classes/${classId}/kick/${userId}`, { method: 'POST' }),
   regenCode: (id: string) =>
     apiFetch<{ join_code: string }>(`/classes/${id}/regen-code`, { method: 'POST' }),
   remove: (id: string) =>
@@ -259,4 +277,70 @@ export const teacherApi = {
       avg_score: number;
       recent_records: DrillRecord[];
     }>(`/teacher/student/${id}`),
+};
+
+// =============================================================
+// 错题本 API
+// =============================================================
+export interface Mistake {
+  id: string;
+  user_id: string;
+  scene_id: string;
+  fault_id: string;
+  fault_name: string;
+  fail_count: number;
+  last_fail_at: number;
+  last_score: number;
+  last_grade: string;
+  status: 'open' | 'mastered';
+  mastered_at: number | null;
+  created_at: number;
+}
+
+export const mistakeApi = {
+  list: (status: 'open' | 'mastered' | 'all' = 'open') =>
+    apiFetch<{ mistakes: Mistake[]; stats: Record<string, number> }>(
+      `/mistakes${status === 'open' ? '' : '?status=' + status}`,
+    ),
+  master: (id: string) =>
+    apiFetch<{ ok: true }>(`/mistakes/${id}/master`, { method: 'POST' }),
+  add: (data: { scene_id: string; fault_id: string; fault_name: string; score?: number; grade?: 'S' | 'A' | 'B' | 'C' | 'D' }) =>
+    apiFetch<{ ok: true; action: string; id: string }>('/mistakes', { method: 'POST', body: data }),
+};
+
+// =============================================================
+// 排行榜 API
+// =============================================================
+export interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  class_id: string | null;
+  class_name: string | null;
+  total_drills: number;
+  avg_score: number;
+  s_count: number;
+}
+
+export const leaderboardApi = {
+  query: (params: {
+    scope?: 'class' | 'global';
+    window?: '30d' | 'all';
+    metric?: 'avg' | 'drill_count' | 's_count';
+  }) => {
+    const qs = new URLSearchParams();
+    qs.set('scope',  params.scope  ?? 'class');
+    qs.set('window', params.window ?? '30d');
+    qs.set('metric', params.metric ?? 'avg');
+    return apiFetch<{
+      leaderboard: LeaderboardEntry[];
+      my_rank: number | null;
+      my_extra_row: LeaderboardEntry | null;
+      total: number;
+      scope: string;
+      window: string;
+      metric: string;
+      note?: string;
+    }>(`/leaderboard?${qs.toString()}`);
+  },
 };

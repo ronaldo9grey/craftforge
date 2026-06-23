@@ -8,6 +8,8 @@ import { TeacherDashboard } from '@/pages/TeacherDashboard';
 import { HistoryListPage } from '@/pages/HistoryListPage';
 import { HistoryDetailPage } from '@/pages/HistoryDetailPage';
 import { SceneGalleryPage } from '@/pages/SceneGalleryPage';
+import { MistakeBookPage } from '@/pages/MistakeBookPage';
+import { LeaderboardPage } from '@/pages/LeaderboardPage';
 import { ToastHost } from '@/components/Toast';
 import App from './App';
 
@@ -57,6 +59,8 @@ export const AppRoot: React.FC = () => {
     if (page === 'gallery') return <SceneGalleryPage />;
     if (page === 'history') return <HistoryListPage />;
     if (page === 'history-detail') return <HistoryDetailPage />;
+    if (page === 'mistakes') return <MistakeBookPage />;
+    if (page === 'leaderboard') return <LeaderboardPage />;
     if (user.role === 'student') return <StudentDashboard />;
     return <TeacherDashboard />;
   };

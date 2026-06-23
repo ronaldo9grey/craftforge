@@ -2,9 +2,9 @@
 // 展示：基本信息 / 得分拆解 / 师傅评语 / 操作流水
 
 import { useEffect, useState } from 'react';
-import { drillApi, type DrillRecord } from '@/services/api';
+import { drillApi, mistakeApi, type DrillRecord } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
-import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer } from 'lucide-react';
+import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer, BookmarkPlus } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 const SCENE_LABEL: Record<string, string> = {
@@ -114,6 +114,28 @@ export const HistoryDetailPage: React.FC = () => {
             </div>
             <h1 className="text-xl font-bold mt-0.5">{record.fault_name}</h1>
           </div>
+          <button
+            onClick={async () => {
+              if (!record) return;
+              try {
+                await mistakeApi.add({
+                  scene_id: record.scene_id,
+                  fault_id: record.fault_id,
+                  fault_name: record.fault_name,
+                  score: record.score,
+                  grade: record.grade,
+                });
+                alert('已加入错题本，前往「错题本」可重练此故障');
+              } catch (e: any) {
+                alert('加入错题本失败：' + (e?.message ?? ''));
+              }
+            }}
+            title="把本次演练加入错题本（即使评分较高也可手动标记）"
+            className="px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-secondary border border-border text-text-primary rounded-lg flex items-center gap-2"
+          >
+            <BookmarkPlus className="w-4 h-4" />
+            标错题
+          </button>
           <button
             onClick={handleExport}
             title="导出为 PDF（浏览器打印 → 另存为 PDF）"

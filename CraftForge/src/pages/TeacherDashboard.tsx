@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { teacherApi, classApi, type ClassDashboard, type PublicUser } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, ChevronRight, Play } from 'lucide-react';
+import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award } from 'lucide-react';
 
 const SCENE_LABEL: Record<string, string> = {
   fcc: '催化裂化',
@@ -25,6 +25,9 @@ export const TeacherDashboard: React.FC = () => {
   const [members, setMembers] = useState<PublicUser[]>([]);
   const [studentDetailId, setStudentDetailId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  // 各班级 pending 申请数（key=class_id）+ 选中班级的申请列表
+  const [pendingMap, setPendingMap] = useState<Record<string, number>>({});
+  const [pendingList, setPendingList] = useState<Array<{ request_id: string; status: string; created_at: number; user_id: string; username: string; display_name: string; student_no: string | null }>>([]);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -34,6 +37,19 @@ export const TeacherDashboard: React.FC = () => {
       if (!selectedClassId && dashboard.length > 0) {
         setSelectedClassId(dashboard[0].class_id);
       }
+      // 并发拉每个班级的 pending 数量
+      const map: Record<string, number> = {};
+      await Promise.all(
+        dashboard.map(async (c) => {
+          try {
+            const r = await classApi.pendingRequests(c.class_id, 'pending');
+            map[c.class_id] = r.requests.length;
+          } catch {
+            map[c.class_id] = 0;
+          }
+        }),
+      );
+      setPendingMap(map);
     } finally {
       setLoading(false);
     }
@@ -44,14 +60,41 @@ export const TeacherDashboard: React.FC = () => {
     setMembers(members);
   };
 
+  const loadPending = async (id: string) => {
+    const r = await classApi.pendingRequests(id, 'pending');
+    setPendingList(r.requests);
+  };
+
   useEffect(() => {
     void loadDashboard();
   }, []);
 
   useEffect(() => {
-    if (selectedClassId) void loadMembers(selectedClassId);
-    else setMembers([]);
+    if (selectedClassId) {
+      void loadMembers(selectedClassId);
+      void loadPending(selectedClassId);
+    } else {
+      setMembers([]);
+      setPendingList([]);
+    }
   }, [selectedClassId]);
+
+  const handleReview = async (reqId: string, action: 'approve' | 'reject') => {
+    await classApi.reviewRequest(reqId, action);
+    if (selectedClassId) {
+      await loadPending(selectedClassId);
+      await loadMembers(selectedClassId);
+    }
+    await loadDashboard();
+  };
+
+  const handleKick = async (userId: string) => {
+    if (!selectedClassId) return;
+    if (!confirm('确认把该学员移出班级？历史成绩仍然保留。')) return;
+    await classApi.kick(selectedClassId, userId);
+    await loadMembers(selectedClassId);
+    await loadDashboard();
+  };
 
   const selectedClass = classes.find((c) => c.class_id === selectedClassId);
 
@@ -75,6 +118,13 @@ export const TeacherDashboard: React.FC = () => {
             >
               <RefreshCw className="w-3.5 h-3.5" />
               刷新
+            </button>
+            <button
+              onClick={() => setPage('leaderboard')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-yellow-400/40 text-yellow-400 rounded-lg flex items-center gap-2"
+            >
+              <Award className="w-4 h-4" />
+              排行榜
             </button>
             <button
               onClick={() => setShowCreate(true)}
@@ -117,11 +167,60 @@ export const TeacherDashboard: React.FC = () => {
               <ClassCard
                 key={c.class_id}
                 data={c}
+                pendingCount={pendingMap[c.class_id] ?? 0}
                 selected={c.class_id === selectedClassId}
                 onSelect={() => setSelectedClassId(c.class_id)}
                 onChanged={() => void loadDashboard()}
               />
             ))}
+          </div>
+        )}
+
+        {/* 选中班级的待审批申请区 */}
+        {selectedClass && pendingList.length > 0 && (
+          <div className="bg-blue-400/10 border border-blue-400/40 rounded-lg p-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <BellRing className="w-4 h-4 text-blue-400" />
+              <span>{selectedClass.class_name} · 待审批申请 ({pendingList.length})</span>
+            </h3>
+            <div className="space-y-2">
+              {pendingList.map((p) => (
+                <div
+                  key={p.request_id}
+                  className="flex items-center justify-between p-2.5 bg-bg-secondary border border-border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-400/20 text-blue-400 flex items-center justify-center text-sm font-bold">
+                      {p.display_name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">{p.display_name}</div>
+                      <div className="text-[11px] text-text-muted">
+                        @{p.username}
+                        {p.student_no ? ` · 学号 ${p.student_no}` : ''}
+                        <span className="ml-2">{new Date(p.created_at).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => void handleReview(p.request_id, 'approve')}
+                      className="px-3 py-1 text-xs bg-success text-white rounded hover:bg-success/90 flex items-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      批准
+                    </button>
+                    <button
+                      onClick={() => void handleReview(p.request_id, 'reject')}
+                      className="px-3 py-1 text-xs bg-bg-tertiary text-text-secondary rounded hover:bg-danger hover:text-white flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      拒绝
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -143,12 +242,14 @@ export const TeacherDashboard: React.FC = () => {
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {members.map((m) => (
-                  <button
+                  <div
                     key={m.id}
-                    onClick={() => setStudentDetailId(m.id)}
-                    className="flex items-center justify-between p-3 bg-bg-tertiary hover:bg-bg-primary border border-border rounded-lg text-left"
+                    className="flex items-center justify-between p-3 bg-bg-tertiary border border-border rounded-lg"
                   >
-                    <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setStudentDetailId(m.id)}
+                      className="flex items-center gap-3 flex-1 text-left hover:opacity-80"
+                    >
                       <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">
                         {m.display_name.slice(0, 1).toUpperCase()}
                       </div>
@@ -156,9 +257,15 @@ export const TeacherDashboard: React.FC = () => {
                         <div className="text-sm font-medium">{m.display_name}</div>
                         <div className="text-[11px] text-text-muted">@{m.username}</div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-text-muted" />
-                  </button>
+                    </button>
+                    <button
+                      onClick={() => void handleKick(m.id)}
+                      title="移出班级"
+                      className="p-1.5 text-text-muted hover:text-danger"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -190,10 +297,11 @@ export const TeacherDashboard: React.FC = () => {
 // =============================================================
 const ClassCard: React.FC<{
   data: ClassDashboard;
+  pendingCount: number;
   selected: boolean;
   onSelect: () => void;
   onChanged: () => void;
-}> = ({ data, selected, onSelect, onChanged }) => {
+}> = ({ data, pendingCount, selected, onSelect, onChanged }) => {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -241,6 +349,14 @@ const ClassCard: React.FC<{
           : 'bg-bg-secondary border-border hover:border-primary/50'
       }`}
     >
+      {pendingCount > 0 && (
+        <div
+          className="absolute -top-2 -right-2 min-w-[22px] h-[22px] px-1.5 bg-blue-400 text-white text-[11px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-blue-400/40 animate-pulse"
+          title={`${pendingCount} 个待审批申请`}
+        >
+          {pendingCount}
+        </div>
+      )}
       <div className="flex items-start justify-between mb-3">
         <div className="text-base font-semibold truncate">{data.class_name}</div>
         <div className="flex gap-1">

@@ -377,7 +377,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v3 injection', w - 30, h - 8);
+      ctx.fillText('v4 injection', w - 30, h - 8);
     }
   };
 

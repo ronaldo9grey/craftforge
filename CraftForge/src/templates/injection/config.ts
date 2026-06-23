@@ -1,24 +1,20 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V3 (注塑场景布局严密版)
-// 注塑成型车间布局 v3：1280×700
-// vs v2 主要变更：
-//   ① 主机区 y 上提 50px (110→60)，整体区间分布更均衡，主机区不再贴近物流区
-//   ② 4 行 y 区间严格规划，相邻行间净距 ≥ 30px：
-//        行 1 主机区   y= 60~230 (170h) → 分隔线 245
-//        行 2 物流主线 y=260~360 (100h) → 分隔线 375
-//        行 3 辅助系统 y=390~510 (120h) → 分隔线 540
-//        行 4 电气控制 y=570~660 ( 90h)
-//   ③ 所有设备高度调整以严格落入对应行区间，避免跨区间重叠
-//   ④ MOLD-201 y 由 290 提到 260（恰好在行 2 顶部），不再向上越界到 290
-//   ⑤ 行 2 输送带高度由 40→35，垂直居中放在 y=320 区域
-//   ⑥ IMM 补 4 个核心工艺参数：hold_pressure / hold_time / back_pressure / cool_time
+// VERSION: 2026-06-23-V4 (注塑场景紧凑版)
+// 注塑成型车间布局 v4：1280×700
+// vs v3 主要变更：
+//   ① 主机区设备瘦身：IMM 200×160 → 170×130；ROB 110×160 → 100×130
+//      节省 30 高度 → 主机区只占 y=70~200 (130h)，底部留 47px 到分隔线 247
+//   ② 辅助系统区设备高度压缩：HEAT/MTC 100→85, CHILL/HMI 90→80
+//      底部留 25px 到分隔线 540
+//   ③ 三台主机 x 居中重新分布：IMM-101=180, ROB-201=525, IMM-102=830，三台等间距
+//   ④ 4 行 y 区间不变，但区间内设备小一圈，标签和分隔线不再贴近
 //
-// 设备清单 (15 台):
-//   行 1 主机区:    IMM-101 / ROB-201 / IMM-102
-//   行 2 物流主线:  HOP / CONV-201 / DRY / MOLD / CONV-202 / INST / ST
-//   行 3 辅助系统:  HEAT / CHILL / MTC / HMI
-//   行 4 电气控制:  CTRL
+// 四行布局：
+//   行 1 主机区   y= 70~200 (130h)  → 分隔线 247  净距 47px
+//   行 2 物流主线 y=275~360 ( 85h)  → 分隔线 377  净距 17px (输送带 40h 紧凑)
+//   行 3 辅助系统 y=400~485 ( 85h)  → 分隔线 540  净距 55px
+//   行 4 电气控制 y=580~655 ( 75h)
 
 const TAU_FAST = 1;
 const TAU_FORCE = 2;
@@ -37,7 +33,7 @@ export const injectionEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'IMM-101', name: '立式注塑机', type: 'reactor',
-    x: 180, y: 65, width: 200, height: 160,
+    x: 180, y: 70, width: 170, height: 130,
     status: 'normal', template: 'injection',
     parameters: [
       // 基础注射参数
@@ -55,7 +51,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'ROB-201', name: '取件机械手', type: 'robot',
-    x: 540, y: 65, width: 110, height: 160,
+    x: 530, y: 70, width: 100, height: 130,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'arm_position',    name: '机械臂位置', value: 0,    unit: '°',    min: 0,   max: 180, normalMin: 0,   normalMax: 180, trend: [], tau: 0.5 },
@@ -66,7 +62,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'IMM-102', name: '卧式注塑机', type: 'reactor',
-    x: 800, y: 65, width: 200, height: 160,
+    x: 830, y: 70, width: 170, height: 130,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'inject_pressure', name: '注射压力', value: 92,  unit: 'MPa',  min: 30, max: 180, normalMin: 70,  normalMax: 110, trend: [], tau: TAU_FAST },
@@ -155,7 +151,7 @@ export const injectionEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'HEAT-301', name: '加热筒控制', type: 'heater',
-    x: 50, y: 400, width: 200, height: 100,
+    x: 50, y: 405, width: 200, height: 85,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'zone1_temp', name: '喂料段温度', value: 200, unit: '°C', min: 100, max: 280, normalMin: 180, normalMax: 220, trend: [], tau: TAU_TEMP },
@@ -166,7 +162,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'CHILL-301', name: '冷水机', type: 'pump',
-    x: 290, y: 410, width: 130, height: 90,
+    x: 290, y: 410, width: 130, height: 80,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'chiller_flow',   name: '冷却水流量', value: 18,  unit: 'L/min', min: 0,  max: 40, normalMin: 14, normalMax: 24, trend: [], tau: TAU_FLOW },
@@ -176,7 +172,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'MTC-301', name: '模温机', type: 'exchanger',
-    x: 460, y: 400, width: 200, height: 100,
+    x: 460, y: 405, width: 200, height: 85,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'mtc_set_temp',   name: '设定温度', value: 60, unit: '°C',    min: 20, max: 120, normalMin: 45, normalMax: 80, trend: [], tau: 25 },
@@ -186,7 +182,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '操作面板', type: 'instrument',
-    x: 1060, y: 410, width: 120, height: 90,
+    x: 1060, y: 410, width: 120, height: 80,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'program_no',     name: '当前程序号', value: 207, unit: '',  min: 0,  max: 9999, normalMin: 0,  normalMax: 9999, trend: [], inertia: false },

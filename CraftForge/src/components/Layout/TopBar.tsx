@@ -1,10 +1,11 @@
-import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, Menu, X, AlertTriangle, Sprout, Settings2, Target, Bell, BellOff, LogOut, KeyRound } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, HelpCircle, Menu, X, AlertTriangle, Sprout, Settings2, Target, Bell, BellOff, LogOut, KeyRound, LayoutDashboard } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useDrillStore } from '@/stores/drillStore';
 import { useAIStore } from '@/stores/aiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageStore } from '@/stores/pageStore';
 import { coachOpening } from '@/services/aiCoach';
 import type { DrillDifficulty, Fault, Equipment } from '@/types';
 
@@ -373,6 +374,14 @@ export const TopBar: React.FC = () => {
           {soundEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
         </button>
         
+        <button
+          onClick={() => usePageStore.getState().setPage('dashboard')}
+          title="返回 Dashboard"
+          className="p-2 text-text-muted hover:text-primary transition-colors"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+        </button>
+
         <button className="p-2 text-text-muted hover:text-text-secondary transition-colors">
           <HelpCircle className="w-4 h-4" />
         </button>

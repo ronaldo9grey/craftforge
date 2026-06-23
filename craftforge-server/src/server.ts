@@ -13,6 +13,8 @@ import aiRouter from './routes/ai';
 import authRouter from './routes/auth';
 import classesRouter from './routes/classes';
 import { drillRecordsRouter, achievementsRouter, teacherRouter } from './routes/drillRecords';
+import mistakesRouter from './routes/mistakes';
+import leaderboardRouter from './routes/leaderboard';
 import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
 import { writeAccessLog, writeErrorLog } from './utils/logger';
 
@@ -53,6 +55,10 @@ app.use('/api/classes', classesRouter);
 app.use('/api/drill-records', drillRecordsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/teacher', teacherRouter);
+
+// 错题本 / 排行榜
+app.use('/api/mistakes', mistakesRouter);
+app.use('/api/leaderboard', leaderboardRouter);
 
 // 404
 app.use((req: Request, res: Response) => {

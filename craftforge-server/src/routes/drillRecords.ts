@@ -24,6 +24,7 @@ import type { DrillRecordRow, UserAchievementRow, UserRow, ClassRow } from '../d
 import { toPublicUser } from '../db/types';
 import { requireAuth, requireRole } from '../middleware/jwtAuth';
 import { ACHIEVEMENTS, evaluateAchievements } from '../db/achievements';
+import { syncMistakeOnDrill } from './mistakes';
 
 // =============================================================
 // 演练记录
@@ -78,7 +79,19 @@ drillRecordsRouter.post('/', requireAuth, (req: Request, res: Response) => {
 
   // 自动评估新解锁的成就
   const newAchievements = evaluateAchievements(req.authUser!.id);
-  res.status(201).json({ id, new_achievements: newAchievements });
+
+  // 自动维护错题本：C/D → 加入；S/A → 自动 mastered
+  const mistakeAction = syncMistakeOnDrill({
+    user_id: req.authUser!.id,
+    scene_id: d.scene_id,
+    fault_id: d.fault_id,
+    fault_name: d.fault_name,
+    score: d.score,
+    grade: d.grade,
+    end_time: d.end_time,
+  });
+
+  res.status(201).json({ id, new_achievements: newAchievements, mistake_action: mistakeAction.action });
 });
 
 /** GET /api/drill-records  查询自己的记录 */

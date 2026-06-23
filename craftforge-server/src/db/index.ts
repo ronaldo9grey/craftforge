@@ -96,6 +96,42 @@ CREATE TABLE IF NOT EXISTS session_blacklist (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_blacklist_exp ON session_blacklist(expires_at);
+
+-- 班级加入申请（教师审批制）
+-- 一个学生对同一班级只能有一个非 rejected 状态的申请
+CREATE TABLE IF NOT EXISTS class_join_requests (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL,
+  class_id      TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'approved' | 'rejected'
+  created_at    INTEGER NOT NULL,
+  reviewed_at   INTEGER,
+  reviewed_by   TEXT,                              -- 教师 user.id
+  FOREIGN KEY (user_id)  REFERENCES users(id)    ON DELETE CASCADE,
+  FOREIGN KEY (class_id) REFERENCES classes(id)  ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_jr_user        ON class_join_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_jr_class       ON class_join_requests(class_id);
+CREATE INDEX IF NOT EXISTS idx_jr_class_status ON class_join_requests(class_id, status);
+
+-- 错题本：按 (user_id, scene_id, fault_id) 唯一
+CREATE TABLE IF NOT EXISTS mistakes (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL,
+  scene_id        TEXT NOT NULL,
+  fault_id        TEXT NOT NULL,
+  fault_name      TEXT NOT NULL,
+  fail_count      INTEGER NOT NULL DEFAULT 1,        -- 失败次数（C/D 评级或手动标记累加）
+  last_fail_at    INTEGER NOT NULL,
+  last_score      INTEGER NOT NULL DEFAULT 0,
+  last_grade      TEXT NOT NULL DEFAULT 'D',
+  status          TEXT NOT NULL DEFAULT 'open',      -- 'open' | 'mastered'
+  mastered_at     INTEGER,
+  created_at      INTEGER NOT NULL,
+  UNIQUE(user_id, scene_id, fault_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_mistakes_user_status ON mistakes(user_id, status);
 `;
 
 // 执行 schema（用 transaction 确保原子性）

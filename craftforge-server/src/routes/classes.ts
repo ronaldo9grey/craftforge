@@ -136,7 +136,10 @@ router.get('/:id/members', requireAuth, (req: Request, res: Response) => {
 });
 
 // =============================================================
-// POST /api/classes/join  学生加入班级
+// POST /api/classes/join  学生申请加入班级（审批制）
+// - Q1 决策 A：已有 class_id 的学生（兼容老数据）直接拒绝，不重复申请
+// - 同一学生对同一班级只允许 1 个 pending 申请
+// - rejected 状态可以重新申请（Q2-A：拒后可再申）
 // =============================================================
 router.post('/join', requireAuth, (req: Request, res: Response) => {
   const me = req.authUser!;
@@ -156,8 +159,129 @@ router.post('/join', requireAuth, (req: Request, res: Response) => {
     res.status(404).json({ error: 'Class not found with this join code' });
     return;
   }
-  db.prepare('UPDATE users SET class_id = ? WHERE id = ?').run(cls.id, me.id);
-  res.json({ class: cls });
+
+  // 已经是该班学生 → 短路返回 OK
+  if (me.class_id === cls.id) {
+    res.json({ status: 'already_member', class: cls });
+    return;
+  }
+
+  // 检查是否已有 pending 申请
+  const existing = db
+    .prepare(`SELECT * FROM class_join_requests WHERE user_id = ? AND class_id = ? AND status = 'pending'`)
+    .get(me.id, cls.id);
+  if (existing) {
+    res.status(409).json({ error: 'Already have a pending request', class: cls });
+    return;
+  }
+
+  const reqId = uuid();
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO class_join_requests (id, user_id, class_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`,
+  ).run(reqId, me.id, cls.id, now);
+  res.status(201).json({ status: 'pending', class: cls, request_id: reqId });
+});
+
+// =============================================================
+// GET /api/classes/my-request  学生查我的当前申请状态
+// 返回最新一条申请（任意状态），如无返回 null
+// =============================================================
+router.get('/my-request', requireAuth, (req: Request, res: Response) => {
+  const me = req.authUser!;
+  if (me.role !== 'student') {
+    res.json({ request: null });
+    return;
+  }
+  const row = db
+    .prepare(
+      `SELECT r.id, r.user_id, r.class_id, r.status, r.created_at, r.reviewed_at, r.reviewed_by,
+              c.name AS class_name, c.join_code
+       FROM class_join_requests r
+       JOIN classes c ON c.id = r.class_id
+       WHERE r.user_id = ?
+       ORDER BY r.created_at DESC LIMIT 1`,
+    )
+    .get(me.id);
+  res.json({ request: row ?? null });
+});
+
+// =============================================================
+// GET /api/classes/:id/requests  教师查看待审批申请列表
+// =============================================================
+router.get('/:id/requests', requireAuth, (req: Request, res: Response) => {
+  const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(req.params.id) as ClassRow | undefined;
+  if (!cls) { res.status(404).json({ error: 'Class not found' }); return; }
+  const me = req.authUser!;
+  const isOwner = me.role === 'admin' || (me.role === 'teacher' && cls.teacher_id === me.id);
+  if (!isOwner) { res.status(403).json({ error: 'Forbidden' }); return; }
+  const status = (req.query.status as string) || 'pending';
+  const rows = db
+    .prepare(
+      `SELECT r.id AS request_id, r.status, r.created_at, r.reviewed_at,
+              u.id AS user_id, u.username, u.display_name, u.student_no
+       FROM class_join_requests r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.class_id = ? AND r.status = ?
+       ORDER BY r.created_at DESC`,
+    )
+    .all(cls.id, status);
+  res.json({ requests: rows });
+});
+
+// =============================================================
+// POST /api/classes/requests/:reqId/review  教师批准 / 拒绝
+// body: { action: 'approve' | 'reject' }
+// 批准时：把学生的 class_id 设为该班级；同时把同学生对其它班级的 pending 全部 reject
+// =============================================================
+const ReviewSchema = z.object({ action: z.enum(['approve', 'reject']) });
+router.post('/requests/:reqId/review', requireAuth, requireRole('teacher', 'admin'), (req: Request, res: Response) => {
+  const parsed = ReviewSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: 'Bad request' }); return; }
+  const reqRow = db.prepare('SELECT * FROM class_join_requests WHERE id = ?').get(req.params.reqId) as
+    | { id: string; user_id: string; class_id: string; status: string }
+    | undefined;
+  if (!reqRow) { res.status(404).json({ error: 'Request not found' }); return; }
+  if (reqRow.status !== 'pending') { res.status(409).json({ error: 'Request already reviewed' }); return; }
+
+  const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(reqRow.class_id) as ClassRow | undefined;
+  if (!cls) { res.status(404).json({ error: 'Class not found' }); return; }
+  const me = req.authUser!;
+  if (me.role !== 'admin' && cls.teacher_id !== me.id) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+
+  const now = Date.now();
+  const newStatus = parsed.data.action === 'approve' ? 'approved' : 'rejected';
+  db.prepare(`UPDATE class_join_requests SET status = ?, reviewed_at = ?, reviewed_by = ? WHERE id = ?`)
+    .run(newStatus, now, me.id, reqRow.id);
+
+  if (parsed.data.action === 'approve') {
+    // 把学生加进班级
+    db.prepare('UPDATE users SET class_id = ? WHERE id = ?').run(cls.id, reqRow.user_id);
+    // 把该学生对其他班级的 pending 全部拒绝（避免脚踩两班船）
+    db.prepare(
+      `UPDATE class_join_requests SET status = 'rejected', reviewed_at = ?, reviewed_by = ?
+       WHERE user_id = ? AND status = 'pending' AND id != ?`,
+    ).run(now, me.id, reqRow.user_id, reqRow.id);
+  }
+  res.json({ ok: true, status: newStatus });
+});
+
+// =============================================================
+// POST /api/classes/:id/kick/:userId  教师把学生踢出班级
+// =============================================================
+router.post('/:id/kick/:userId', requireAuth, requireRole('teacher', 'admin'), (req: Request, res: Response) => {
+  const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(req.params.id) as ClassRow | undefined;
+  if (!cls) { res.status(404).json({ error: 'Class not found' }); return; }
+  const me = req.authUser!;
+  if (me.role !== 'admin' && cls.teacher_id !== me.id) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+  db.prepare(`UPDATE users SET class_id = NULL WHERE id = ? AND class_id = ?`).run(req.params.userId, cls.id);
+  res.json({ ok: true });
 });
 
 // =============================================================

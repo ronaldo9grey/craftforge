@@ -329,57 +329,55 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v2 cnc', w - 30, h - 8);
     }
 
-    // 注塑场景：4 大功能分区底色 + 区域标签
+    // 注塑场景：4 大功能分区底色 + 区域标签 (v3 布局)
     if (activeTemplate === 'injection') {
-      // 区域 1：主机区（y=90~270）- 浅琥珀（呼应注塑机熔融塑料颜色）
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.06)';
-      ctx.fillRect(0, 90, w, 180);
-      // 区域 2：物流主线区（y=280~390）- 浅青
-      ctx.fillStyle = 'rgba(34, 211, 238, 0.06)';
-      ctx.fillRect(0, 280, w, 110);
-      // 区域 3：辅助系统区（y=410~520）- 浅蓝灰
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.10)';
-      ctx.fillRect(0, 410, w, 110);
-      // 区域 4：电气控制区（y=560~660）- 暗蓝
+      // 区域 1：主机区（y=40~245）- 浅琥珀（呼应注塑机熔融塑料颜色）
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
+      ctx.fillRect(0, 40, w, 205);
+      // 区域 2：物流主线区（y=250~375）- 浅青
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.07)';
+      ctx.fillRect(0, 250, w, 125);
+      // 区域 3：辅助系统区（y=380~540）- 浅蓝灰
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
+      ctx.fillRect(0, 380, w, 160);
+      // 区域 4：电气控制区（y=560~665）- 暗蓝
       ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
-      ctx.fillRect(0, 560, w, 100);
+      ctx.fillRect(0, 560, w, 105);
 
-      // 区域分隔细虚线
-      ctx.strokeStyle = '#334155';
+      // 区域分隔细虚线（在区间之间画明显分隔线）
+      ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 6]);
-      [275, 400, 550].forEach((yy) => {
+      ctx.setLineDash([5, 5]);
+      [247, 377, 555].forEach((yy) => {
         ctx.beginPath();
-        ctx.moveTo(20, yy);
-        ctx.lineTo(w - 20, yy);
+        ctx.moveTo(10, yy);
+        ctx.lineTo(w - 10, yy);
         ctx.stroke();
       });
       ctx.setLineDash([]);
 
       // 区域标签（左侧浅色文字）
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 主机区', 25, 100);
-      ctx.fillText('▎ 物流主线', 25, 282);
-      ctx.fillText('▎ 辅助系统', 25, 412);
-      ctx.fillText('▎ 电气控制', 25, 562);
+      ctx.fillText('▎ 主机区', 15, 50);
+      ctx.fillText('▎ 物流主线', 15, 255);
+      ctx.fillText('▎ 辅助系统', 15, 385);
+      ctx.fillText('▎ 电气控制', 15, 565);
 
       // 物料流主方向箭头提示
-      ctx.strokeStyle = '#22d3ee';
       ctx.fillStyle = '#22d3ee';
-      ctx.lineWidth = 2;
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText('原料 → 干燥 → 注塑 → 模具 → 检测 → 下料', w - 30, 286);
+      ctx.fillText('原料 → 干燥 → 注塑 → 模具 → 检测 → 下料', w - 30, 255);
 
       // 🎯 版本水印
       ctx.fillStyle = '#f59e0b';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v2 injection', w - 30, h - 8);
+      ctx.fillText('v3 injection', w - 30, h - 8);
     }
   };
 

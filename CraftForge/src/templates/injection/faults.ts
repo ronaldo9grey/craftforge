@@ -160,4 +160,85 @@ export const injectionFaults: Fault[] = [
     ],
     hints: ['干燥温度只有 60°C 显然不够', '加热丝坏了或风量不足', '不烘干直接干会出银纹'],
   },
+
+  // ============================================================
+  // v3 新增：4 个新设备故障（涵盖 ROB / MTC / CONV-201 / CONV-202）
+  // ============================================================
+  {
+    id: 'IF009',
+    name: '模温机失效（模具偏冷）',
+    description: '模温机实际温度跌至 30°C 远低于设定 60°C，模具温度连锁降到 35°C，制品出现缩痕和欠注',
+    affectedEquipments: ['MTC-301', 'MOLD-201', 'INST-201'],
+    symptoms: [
+      { equipmentId: 'MTC-301',  param: 'mtc_actual_temp', paramName: '模温机实际温度', value: 30, unit: '°C', normal: '45-80', trend: 'down' },
+      { equipmentId: 'MTC-301',  param: 'mtc_flow',        paramName: '模温机循环流量', value: 5,  unit: 'L/min', normal: '10-16', trend: 'down' },
+      { equipmentId: 'MOLD-201', param: 'mold_temp',       paramName: '模具温度',       value: 35, unit: '°C', normal: '45-75', trend: 'down' },
+    ],
+    cause: '模温机循环泵故障或加热器烧坏，模具温度无法维持设定值',
+    steps: [
+      { id: 's1', action: '检查模温机循环泵和加热器', correct: true, order: 1 },
+      { id: 's2', action: '提高模温机设定温度到 70°C', correct: true, order: 2 },
+      { id: 's3', action: '继续生产观察', correct: false, order: 3 },
+    ],
+    hints: ['模温只有 30°C 没法成型', '循环流量只有 5 L/min，泵肯定有问题', '光设高温没用，循环泵不动白搭'],
+  },
+  {
+    id: 'IF010',
+    name: '机械手吸盘真空不足（脱件/卡死）',
+    description: '取件机械手真空度从 -85 升至 -40 kPa（真空度变弱），取件成功率从 99% 降到 75%，制品脱落造成模具堵',
+    affectedEquipments: ['ROB-201', 'ST-202'],
+    symptoms: [
+      { equipmentId: 'ROB-201', param: 'vacuum_pressure', paramName: '吸盘真空度', value: -40, unit: 'kPa', normal: '-95~-70', trend: 'up' },
+      { equipmentId: 'ROB-201', param: 'pick_success',   paramName: '取件成功率', value: 75,  unit: '%',   normal: '97-100', trend: 'down' },
+      { equipmentId: 'ST-202',  param: 'pass_rate',      paramName: '合格率',     value: 88,  unit: '%',   normal: '95-100', trend: 'down' },
+    ],
+    cause: '吸盘老化漏气或真空泵故障，无法维持设定真空度，制品反复脱落',
+    steps: [
+      { id: 's1', action: '检查吸盘密封圈是否破损', correct: true, order: 1 },
+      { id: 's2', action: '检查真空泵和真空管路', correct: true, order: 2 },
+      { id: 's3', action: '加快机械手速度补偿', correct: false, order: 3 },
+    ],
+    hints: ['真空度 -40 kPa 根本吸不住', '十有八九是吸盘老化漏气', '速度快反而更容易脱'],
+    // 正反馈发散：吸盘老化随时间加重，真空度继续走弱
+    divergence: {
+      drivers: [
+        { equipmentId: 'ROB-201', param: 'vacuum_pressure', rate: 0.5, cap: -20, delaySec: 30 },
+      ],
+    },
+  },
+  {
+    id: 'IF011',
+    name: '上料输送带堵料（短射风险）',
+    description: '上料带速度跌至 0.2 m/min，上料速率仅 3 kg/h 远低于正常 12，料斗料位缓慢下降，预警短射',
+    affectedEquipments: ['CONV-201', 'HOP-201'],
+    symptoms: [
+      { equipmentId: 'CONV-201', param: 'conveyor_speed', paramName: '上料带速度', value: 0.2, unit: 'm/min', normal: '0.5-1.2', trend: 'down' },
+      { equipmentId: 'CONV-201', param: 'feed_rate',      paramName: '上料速率',   value: 3,   unit: 'kg/h',  normal: '8-18', trend: 'down' },
+      { equipmentId: 'HOP-201',  param: 'hopper_level',   paramName: '料斗料位',   value: 28,  unit: '%',    normal: '30-90', trend: 'down' },
+    ],
+    cause: '输送带颗粒卡死或电机过载，物料无法持续供给',
+    steps: [
+      { id: 's1', action: '停机清理输送带卡料', correct: true, order: 1 },
+      { id: 's2', action: '检查电机电流和驱动器', correct: true, order: 2 },
+      { id: 's3', action: '提高干燥温度补救', correct: false, order: 3 },
+    ],
+    hints: ['带速才 0.2，肯定卡料了', '上料 3 kg/h 一会就没料注射', '清完料再开机，别硬转'],
+  },
+  {
+    id: 'IF012',
+    name: '成品输送带停转（制品堆积）',
+    description: '成品输送带速度降至 0.1 m/min（接近停止），在途制品堆积至 32 件超出 normal 30，机械手放件区拥堵',
+    affectedEquipments: ['CONV-202', 'ROB-201'],
+    symptoms: [
+      { equipmentId: 'CONV-202', param: 'conveyor_speed', paramName: '成品带速度', value: 0.1, unit: 'm/min', normal: '0.4-1.0', trend: 'down' },
+      { equipmentId: 'CONV-202', param: 'product_count',  paramName: '在途制品数', value: 32,  unit: '件',    normal: '0-30', trend: 'up' },
+    ],
+    cause: '输送带驱动电机故障或张紧轮卡死，制品无法及时下线导致堆积',
+    steps: [
+      { id: 's1', action: '检查驱动电机和张紧轮', correct: true, order: 1 },
+      { id: 's2', action: '清理堆积制品', correct: true, order: 2 },
+      { id: 's3', action: '加快机械手取件', correct: false, order: 3 },
+    ],
+    hints: ['带子不转才 0.1，电机十有八九坏了', '堆 32 件了机械手放不下来', '快取没用，下游卡了越堆越多'],
+  },
 ];

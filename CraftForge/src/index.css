@@ -107,3 +107,39 @@ input[type="range"]::-moz-range-thumb {
   border: none;
   box-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
+
+/* ========== 打印样式：实训报告 PDF 导出 ========== */
+.print-only { display: none; }
+
+@media print {
+  /* 隐藏除报告区之外的所有元素 */
+  body * { visibility: hidden; }
+  .printable-report, .printable-report * { visibility: visible; }
+  .printable-report { position: absolute; left: 0; top: 0; width: 100%; padding: 24px !important; }
+
+  /* 仅打印元素恢复显示 */
+  .print-only { display: block !important; }
+  .no-print { display: none !important; }
+
+  /* 打印用浅色背景，所有文字强制深色 */
+  .printable-report { background: white !important; color: black !important; }
+  .printable-report * { color: black !important; background: transparent !important; }
+
+  /* 卡片边框还在但不要圆角阴影 */
+  .printable-report [class*="rounded"] { border-color: #d4d4d4 !important; box-shadow: none !important; }
+
+  /* 等级徽章保留主色调 */
+  .printable-report .text-yellow-400 { color: #a16207 !important; }
+  .printable-report .text-green-400  { color: #15803d !important; }
+  .printable-report .text-blue-400   { color: #1d4ed8 !important; }
+  .printable-report .text-orange-400 { color: #c2410c !important; }
+  .printable-report .text-red-400    { color: #b91c1c !important; }
+
+  /* 隐藏成绩条形图填充 (打印没必要) */
+  /* .printable-report .bg-gradient-to-r { background: #999 !important; } */
+
+  /* 分页：操作流水里每 30 条左右自动分页（保险起见）*/
+  .printable-report > div { page-break-inside: auto; }
+
+  @page { size: A4; margin: 14mm 12mm; }
+}

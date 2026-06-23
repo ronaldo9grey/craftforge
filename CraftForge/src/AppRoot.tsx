@@ -7,6 +7,7 @@ import { StudentDashboard } from '@/pages/StudentDashboard';
 import { TeacherDashboard } from '@/pages/TeacherDashboard';
 import { HistoryListPage } from '@/pages/HistoryListPage';
 import { HistoryDetailPage } from '@/pages/HistoryDetailPage';
+import { ToastHost } from '@/components/Toast';
 import App from './App';
 
 /**
@@ -47,16 +48,23 @@ export const AppRoot: React.FC = () => {
     );
   }
 
-  if (!user) return <LoginPage />;
-  if (user.must_change_pw) return <ChangePasswordRequiredPage />;
+  // 统一渲染：用 fragment 把主页面 + ToastHost 一起返回
+  const renderPage = () => {
+    if (!user) return <LoginPage />;
+    if (user.must_change_pw) return <ChangePasswordRequiredPage />;
+    if (page === 'workbench') return <App />;
+    if (page === 'history') return <HistoryListPage />;
+    if (page === 'history-detail') return <HistoryDetailPage />;
+    if (user.role === 'student') return <StudentDashboard />;
+    return <TeacherDashboard />;
+  };
 
-  if (page === 'workbench') return <App />;
-  if (page === 'history') return <HistoryListPage />;
-  if (page === 'history-detail') return <HistoryDetailPage />;
-
-  // page === 'dashboard'
-  if (user.role === 'student') return <StudentDashboard />;
-  return <TeacherDashboard />;
+  return (
+    <>
+      {renderPage()}
+      <ToastHost />
+    </>
+  );
 };
 
 

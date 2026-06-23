@@ -253,7 +253,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v8.1 welding', w - 30, h - 8);
+      ctx.fillText('v8.2 welding', w - 30, h - 8);
 
       // 安全通道（黄虚线 y=395，再下移 30px 以彻底避开上方主输送线设备文字）
       // 主输送线底 320 → 黄虚线 395：75px 净距

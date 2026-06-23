@@ -84,7 +84,7 @@ export const TeacherDashboard: React.FC = () => {
               新建班级
             </button>
             <button
-              onClick={() => setPage('workbench')}
+              onClick={() => setPage('gallery')}
               className="px-4 py-2 text-sm bg-success/20 hover:bg-success/30 text-success border border-success/40 rounded-lg flex items-center gap-2"
             >
               <Play className="w-4 h-4" />

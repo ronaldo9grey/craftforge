@@ -12,6 +12,8 @@ import { useAIStore } from '@/stores/aiStore';
 import { useDrillStore } from '@/stores/drillStore';
 import { DynamicsEngine } from '@/engine/dynamics';
 import { fccCouplings } from '@/templates/fcc/dynamics';
+import { weldingCouplings } from '@/templates/welding/dynamics';
+import { cncCouplings } from '@/templates/cnc/dynamics';
 
 function App() {
   const activeTemplate = useUIStore((state) => state.activeTemplate);
@@ -43,8 +45,17 @@ function App() {
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, fccCouplings);
       engine.start();
       engineRef.current = engine;
+    } else if (activeTemplate === 'welding') {
+      // 焊装模板：电流→电压/温度、保护气→焊缝质量、夹紧力→定位误差 等 14 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, weldingCouplings);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'cnc') {
+      // CNC 模板：转速→负载→温度、磨损→振动→尺寸偏差、冷却液→温度/磨损 等 18 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, cncCouplings);
+      engine.start();
+      engineRef.current = engine;
     }
-    // 其他模板（如 welding）暂未提供耦合规则，可在后续扩展
 
     // 组件卸载或 activeTemplate 变化时停止旧引擎
     return () => {

@@ -1,16 +1,20 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// 数控加工车间布局 v2：1280×700，强化"物料流路径 + 功能分区"两条主线
-// 设计思路（俯视厂房布局）：
-//   ┌─────────────────────────────────────────────────────────┐
-//   │ 行 1 (y=110~250) ：双工位加工区  ─ 数控车床/数控铣床并列 │
-//   │ 行 2 (y=300~370) ：物流主线      ─ 来料 → 上料 → 工件 → 测量 → 下料  │
-//   │ 行 3 (y=420~500) ：辅助系统区    ─ 冷却液泵 / 排屑器 / 数控面板    │
-//   │ 行 4 (y=580~660) ：电气控制区    ─ 总控柜                    │
-//   └─────────────────────────────────────────────────────────┘
-//   物料流：ST-201 → FIX-201 → CNC-101 ⇆ CNC-102 → INST-201 → ST-202
-//   夹具位居中：工件从夹具同时分送给两台机床
-//   所有坐标严格 ≤ (1260, 690)
+// 数控加工车间布局 v3（动力学版）：在 v2 基础上为所有参数补 tau
+// 让 DynamicsEngine 接管后参数变化"有惯性"
+//
+// 时间常数尺度：
+//   主轴转速 / 进给：~0.5-1s（伺服快速响应）
+//   主轴负载 / 振动：~1s（机械响应）
+//   主轴温度 / 控制柜温度：~25s（热惯性大）
+//   刀具磨损 / 尺寸偏差 / 粗糙度：~10s（缓慢累积）
+//   冷却液 / 排屑：~1-2s
+const TAU_SERVO = 0.8;     // 伺服类（转速 / 进给）
+const TAU_LOAD = 1;        // 负载 / 振动
+const TAU_TEMP = 25;       // 温度类
+const TAU_QUALITY = 10;    // 加工质量（粗糙度 / 尺寸偏差 / 磨损）
+const TAU_FLOW = 1.5;      // 冷却液 / 排屑
+const TAU_FORCE = 1.5;     // 夹紧力 / 同心度
 export const cncEquipments: Equipment[] = [
   // —— 行 1：双工位加工区（两台数控机床并列） ——
   {
@@ -18,12 +22,12 @@ export const cncEquipments: Equipment[] = [
     x: 290, y: 110, width: 200, height: 140,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'spindle_speed', name: '主轴转速', value: 1800, unit: 'rpm', min: 500, max: 4000, normalMin: 1500, normalMax: 2200, trend: [] },
-      { id: 'feed_rate',     name: '进给速度', value: 0.15, unit: 'mm/r', min: 0.05, max: 0.5, normalMin: 0.1, normalMax: 0.2, trend: [] },
-      { id: 'spindle_load',  name: '主轴负载', value: 55, unit: '%', min: 0, max: 100, normalMin: 30, normalMax: 75, trend: [] },
-      { id: 'spindle_temp',  name: '主轴温度', value: 48, unit: '°C', min: 20, max: 90, normalMin: 35, normalMax: 60, trend: [] },
-      { id: 'vibration',     name: '振动值', value: 1.2, unit: 'mm/s', min: 0, max: 10, normalMin: 0, normalMax: 2.5, trend: [] },
-      { id: 'tool_wear',     name: '刀具磨损', value: 15, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 60, trend: [] },
+      { id: 'spindle_speed', name: '主轴转速', value: 1800, unit: 'rpm', min: 500, max: 4000, normalMin: 1500, normalMax: 2200, trend: [], tau: TAU_SERVO },
+      { id: 'feed_rate',     name: '进给速度', value: 0.15, unit: 'mm/r', min: 0.05, max: 0.5, normalMin: 0.1, normalMax: 0.2, trend: [], tau: TAU_SERVO },
+      { id: 'spindle_load',  name: '主轴负载', value: 55, unit: '%', min: 0, max: 100, normalMin: 30, normalMax: 75, trend: [], tau: TAU_LOAD },
+      { id: 'spindle_temp',  name: '主轴温度', value: 48, unit: '°C', min: 20, max: 90, normalMin: 35, normalMax: 60, trend: [], tau: TAU_TEMP },
+      { id: 'vibration',     name: '振动值', value: 1.2, unit: 'mm/s', min: 0, max: 10, normalMin: 0, normalMax: 2.5, trend: [], tau: TAU_LOAD },
+      { id: 'tool_wear',     name: '刀具磨损', value: 15, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 60, trend: [], tau: TAU_QUALITY },
     ],
   },
   {
@@ -31,12 +35,12 @@ export const cncEquipments: Equipment[] = [
     x: 790, y: 110, width: 200, height: 140,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'spindle_speed', name: '主轴转速', value: 6000, unit: 'rpm', min: 1000, max: 12000, normalMin: 5500, normalMax: 7000, trend: [] },
-      { id: 'feed_rate',     name: '进给速度', value: 800, unit: 'mm/min', min: 100, max: 3000, normalMin: 600, normalMax: 1200, trend: [] },
-      { id: 'spindle_load',  name: '主轴负载', value: 48, unit: '%', min: 0, max: 100, normalMin: 30, normalMax: 75, trend: [] },
-      { id: 'spindle_temp',  name: '主轴温度', value: 52, unit: '°C', min: 20, max: 90, normalMin: 35, normalMax: 60, trend: [] },
-      { id: 'vibration',     name: '振动值', value: 1.5, unit: 'mm/s', min: 0, max: 10, normalMin: 0, normalMax: 2.5, trend: [] },
-      { id: 'tool_wear',     name: '刀具磨损', value: 20, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 60, trend: [] },
+      { id: 'spindle_speed', name: '主轴转速', value: 6000, unit: 'rpm', min: 1000, max: 12000, normalMin: 5500, normalMax: 7000, trend: [], tau: TAU_SERVO },
+      { id: 'feed_rate',     name: '进给速度', value: 800, unit: 'mm/min', min: 100, max: 3000, normalMin: 600, normalMax: 1200, trend: [], tau: TAU_SERVO },
+      { id: 'spindle_load',  name: '主轴负载', value: 48, unit: '%', min: 0, max: 100, normalMin: 30, normalMax: 75, trend: [], tau: TAU_LOAD },
+      { id: 'spindle_temp',  name: '主轴温度', value: 52, unit: '°C', min: 20, max: 90, normalMin: 35, normalMax: 60, trend: [], tau: TAU_TEMP },
+      { id: 'vibration',     name: '振动值', value: 1.5, unit: 'mm/s', min: 0, max: 10, normalMin: 0, normalMax: 2.5, trend: [], tau: TAU_LOAD },
+      { id: 'tool_wear',     name: '刀具磨损', value: 20, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 60, trend: [], tau: TAU_QUALITY },
     ],
   },
 
@@ -46,7 +50,7 @@ export const cncEquipments: Equipment[] = [
     x: 50, y: 300, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'stock_count', name: '毛坯数量', value: 35, unit: '件', min: 0, max: 100, normalMin: 10, normalMax: 80, trend: [] },
+      { id: 'stock_count', name: '毛坯数量', value: 35, unit: '件', min: 0, max: 100, normalMin: 10, normalMax: 80, trend: [], tau: 5 },
     ],
   },
   {
@@ -54,8 +58,8 @@ export const cncEquipments: Equipment[] = [
     x: 600, y: 305, width: 80, height: 70,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'clamp_force', name: '夹紧力', value: 8000, unit: 'N', min: 5000, max: 12000, normalMin: 7500, normalMax: 9500, trend: [] },
-      { id: 'concentricity', name: '同心度', value: 0.02, unit: 'mm', min: 0, max: 0.2, normalMin: 0, normalMax: 0.05, trend: [] },
+      { id: 'clamp_force', name: '夹紧力', value: 8000, unit: 'N', min: 5000, max: 12000, normalMin: 7500, normalMax: 9500, trend: [], tau: TAU_FORCE },
+      { id: 'concentricity', name: '同心度', value: 0.02, unit: 'mm', min: 0, max: 0.2, normalMin: 0, normalMax: 0.05, trend: [], tau: TAU_FORCE },
     ],
   },
   {
@@ -63,9 +67,9 @@ export const cncEquipments: Equipment[] = [
     x: 1030, y: 305, width: 80, height: 70,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'dimension_error', name: '尺寸偏差', value: 0.01, unit: 'mm', min: -0.5, max: 0.5, normalMin: -0.05, normalMax: 0.05, trend: [] },
-      { id: 'surface_ra', name: '表面粗糙度', value: 1.6, unit: 'μm', min: 0.4, max: 6.3, normalMin: 0.8, normalMax: 3.2, trend: [] },
-      { id: 'pass_rate', name: '合格率', value: 98, unit: '%', min: 0, max: 100, normalMin: 95, normalMax: 100, trend: [] },
+      { id: 'dimension_error', name: '尺寸偏差', value: 0.01, unit: 'mm', min: -0.5, max: 0.5, normalMin: -0.05, normalMax: 0.05, trend: [], tau: TAU_QUALITY },
+      { id: 'surface_ra', name: '表面粗糙度', value: 1.6, unit: 'μm', min: 0.4, max: 6.3, normalMin: 0.8, normalMax: 3.2, trend: [], tau: TAU_QUALITY },
+      { id: 'pass_rate', name: '合格率', value: 98, unit: '%', min: 0, max: 100, normalMin: 95, normalMax: 100, trend: [], tau: TAU_QUALITY },
     ],
   },
   {
@@ -73,7 +77,7 @@ export const cncEquipments: Equipment[] = [
     x: 1170, y: 300, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'finished_count', name: '成品数量', value: 12, unit: '件', min: 0, max: 100, normalMin: 0, normalMax: 50, trend: [] },
+      { id: 'finished_count', name: '成品数量', value: 12, unit: '件', min: 0, max: 100, normalMin: 0, normalMax: 50, trend: [], tau: 5 },
     ],
   },
 
@@ -83,9 +87,9 @@ export const cncEquipments: Equipment[] = [
     x: 100, y: 430, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'coolant_flow', name: '冷却液流量', value: 12, unit: 'L/min', min: 0, max: 25, normalMin: 10, normalMax: 16, trend: [] },
-      { id: 'coolant_pressure', name: '冷却压力', value: 0.4, unit: 'MPa', min: 0, max: 1.0, normalMin: 0.3, normalMax: 0.6, trend: [] },
-      { id: 'coolant_concentration', name: '冷却液浓度', value: 8, unit: '%', min: 0, max: 20, normalMin: 6, normalMax: 10, trend: [] },
+      { id: 'coolant_flow', name: '冷却液流量', value: 12, unit: 'L/min', min: 0, max: 25, normalMin: 10, normalMax: 16, trend: [], tau: TAU_FLOW },
+      { id: 'coolant_pressure', name: '冷却压力', value: 0.4, unit: 'MPa', min: 0, max: 1.0, normalMin: 0.3, normalMax: 0.6, trend: [], tau: TAU_FLOW },
+      { id: 'coolant_concentration', name: '冷却液浓度', value: 8, unit: '%', min: 0, max: 20, normalMin: 6, normalMax: 10, trend: [], tau: 8 },
     ],
   },
   {
@@ -93,8 +97,8 @@ export const cncEquipments: Equipment[] = [
     x: 470, y: 445, width: 340, height: 50,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'chip_load', name: '切屑负载', value: 35, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 70, trend: [] },
-      { id: 'conv_speed', name: '排屑速度', value: 0.5, unit: 'm/min', min: 0, max: 2.0, normalMin: 0.3, normalMax: 1.0, trend: [] },
+      { id: 'chip_load', name: '切屑负载', value: 35, unit: '%', min: 0, max: 100, normalMin: 0, normalMax: 70, trend: [], tau: 5 },
+      { id: 'conv_speed', name: '排屑速度', value: 0.5, unit: 'm/min', min: 0, max: 2.0, normalMin: 0.3, normalMax: 1.0, trend: [], tau: TAU_FLOW },
     ],
   },
   {
@@ -102,9 +106,9 @@ export const cncEquipments: Equipment[] = [
     x: 1090, y: 430, width: 110, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'program_no', name: '当前程序号', value: 1024, unit: '', min: 0, max: 9999, normalMin: 0, normalMax: 9999, trend: [] },
-      { id: 'cycle_count', name: '工件计数', value: 12, unit: '件', min: 0, max: 999, normalMin: 0, normalMax: 999, trend: [] },
-      { id: 'override',    name: '进给倍率', value: 100, unit: '%', min: 0, max: 200, normalMin: 80, normalMax: 120, trend: [] },
+      { id: 'program_no', name: '当前程序号', value: 1024, unit: '', min: 0, max: 9999, normalMin: 0, normalMax: 9999, trend: [], inertia: false },
+      { id: 'cycle_count', name: '工件计数', value: 12, unit: '件', min: 0, max: 999, normalMin: 0, normalMax: 999, trend: [], tau: 5 },
+      { id: 'override',    name: '进给倍率', value: 100, unit: '%', min: 0, max: 200, normalMin: 80, normalMax: 120, trend: [], tau: 1 },
     ],
   },
 
@@ -114,9 +118,9 @@ export const cncEquipments: Equipment[] = [
     x: 560, y: 580, width: 160, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
-      { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [] },
-      { id: 'comm_status',  name: '通讯状态', value: 1, unit: '', min: 0, max: 1, normalMin: 1, normalMax: 1, trend: [] },
-      { id: 'cnc_temp',     name: '控制柜温度', value: 32, unit: '°C', min: 0, max: 60, normalMin: 20, normalMax: 40, trend: [] },
+      { id: 'main_voltage', name: '主电压', value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },
+      { id: 'comm_status',  name: '通讯状态', value: 1, unit: '', min: 0, max: 1, normalMin: 1, normalMax: 1, trend: [], inertia: false },
+      { id: 'cnc_temp',     name: '控制柜温度', value: 32, unit: '°C', min: 0, max: 60, normalMin: 20, normalMax: 40, trend: [], tau: TAU_TEMP },
     ],
   },
 ];

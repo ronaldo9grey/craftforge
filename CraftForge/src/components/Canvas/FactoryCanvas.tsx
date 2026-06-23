@@ -253,15 +253,17 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v8 welding', w - 30, h - 8);
+      ctx.fillText('v8.1 welding', w - 30, h - 8);
 
-      // 安全通道（黄虚线 y=365，与主输送线底 320 留 45px、与下排机器人 440 留 75px）
+      // 安全通道（黄虚线 y=395，再下移 30px 以彻底避开上方主输送线设备文字）
+      // 主输送线底 320 → 黄虚线 395：75px 净距
+      // 黄虚线 395 → 下排机器人 440：45px 净距
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);
       ctx.beginPath();
-      ctx.moveTo(20, 365);
-      ctx.lineTo(w - 20, 365);
+      ctx.moveTo(20, 395);
+      ctx.lineTo(w - 20, 395);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -270,7 +272,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 物流/安全通道', 25, 370);
+      ctx.fillText('▎ 物流/安全通道', 25, 400);
       ctx.fillText('▎ 控制区', 25, 588);
     }
 

@@ -608,14 +608,12 @@ export const FactoryCanvas: React.FC = () => {
       // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）+ DC− 回路示意 ----
       const busY = 505;
 
-      // 实时电流强度（用于联动所有走马灯速度 + 亮度；故障时电流偏离 → 流速显眼变化）
+      // 实时电流强度（用于联动所有脉冲球速度；故障时电流偏离 → 球速肉眼可见变化）
       const _tra = equipmentsRef.current.find((e) => e.id === 'TRA-301');
       const _curParam = _tra?.parameters.find((p) => p.id === 'bus_current');
       const _curVal = _curParam ? _curParam.value : 600;
       // 归一化到正常 600 kA 为 1.0；偏离则线性放大/缩小
       const currentRatio = Math.max(0.3, Math.min(2.0, _curVal / 600));
-      // 走马灯速度倍率（电流越大跑得越快，故障跌到 0 → 流速接近停）
-      const dcSpeed = 60 * currentRatio;
 
       // 阴极母线粗条
       ctx.fillStyle = '#facc15';
@@ -624,18 +622,25 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineWidth = 1;
       ctx.strokeRect(30, busY, w - 60, 8);
 
-      // 内部箭头流向（动画走马灯 → 表明电流从右到左回流到 TRA-301）
-      const dcAnim = (Date.now() / 1000) * dcSpeed;
-      ctx.setLineDash([12, 6]);
-      ctx.lineDashOffset = dcAnim;
-      ctx.strokeStyle = '#7c2d12';
-      ctx.lineWidth = 2.5;
+      // 阴极母线电流脉冲球：白色发光球从右往左滑过整条母线，4s 一周期
+      // 速度跟 currentRatio 联动 — 故障电流变小 → 球变慢
+      const tNow = Date.now() / 1000;
+      const busPeriod = 4 / Math.max(0.3, currentRatio);
+      const busPhase = (tNow / busPeriod) % 1;
+      const busPulseX = (w - 35) - busPhase * (w - 70);  // 从右到左
+      const busPulseY = busY + 4;
+      const busGrad = ctx.createRadialGradient(busPulseX, busPulseY, 0, busPulseX, busPulseY, 10);
+      busGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      busGrad.addColorStop(0.5, 'rgba(254,240,138,0.4)');
+      busGrad.addColorStop(1, 'rgba(254,240,138,0)');
+      ctx.fillStyle = busGrad;
       ctx.beginPath();
-      ctx.moveTo(35, busY + 4);
-      ctx.lineTo(w - 35, busY + 4);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
+      ctx.arc(busPulseX, busPulseY, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(busPulseX, busPulseY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
 
       // 接地三角
       ctx.fillStyle = '#94a3b8';
@@ -664,17 +669,22 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineTo(55, 528);
       ctx.closePath();
       ctx.fill();
-      // DC− 走马灯（从上到下流回变压器）
-      ctx.setLineDash([10, 5]);
-      ctx.lineDashOffset = -dcAnim;
-      ctx.strokeStyle = '#fef9c3';
-      ctx.lineWidth = 1.8;
+      // DC− 电流脉冲球（从阴极母线左端 ↓ 流回变压器，3.5s 一周期）
+      const dcMinusPeriod = 3.5 / Math.max(0.3, currentRatio);
+      const dcMinusPhase = (tNow / dcMinusPeriod) % 1;
+      const dcMinusY = (busY + 8) + dcMinusPhase * (535 - (busY + 8));
+      const dcMinusGrad = ctx.createRadialGradient(50, dcMinusY, 0, 50, dcMinusY, 9);
+      dcMinusGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      dcMinusGrad.addColorStop(0.5, 'rgba(254,240,138,0.45)');
+      dcMinusGrad.addColorStop(1, 'rgba(254,240,138,0)');
+      ctx.fillStyle = dcMinusGrad;
       ctx.beginPath();
-      ctx.moveTo(50, busY + 8);
-      ctx.lineTo(50, 535);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
+      ctx.arc(50, dcMinusY, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(50, dcMinusY, 2.2, 0, Math.PI * 2);
+      ctx.fill();
 
       // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -720,19 +730,40 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('+', dcPlusX, 535 - 4);
-      // 走马灯（从下到上）— 加强亮度和粗度
-      ctx.setLineDash([10, 5]);
-      ctx.lineDashOffset = -dcAnim;
-      ctx.strokeStyle = '#fee2e2';
-      ctx.lineWidth = 1.8;
+      // DC+ 电流脉冲球（沿主回路三段折线 4s 一周期）
+      // 路径：(dcPlusX, 535) → (dcPlusX, busY+22) → (w-35, busY+22) → (w-35, 472)
+      const dcPlusPeriod = 4 / Math.max(0.3, currentRatio);
+      const dcPlusPhase = (tNow / dcPlusPeriod) % 1;
+      const seg1Len = 535 - (busY + 22);     // 段 1：竖向上
+      const seg2Len = (w - 35) - dcPlusX;    // 段 2：横向右
+      const seg3Len = (busY + 22) - 472;     // 段 3：竖向上
+      const totalLen = seg1Len + seg2Len + seg3Len;
+      const traveled = dcPlusPhase * totalLen;
+      let dcPlusBallX: number, dcPlusBallY: number;
+      if (traveled < seg1Len) {
+        dcPlusBallX = dcPlusX;
+        dcPlusBallY = 535 - traveled;
+      } else if (traveled < seg1Len + seg2Len) {
+        const tSeg = traveled - seg1Len;
+        dcPlusBallX = dcPlusX + tSeg;
+        dcPlusBallY = busY + 22;
+      } else {
+        const tSeg = traveled - seg1Len - seg2Len;
+        dcPlusBallX = w - 35;
+        dcPlusBallY = (busY + 22) - tSeg;
+      }
+      const dcPlusGrad = ctx.createRadialGradient(dcPlusBallX, dcPlusBallY, 0, dcPlusBallX, dcPlusBallY, 10);
+      dcPlusGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+      dcPlusGrad.addColorStop(0.5, 'rgba(254,202,202,0.5)');
+      dcPlusGrad.addColorStop(1, 'rgba(254,202,202,0)');
+      ctx.fillStyle = dcPlusGrad;
       ctx.beginPath();
-      ctx.moveTo(dcPlusX, 530);
-      ctx.lineTo(dcPlusX, busY + 22);
-      ctx.lineTo(w - 35, busY + 22);
-      ctx.lineTo(w - 35, 472);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.lineDashOffset = 0;
+      ctx.arc(dcPlusBallX, dcPlusBallY, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(dcPlusBallX, dcPlusBallY, 2.5, 0, Math.PI * 2);
+      ctx.fill();
 
       // ---- (3) 灯光氛围 ----
       const cellGlow = ctx.createRadialGradient(w / 2, 250, 100, w / 2, 250, 700);
@@ -785,7 +816,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v13 aluminum  (电流流动可视化 阳极母线+导杆+阴极钢棒+主回路)', w - 30, h - 8);
+      ctx.fillText('v14 aluminum  (走马灯→白色脉冲球 柔和易读)', w - 30, h - 8);
     }
   };
 

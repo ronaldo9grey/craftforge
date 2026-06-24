@@ -823,18 +823,25 @@ export class EquipmentRenderer {
         ctx.moveTo(anodeAreaL - 8, anodeBusY + 2);
         ctx.lineTo(anodeAreaR + 8, anodeBusY + 2);
         ctx.stroke();
-        // 阳极母线电流走马灯：表面叠加流动虚线，表达电流从 + 极向右扩散到 22 阳极
+        // 阳极母线电流脉冲：一颗白色发光球从左 + 极向右滑过（2.5s 一周期），柔和易读
         const animTLocal = animTime ?? Date.now() / 1000;
-        ctx.setLineDash([10, 6]);
-        ctx.lineDashOffset = -animTLocal * 40;
-        ctx.strokeStyle = '#fde047';
-        ctx.lineWidth = 2;
+        const anodeBusPhase = (animTLocal / 2.5) % 1;
+        const anodePulseX = (anodeAreaL - 8) + anodeBusPhase * (anodeAreaW + 16);
+        const anodePulseY = anodeBusY + 4.5;
+        // 外辉光
+        const anodeBusGrad = ctx.createRadialGradient(anodePulseX, anodePulseY, 0, anodePulseX, anodePulseY, 8);
+        anodeBusGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+        anodeBusGrad.addColorStop(0.4, 'rgba(254,240,138,0.5)');
+        anodeBusGrad.addColorStop(1, 'rgba(254,240,138,0)');
+        ctx.fillStyle = anodeBusGrad;
         ctx.beginPath();
-        ctx.moveTo(anodeAreaL - 8, anodeBusY + 4.5);
-        ctx.lineTo(anodeAreaR + 8, anodeBusY + 4.5);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.lineDashOffset = 0;
+        ctx.arc(anodePulseX, anodePulseY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // 中心白热
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(anodePulseX, anodePulseY, 2.2, 0, Math.PI * 2);
+        ctx.fill();
         // "+" 极标签（左端）带圆形背景
         ctx.fillStyle = '#dc2626';
         ctx.beginPath();
@@ -861,17 +868,21 @@ export class EquipmentRenderer {
           ctx.lineTo(ax, stemY2);
           ctx.stroke();
           // ④' 电流脉冲粒子（白色亮点沿导杆从上往下 → 表示电流流向阳极块）
-          // 每根导杆有 1 个粒子在循环；不同导杆相位错开形成"瀑布"感
-          const pulsePhase = ((animTLocal * 1.5 + i * 0.07) % 1);
+          // 节奏放慢到 1.2s 一颗，相位错开避免太密
+          const pulsePhase = ((animTLocal * 0.85 + i * 0.13) % 1);
           const pulseY = stemY1 + pulsePhase * (stemY2 - stemY1);
-          ctx.fillStyle = '#fef9c3';
+          // 外辉光
+          const stemGrad = ctx.createRadialGradient(ax, pulseY, 0, ax, pulseY, 5);
+          stemGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+          stemGrad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = stemGrad;
           ctx.beginPath();
-          ctx.arc(ax, pulseY, 1.8, 0, Math.PI * 2);
+          ctx.arc(ax, pulseY, 5, 0, Math.PI * 2);
           ctx.fill();
-          // 粒子辉光
-          ctx.fillStyle = 'rgba(254, 240, 138, 0.4)';
+          // 中心白热
+          ctx.fillStyle = '#ffffff';
           ctx.beginPath();
-          ctx.arc(ax, pulseY, 3.5, 0, Math.PI * 2);
+          ctx.arc(ax, pulseY, 1.4, 0, Math.PI * 2);
           ctx.fill();
           // ⑤ 钢爪
           ctx.fillStyle = '#52525b';
@@ -1012,25 +1023,39 @@ export class EquipmentRenderer {
         ctx.fillRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
         ctx.strokeRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
 
-        // ⑩' 阴极钢棒电流外流走马灯：左侧从内往外（←），右侧从内往外（→）
-        // 表示电流从槽内的铝水/阴极 → 钢棒 → 流出到车间阴极母线
-        ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#fde047';
-        // 左侧（流向左：lineDashOffset 正方向 = 虚线往左移）
-        ctx.lineDashOffset = animTLocal * 30;
+        // ⑩' 阴极钢棒电流脉冲球：左侧从内往外（←），右侧从内往外（→）
+        // 一颗白色发光球沿钢棒滑过，3s 一周期，柔和易读
+        const rodPhase = (animTLocal / 3) % 1;
+        // 左侧：x 从 shellL+8 → x-8（向左）
+        const leftRodStart = shellL + 8;
+        const leftRodEnd = x - 8;
+        const leftPulseX = leftRodStart + (leftRodEnd - leftRodStart) * rodPhase;
+        const leftGrad = ctx.createRadialGradient(leftPulseX, rodY, 0, leftPulseX, rodY, 6);
+        leftGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+        leftGrad.addColorStop(1, 'rgba(254,240,138,0)');
+        ctx.fillStyle = leftGrad;
         ctx.beginPath();
-        ctx.moveTo(shellL + 8, rodY);
-        ctx.lineTo(x - 8, rodY);
-        ctx.stroke();
-        // 右侧（流向右：lineDashOffset 负方向）
-        ctx.lineDashOffset = -animTLocal * 30;
+        ctx.arc(leftPulseX, rodY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(shellR - 8, rodY);
-        ctx.lineTo(x + W + 8, rodY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.lineDashOffset = 0;
+        ctx.arc(leftPulseX, rodY, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        // 右侧：x 从 shellR-8 → x+W+8（向右）
+        const rightRodStart = shellR - 8;
+        const rightRodEnd = x + W + 8;
+        const rightPulseX = rightRodStart + (rightRodEnd - rightRodStart) * rodPhase;
+        const rightGrad = ctx.createRadialGradient(rightPulseX, rodY, 0, rightPulseX, rodY, 6);
+        rightGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
+        rightGrad.addColorStop(1, 'rgba(254,240,138,0)');
+        ctx.fillStyle = rightGrad;
+        ctx.beginPath();
+        ctx.arc(rightPulseX, rodY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(rightPulseX, rodY, 1.6, 0, Math.PI * 2);
+        ctx.fill();
         // "-" 极标签（右端，蓝色圆背景）
         ctx.fillStyle = '#2563eb';
         ctx.beginPath();

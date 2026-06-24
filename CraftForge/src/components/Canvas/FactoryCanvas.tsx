@@ -605,13 +605,28 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'top';
       ctx.fillText('氧化铝粉气力输送管 ⟶', 62, pipeY + 11);
 
-      // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）----
+      // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）+ DC− 回路示意 ----
       const busY = 505;
+      // 阴极母线粗条
       ctx.fillStyle = '#facc15';
       ctx.fillRect(30, busY, w - 60, 8);
       ctx.strokeStyle = '#a16207';
       ctx.lineWidth = 1;
       ctx.strokeRect(30, busY, w - 60, 8);
+
+      // 内部箭头流向（动画走马灯 → 表明电流从右到左回流到 TRA-301）
+      const dcAnim = (Date.now() / 1000) * 30;
+      ctx.setLineDash([8, 6]);
+      ctx.lineDashOffset = dcAnim;
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(35, busY + 4);
+      ctx.lineTo(w - 35, busY + 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+
       // 接地三角
       ctx.fillStyle = '#94a3b8';
       [40, w - 50].forEach((bx) => {
@@ -622,14 +637,81 @@ export const FactoryCanvas: React.FC = () => {
         ctx.closePath();
         ctx.fill();
       });
-      // 母线标签：加深色背景框
+
+      // DC− 回流连接线：母线左端往下接到整流变压器 DC− 端子
+      // 让"电流闭环"可视化：阴极母线 → ↓ → 变压器
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(50, busY + 8);
+      ctx.lineTo(50, 535);            // 接到变压器顶部
+      ctx.stroke();
+      // 端子箭头
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(50, 535);
+      ctx.lineTo(45, 528);
+      ctx.lineTo(55, 528);
+      ctx.closePath();
+      ctx.fill();
+
+      // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(w - 220, busY + 10, 150, 14);
+      ctx.fillRect(w - 240, busY + 10, 170, 14);
       ctx.fillStyle = '#facc15';
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
-      ctx.fillText('━━ 阴极母线 600 kA ━━', w - 74, busY + 13);
+      ctx.fillText('━━ 阴极母线 DC− 600 kA ━━', w - 74, busY + 13);
+
+      // 变压器 DC− 端子标识（小红蓝圆点 + 文字）
+      const traDcMinusX = 50;
+      const traDcMinusY = 535;
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.arc(traDcMinusX, traDcMinusY - 4, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('−', traDcMinusX, traDcMinusY - 4);
+
+      // DC+ 直流主回路：变压器右端 → ↑ → 槽底右侧
+      // 视觉闭环：变压器 DC+(右) → ↑ → 阳极母线 / 阴极母线 DC−(左) → ↓ → 变压器 DC−(左)
+      const dcPlusX = 290;            // 变压器右端
+      // 路径：(290, 535) → ↑ → (290, busY+18) → →  → (w-35, busY+18) → ↑ → (w-35, 472)
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(dcPlusX, 535);
+      ctx.lineTo(dcPlusX, busY + 22);   // 上到母线区下方
+      ctx.lineTo(w - 35, busY + 22);    // 横向走到右
+      ctx.lineTo(w - 35, 472);          // 上到槽底
+      ctx.stroke();
+      // DC+ 红圆点
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(dcPlusX, 535 - 4, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('+', dcPlusX, 535 - 4);
+      // 走马灯（从下到上）
+      ctx.setLineDash([6, 6]);
+      ctx.lineDashOffset = -dcAnim;
+      ctx.strokeStyle = '#fca5a5';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(dcPlusX, 530);
+      ctx.lineTo(dcPlusX, busY + 22);
+      ctx.lineTo(w - 35, busY + 22);
+      ctx.lineTo(w - 35, 472);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
 
       // ---- (3) 灯光氛围 ----
       const cellGlow = ctx.createRadialGradient(w / 2, 250, 100, w / 2, 250, 700);
@@ -682,7 +764,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v11 aluminum  (标签精修+实时状态条+天车铭牌+baseboard)', w - 30, h - 8);
+      ctx.fillText('v12 aluminum  (直流闭环可视化 DC+/DC−)', w - 30, h - 8);
     }
   };
 

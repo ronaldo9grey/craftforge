@@ -63,12 +63,12 @@ export const aluminumFaults: Fault[] = [
   {
     id: 'EF003',
     name: '热不平衡（电解质温度过低）',
-    description: 'CELL-103 电解质温度跌至 925°C（正常 945-965），分子比偏酸 2.18，电流效率下降',
-    affectedEquipments: ['CELL-103'],
+    description: 'CELL-102 电解质温度跌至 925°C（正常 945-965），分子比偏酸 2.18，电流效率下降',
+    affectedEquipments: ['CELL-102'],
     symptoms: [
-      { equipmentId: 'CELL-103', param: 'bath_temp',   paramName: '电解质温度', value: 925, unit: '°C',  normal: '945-965', trend: 'down' },
-      { equipmentId: 'CELL-103', param: 'mol_ratio',   paramName: '分子比',     value: 2.18, unit: '',    normal: '2.3-2.5', trend: 'down' },
-      { equipmentId: 'CELL-103', param: 'current_eff', paramName: '电流效率',   value: 89,   unit: '%',   normal: '92-96',   trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'bath_temp',   paramName: '电解质温度', value: 925, unit: '°C',  normal: '945-965', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'mol_ratio',   paramName: '分子比',     value: 2.18, unit: '',    normal: '2.3-2.5', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'current_eff', paramName: '电流效率',   value: 89,   unit: '%',   normal: '92-96',   trend: 'down' },
     ],
     cause: '分子比偏酸导致电导率下降，槽体散热超过焦耳热产生，温度持续下降，有冻槽风险',
     steps: [
@@ -98,11 +98,11 @@ export const aluminumFaults: Fault[] = [
   {
     id: 'EF005',
     name: '氧化铝浓度过低（阳极效应前兆）',
-    description: 'CELL-104 氧化铝浓度跌至 1.3 wt%，槽噪声升至 80 mV，电压略升 0.15V，如不补料会触发阳极效应',
-    affectedEquipments: ['CELL-104', 'AL-201'],
+    description: 'CELL-102 氧化铝浓度跌至 1.3 wt%，槽噪声升至 80 mV，电压略升 0.15V，如不补料会触发阳极效应',
+    affectedEquipments: ['CELL-102', 'AL-201'],
     symptoms: [
-      { equipmentId: 'CELL-104', param: 'alumina_conc', paramName: '氧化铝浓度', value: 1.3, unit: 'wt%', normal: '1.8-3.5', trend: 'down' },
-      { equipmentId: 'CELL-104', param: 'noise_level',  paramName: '槽噪声',     value: 80,  unit: 'mV',  normal: '0-50',    trend: 'up' },
+      { equipmentId: 'CELL-102', param: 'alumina_conc', paramName: '氧化铝浓度', value: 1.3, unit: 'wt%', normal: '1.8-3.5', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'noise_level',  paramName: '槽噪声',     value: 80,  unit: 'mV',  normal: '0-50',    trend: 'up' },
       { equipmentId: 'AL-201',   param: 'feed_flow',    paramName: '料仓下料速率', value: 1.0, unit: 'kg/min', normal: '1.5-2.4', trend: 'down' },
     ],
     cause: '下料系统流量不足或料仓料位低，氧化铝消耗速度大于补充速度',
@@ -115,7 +115,7 @@ export const aluminumFaults: Fault[] = [
     // 发散：氧化铝浓度继续往下走（如果不补料），直至触发阳极效应阈值
     divergence: {
       drivers: [
-        { equipmentId: 'CELL-104', param: 'alumina_conc', rate: -0.02, cap: 0.3, delaySec: 30 },
+        { equipmentId: 'CELL-102', param: 'alumina_conc', rate: -0.02, cap: 0.3, delaySec: 30 },
       ],
     },
   },
@@ -177,11 +177,11 @@ export const aluminumFaults: Fault[] = [
     id: 'EF009',
     name: '整流机组档位异常（电流波动）',
     description: 'TRA-301 调压档位被误调至 26，二次电压飙至 1740V，系列电流冲至 540 kA',
-    affectedEquipments: ['TRA-301', 'BUS-101'],
+    affectedEquipments: ['TRA-301'],
     symptoms: [
       { equipmentId: 'TRA-301', param: 'tap_position', paramName: '调压档位', value: 26, unit: '挡', normal: '14-22', trend: 'up' },
       { equipmentId: 'TRA-301', param: 'secondary_dc_volt', paramName: '二次直流电压', value: 1740, unit: 'V', normal: '1620-1700', trend: 'up' },
-      { equipmentId: 'BUS-101', param: 'bus_current',  paramName: '系列总电流', value: 540, unit: 'kA', normal: '470-500', trend: 'up' },
+      { equipmentId: 'TRA-301', param: 'bus_current',  paramName: '系列总电流', value: 540, unit: 'kA', normal: '470-500', trend: 'up' },
     ],
     cause: '操作员误操作或档位机构卡死在过高档位，二次电压超出工艺设定',
     steps: [
@@ -213,10 +213,10 @@ export const aluminumFaults: Fault[] = [
     id: 'EF011',
     name: '抬包真空泄漏（铝水抽不上来）',
     description: 'POT-202 真空度仅 -45 kPa（正常 -90~-65），真空泵电流飙至 65 A，铝水量不增',
-    affectedEquipments: ['POT-202', 'CRANE-301'],
+    affectedEquipments: ['POT-202'],
     symptoms: [
       { equipmentId: 'POT-202',   param: 'vacuum_pressure', paramName: '抬包真空度', value: -45, unit: 'kPa', normal: '-95~-65', trend: 'up' },
-      { equipmentId: 'CRANE-301', param: 'vacuum_motor_a',  paramName: '真空泵电流', value: 65, unit: 'A', normal: '25-50', trend: 'up' },
+      { equipmentId: 'POT-202',   param: 'vacuum_motor_a',  paramName: '真空泵电流', value: 65, unit: 'A', normal: '25-50', trend: 'up' },
       { equipmentId: 'POT-202',   param: 'al_metal_qty',    paramName: '铝水量', value: 2.8, unit: 't', normal: '3.5-5.0', trend: 'down' },
     ],
     cause: '抬包密封圈老化漏气或真空管路接头松动，泵满负荷也抽不上真空',
@@ -230,17 +230,17 @@ export const aluminumFaults: Fault[] = [
   {
     id: 'EF012',
     name: '⚠️ 槽底漏炉（重大事故）',
-    description: 'CELL-103 母线温度突升至 110°C，电解质温度暴跌至 905°C，槽底炉衬可能击穿，立即停槽！',
-    affectedEquipments: ['CELL-103', 'BUS-101'],
+    description: 'CELL-102 母线温度突升至 110°C，电解质温度暴跌至 905°C，槽底炉衬可能击穿，立即停槽！',
+    affectedEquipments: ['CELL-102'],
     symptoms: [
-      { equipmentId: 'BUS-101',  param: 'bus_temp',  paramName: '母线温度',   value: 110, unit: '°C', normal: '50-80',   trend: 'up' },
-      { equipmentId: 'CELL-103', param: 'bath_temp', paramName: '电解质温度', value: 905, unit: '°C', normal: '945-965', trend: 'down' },
-      { equipmentId: 'CELL-103', param: 'cell_voltage', paramName: '槽电压',  value: 3.5, unit: 'V',  normal: '4.0-4.3', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'bus_temp',  paramName: '阴极母线温度', value: 110, unit: '°C', normal: '50-80',   trend: 'up' },
+      { equipmentId: 'CELL-102', param: 'bath_temp', paramName: '电解质温度', value: 905, unit: '°C', normal: '945-965', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'cell_voltage', paramName: '槽电压',  value: 3.5, unit: 'V',  normal: '4.0-4.3', trend: 'down' },
     ],
     cause: '槽底炉衬被熔体击穿，铝水/电解质渗漏到槽壳，与母线接触造成短路升温，重大事故',
     steps: [
       { id: 's1', action: '立即停槽！系列电流降至 0', correct: true, order: 1 },
-      { id: 's2', action: '隔离 CELL-103 至旁路', correct: true, order: 2 },
+      { id: 's2', action: '隔离 CELL-102 至旁路', correct: true, order: 2 },
       { id: 's3', action: '通知应急班组撤离', correct: true, order: 3 },
       { id: 's4', action: '继续观察等等看', correct: false, order: 4 },
     ],

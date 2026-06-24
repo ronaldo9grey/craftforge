@@ -416,37 +416,33 @@ export const FactoryCanvas: React.FC = () => {
       ctx.moveTo(w - 15, 50); ctx.lineTo(w - 15, h - 30);
       ctx.stroke();
 
-      // ---- (2) 区域底色 ----
-      // 行 1 槽阵列区（y=100~215）- 深青（电解车间核心）
+      // ---- (2) 区域底色（v4 布局：2 槽大尺寸，行 1 占 110~330）----
+      // 行 1 槽阵列区（y=105~335）- 深青
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 100, w, 115);
-      // 行 2 车间内辅助（y=235~315）- 浅橙（铝水流向）
+      ctx.fillRect(0, 105, w, 230);
+      // 行 2 车间内辅助（y=350~435）- 浅橙
       ctx.fillStyle = 'rgba(249, 115, 22, 0.05)';
-      ctx.fillRect(0, 235, w, 80);
-      // 行 3 电气辅助（y=340~435）- 暖灰
+      ctx.fillRect(0, 350, w, 85);
+      // 行 3 电气辅助（y=445~530）- 暖灰
       ctx.fillStyle = 'rgba(100, 116, 139, 0.10)';
-      ctx.fillRect(0, 340, w, 95);
-      // 行 4 集控（y=460~540）- 浅紫
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
-      ctx.fillRect(0, 460, w, 80);
-      // 行 5 电气控制（y=565~665）- 暗
+      ctx.fillRect(0, 445, w, 85);
+      // 行 4 电气控制（y=565~665）- 暗
       ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
       ctx.fillRect(0, 565, w, 100);
 
-      // ---- (3) 灯光氛围：天车下方有泛光（橙红，模拟槽体发出的炽热光）----
-      const cellGlow = ctx.createRadialGradient(w / 2, 200, 50, w / 2, 200, 600);
-      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.15)');
-      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.06)');
+      // ---- (3) 灯光氛围：槽阵列区有橙红泛光 ----
+      const cellGlow = ctx.createRadialGradient(w / 2, 230, 80, w / 2, 230, 700);
+      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.18)');
+      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.08)');
       cellGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = cellGlow;
-      ctx.fillRect(0, 100, w, 250);
+      ctx.fillRect(0, 105, w, 280);
 
-      // ---- (4) 地面网格（增强透视感）----
+      // ---- (4) 地面网格 ----
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 6]);
-      // 横线
-      [220, 320, 440, 545, 670].forEach((yy) => {
+      [340, 440, 540, 670].forEach((yy) => {
         ctx.beginPath();
         ctx.moveTo(15, yy);
         ctx.lineTo(w - 15, yy);
@@ -459,10 +455,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 槽阵列 (电解槽×8)', 22, 108);
-      ctx.fillText('▎ 车间内辅助', 22, 243);
-      ctx.fillText('▎ 电气/工艺辅助', 22, 348);
-      ctx.fillText('▎ 集控操作', 22, 468);
+      ctx.fillText('▎ 电解槽 (主+副 双槽)', 22, 113);
+      ctx.fillText('▎ 车间内辅助', 22, 358);
+      ctx.fillText('▎ 电气辅助', 22, 453);
       ctx.fillText('▎ 电气控制', 22, 573);
 
       // ---- (6) 关键数据指标（顶部状态条）----
@@ -486,7 +481,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v3 aluminum  (iso-2.5D)', w - 30, h - 8);
+      ctx.fillText('v4 aluminum  (iso-2.5D 深度还原)', w - 30, h - 8);
     }
   };
 

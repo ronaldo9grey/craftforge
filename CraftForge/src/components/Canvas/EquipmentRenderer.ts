@@ -1,5 +1,76 @@
 import type { Equipment } from '@/types';
 
+/**
+ * 画一个闪电图标（zigzag），用于表达"电流"
+ * @param cx 闪电中心 x
+ * @param cy 闪电中心 y
+ * @param angle 闪电主轴方向（弧度，0 = 向右，PI/2 = 向下）
+ * @param size 整体大小（端到端距离）
+ * @param glowColor 外辉光颜色（默认蓝白）
+ */
+export function drawLightning(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  angle: number,
+  size: number,
+  glowColor: string = 'rgba(186, 230, 253, 0.7)',
+): void {
+  // 标准闪电（沿 +x 方向）：5 个 zigzag 点
+  // x: 0 → 0.3 → 0.45 → 0.7 → 0.85 → 1
+  // y: 0 → -0.15 → 0.05 → -0.1 → 0.15 → 0
+  // 用模板坐标 [-0.5, 0.5] 居中，再旋转 angle
+  const pts: Array<[number, number]> = [
+    [-0.5, 0],
+    [-0.2, -0.18],
+    [-0.05, 0.04],
+    [0.2, -0.12],
+    [0.35, 0.16],
+    [0.5, 0],
+  ];
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const tx = (p: [number, number]) => [
+    cx + (p[0] * cos - p[1] * sin) * size,
+    cy + (p[0] * sin + p[1] * cos) * size,
+  ];
+
+  // 外辉光（粗描边 + 半透明）
+  ctx.strokeStyle = glowColor;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const [px, py] = tx(p);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  // 内辉光
+  ctx.strokeStyle = '#fde68a';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const [px, py] = tx(p);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  // 白热芯
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const [px, py] = tx(p);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+}
+
 export class EquipmentRenderer {
   static render(
     ctx: CanvasRenderingContext2D,
@@ -823,25 +894,24 @@ export class EquipmentRenderer {
         ctx.moveTo(anodeAreaL - 8, anodeBusY + 2);
         ctx.lineTo(anodeAreaR + 8, anodeBusY + 2);
         ctx.stroke();
-        // 阳极母线电流脉冲：一颗白色发光球从左 + 极向右滑过（2.5s 一周期），柔和易读
+        // 阳极母线电流动效（两层叠加）
         const animTLocal = animTime ?? Date.now() / 1000;
+        // 底层：连续走马灯虚线（恢复原有效果，但减弱亮度避免太花）
+        ctx.setLineDash([6, 8]);
+        ctx.lineDashOffset = -animTLocal * 25;
+        ctx.strokeStyle = 'rgba(254, 224, 71, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(anodeAreaL - 8, anodeBusY + 4.5);
+        ctx.lineTo(anodeAreaR + 8, anodeBusY + 4.5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
+        // 顶层：闪电图标从左 + 极向右滑过（2.5s 一周期）
         const anodeBusPhase = (animTLocal / 2.5) % 1;
         const anodePulseX = (anodeAreaL - 8) + anodeBusPhase * (anodeAreaW + 16);
         const anodePulseY = anodeBusY + 4.5;
-        // 外辉光
-        const anodeBusGrad = ctx.createRadialGradient(anodePulseX, anodePulseY, 0, anodePulseX, anodePulseY, 8);
-        anodeBusGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
-        anodeBusGrad.addColorStop(0.4, 'rgba(254,240,138,0.5)');
-        anodeBusGrad.addColorStop(1, 'rgba(254,240,138,0)');
-        ctx.fillStyle = anodeBusGrad;
-        ctx.beginPath();
-        ctx.arc(anodePulseX, anodePulseY, 8, 0, Math.PI * 2);
-        ctx.fill();
-        // 中心白热
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(anodePulseX, anodePulseY, 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        drawLightning(ctx, anodePulseX, anodePulseY, 0, 18);
         // "+" 极标签（左端）带圆形背景
         ctx.fillStyle = '#dc2626';
         ctx.beginPath();
@@ -867,23 +937,10 @@ export class EquipmentRenderer {
           ctx.moveTo(ax, stemY1);
           ctx.lineTo(ax, stemY2);
           ctx.stroke();
-          // ④' 电流脉冲粒子（白色亮点沿导杆从上往下 → 表示电流流向阳极块）
-          // 节奏放慢到 1.2s 一颗，相位错开避免太密
+          // ④' 电流：小闪电图标沿导杆从上往下滑（1.2s/周期，相位错开形成"瀑布"感）
           const pulsePhase = ((animTLocal * 0.85 + i * 0.13) % 1);
           const pulseY = stemY1 + pulsePhase * (stemY2 - stemY1);
-          // 外辉光
-          const stemGrad = ctx.createRadialGradient(ax, pulseY, 0, ax, pulseY, 5);
-          stemGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-          stemGrad.addColorStop(1, 'rgba(255,255,255,0)');
-          ctx.fillStyle = stemGrad;
-          ctx.beginPath();
-          ctx.arc(ax, pulseY, 5, 0, Math.PI * 2);
-          ctx.fill();
-          // 中心白热
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(ax, pulseY, 1.4, 0, Math.PI * 2);
-          ctx.fill();
+          drawLightning(ctx, ax, pulseY, Math.PI / 2, 9);
           // ⑤ 钢爪
           ctx.fillStyle = '#52525b';
           ctx.strokeStyle = '#27272a';
@@ -1023,39 +1080,18 @@ export class EquipmentRenderer {
         ctx.fillRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
         ctx.strokeRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
 
-        // ⑩' 阴极钢棒电流脉冲球：左侧从内往外（←），右侧从内往外（→）
-        // 一颗白色发光球沿钢棒滑过，3s 一周期，柔和易读
+        // ⑩' 阴极钢棒电流：左右各一个闪电图标向外滑过（3s/周期）
         const rodPhase = (animTLocal / 3) % 1;
-        // 左侧：x 从 shellL+8 → x-8（向左）
+        // 左侧：从内（shellL+8）→ 外（x-8），方向 = π（向左）
         const leftRodStart = shellL + 8;
         const leftRodEnd = x - 8;
         const leftPulseX = leftRodStart + (leftRodEnd - leftRodStart) * rodPhase;
-        const leftGrad = ctx.createRadialGradient(leftPulseX, rodY, 0, leftPulseX, rodY, 6);
-        leftGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-        leftGrad.addColorStop(1, 'rgba(254,240,138,0)');
-        ctx.fillStyle = leftGrad;
-        ctx.beginPath();
-        ctx.arc(leftPulseX, rodY, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(leftPulseX, rodY, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-        // 右侧：x 从 shellR-8 → x+W+8（向右）
+        drawLightning(ctx, leftPulseX, rodY, Math.PI, 14);
+        // 右侧：从内（shellR-8）→ 外（x+W+8），方向 = 0（向右）
         const rightRodStart = shellR - 8;
         const rightRodEnd = x + W + 8;
         const rightPulseX = rightRodStart + (rightRodEnd - rightRodStart) * rodPhase;
-        const rightGrad = ctx.createRadialGradient(rightPulseX, rodY, 0, rightPulseX, rodY, 6);
-        rightGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-        rightGrad.addColorStop(1, 'rgba(254,240,138,0)');
-        ctx.fillStyle = rightGrad;
-        ctx.beginPath();
-        ctx.arc(rightPulseX, rodY, 6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(rightPulseX, rodY, 1.6, 0, Math.PI * 2);
-        ctx.fill();
+        drawLightning(ctx, rightPulseX, rodY, 0, 14);
         // "-" 极标签（右端，蓝色圆背景）
         ctx.fillStyle = '#2563eb';
         ctx.beginPath();

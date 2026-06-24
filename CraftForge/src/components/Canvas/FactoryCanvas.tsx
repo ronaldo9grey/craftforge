@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useDrillStore } from '@/stores/drillStore';
-import { EquipmentRenderer } from './EquipmentRenderer';
+import { EquipmentRenderer, drawLightning } from './EquipmentRenderer';
 import { PipelineRenderer } from './PipelineRenderer';
 import type { Equipment } from '@/types';
 
@@ -622,25 +622,25 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineWidth = 1;
       ctx.strokeRect(30, busY, w - 60, 8);
 
-      // 阴极母线电流脉冲球：白色发光球从右往左滑过整条母线，4s 一周期
-      // 速度跟 currentRatio 联动 — 故障电流变小 → 球变慢
+      // 阴极母线电流动效（两层叠加）
       const tNow = Date.now() / 1000;
+      // 底层：连续走马灯虚线（恢复原有效果，弱化亮度）
+      ctx.setLineDash([6, 8]);
+      ctx.lineDashOffset = tNow * 25 * currentRatio;     // 正方向 = 从右往左
+      ctx.strokeStyle = 'rgba(254, 224, 71, 0.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(35, busY + 4);
+      ctx.lineTo(w - 35, busY + 4);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      // 顶层：闪电图标从右往左滑过整条母线（4s / currentRatio 周期）
       const busPeriod = 4 / Math.max(0.3, currentRatio);
       const busPhase = (tNow / busPeriod) % 1;
       const busPulseX = (w - 35) - busPhase * (w - 70);  // 从右到左
       const busPulseY = busY + 4;
-      const busGrad = ctx.createRadialGradient(busPulseX, busPulseY, 0, busPulseX, busPulseY, 10);
-      busGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-      busGrad.addColorStop(0.5, 'rgba(254,240,138,0.4)');
-      busGrad.addColorStop(1, 'rgba(254,240,138,0)');
-      ctx.fillStyle = busGrad;
-      ctx.beginPath();
-      ctx.arc(busPulseX, busPulseY, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(busPulseX, busPulseY, 2.5, 0, Math.PI * 2);
-      ctx.fill();
+      drawLightning(ctx, busPulseX, busPulseY, Math.PI, 22);
 
       // 接地三角
       ctx.fillStyle = '#94a3b8';
@@ -669,22 +669,11 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineTo(55, 528);
       ctx.closePath();
       ctx.fill();
-      // DC− 电流脉冲球（从阴极母线左端 ↓ 流回变压器，3.5s 一周期）
+      // DC− 电流：闪电图标从上往下滑回变压器（3.5s/周期，方向 = PI/2 向下）
       const dcMinusPeriod = 3.5 / Math.max(0.3, currentRatio);
       const dcMinusPhase = (tNow / dcMinusPeriod) % 1;
       const dcMinusY = (busY + 8) + dcMinusPhase * (535 - (busY + 8));
-      const dcMinusGrad = ctx.createRadialGradient(50, dcMinusY, 0, 50, dcMinusY, 9);
-      dcMinusGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-      dcMinusGrad.addColorStop(0.5, 'rgba(254,240,138,0.45)');
-      dcMinusGrad.addColorStop(1, 'rgba(254,240,138,0)');
-      ctx.fillStyle = dcMinusGrad;
-      ctx.beginPath();
-      ctx.arc(50, dcMinusY, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(50, dcMinusY, 2.2, 0, Math.PI * 2);
-      ctx.fill();
+      drawLightning(ctx, 50, dcMinusY, Math.PI / 2, 16);
 
       // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -730,8 +719,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('+', dcPlusX, 535 - 4);
-      // DC+ 电流脉冲球（沿主回路三段折线 4s 一周期）
+      // DC+ 电流：闪电图标沿主回路三段折线滑动（4s/周期）
       // 路径：(dcPlusX, 535) → (dcPlusX, busY+22) → (w-35, busY+22) → (w-35, 472)
+      // 闪电方向跟当前段方向保持一致：段 1 向上 / 段 2 向右 / 段 3 向上
       const dcPlusPeriod = 4 / Math.max(0.3, currentRatio);
       const dcPlusPhase = (tNow / dcPlusPeriod) % 1;
       const seg1Len = 535 - (busY + 22);     // 段 1：竖向上
@@ -739,31 +729,23 @@ export const FactoryCanvas: React.FC = () => {
       const seg3Len = (busY + 22) - 472;     // 段 3：竖向上
       const totalLen = seg1Len + seg2Len + seg3Len;
       const traveled = dcPlusPhase * totalLen;
-      let dcPlusBallX: number, dcPlusBallY: number;
+      let dcPlusBallX: number, dcPlusBallY: number, dcPlusAngle: number;
       if (traveled < seg1Len) {
         dcPlusBallX = dcPlusX;
         dcPlusBallY = 535 - traveled;
+        dcPlusAngle = -Math.PI / 2;          // 向上
       } else if (traveled < seg1Len + seg2Len) {
         const tSeg = traveled - seg1Len;
         dcPlusBallX = dcPlusX + tSeg;
         dcPlusBallY = busY + 22;
+        dcPlusAngle = 0;                     // 向右
       } else {
         const tSeg = traveled - seg1Len - seg2Len;
         dcPlusBallX = w - 35;
         dcPlusBallY = (busY + 22) - tSeg;
+        dcPlusAngle = -Math.PI / 2;          // 向上
       }
-      const dcPlusGrad = ctx.createRadialGradient(dcPlusBallX, dcPlusBallY, 0, dcPlusBallX, dcPlusBallY, 10);
-      dcPlusGrad.addColorStop(0, 'rgba(255,255,255,0.95)');
-      dcPlusGrad.addColorStop(0.5, 'rgba(254,202,202,0.5)');
-      dcPlusGrad.addColorStop(1, 'rgba(254,202,202,0)');
-      ctx.fillStyle = dcPlusGrad;
-      ctx.beginPath();
-      ctx.arc(dcPlusBallX, dcPlusBallY, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(dcPlusBallX, dcPlusBallY, 2.5, 0, Math.PI * 2);
-      ctx.fill();
+      drawLightning(ctx, dcPlusBallX, dcPlusBallY, dcPlusAngle, 18, 'rgba(254, 202, 202, 0.7)');
 
       // ---- (3) 灯光氛围 ----
       const cellGlow = ctx.createRadialGradient(w / 2, 250, 100, w / 2, 250, 700);
@@ -816,7 +798,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v14 aluminum  (走马灯→白色脉冲球 柔和易读)', w - 30, h - 8);
+      ctx.fillText('v15 aluminum  (脉冲球→闪电图标 + 恢复原走马灯)', w - 30, h - 8);
     }
   };
 

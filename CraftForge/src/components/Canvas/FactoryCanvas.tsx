@@ -416,6 +416,54 @@ export const FactoryCanvas: React.FC = () => {
       ctx.moveTo(w - 15, 50); ctx.lineTo(w - 15, h - 30);
       ctx.stroke();
 
+      // ---- (1.5) 屋顶水平烟道（横管）+ 两条竖管引自 2 槽 + 右侧出口"→ 净化车间" ----
+      const flueY = 32;          // 烟道在屋顶下方
+      // 水平烟道主管（深绿色，区分氧化铝管）
+      ctx.fillStyle = '#15803d';
+      ctx.strokeStyle = '#052e16';
+      ctx.lineWidth = 1;
+      ctx.fillRect(280, flueY - 4, w - 280 - 50, 8);
+      ctx.strokeRect(280, flueY - 4, w - 280 - 50, 8);
+      // 内部流动虚线（浅绿走马灯）
+      const animTNow = Date.now() / 1000;
+      ctx.setLineDash([6, 8]);
+      ctx.lineDashOffset = -animTNow * 8;
+      ctx.strokeStyle = '#86efac';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(285, flueY);
+      ctx.lineTo(w - 55, flueY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+      // 2 个分支竖管（连到 2 槽顶部烟道）
+      const flueDownXs = [30 + 290, 650 + 290];  // 2 槽 x 中心
+      ctx.strokeStyle = '#15803d';
+      ctx.lineWidth = 5;
+      flueDownXs.forEach((cx) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, flueY + 4);
+        ctx.lineTo(cx, 120);  // 到槽顶集烟罩
+        ctx.stroke();
+      });
+      // 右侧出口箭头 + 标签 "→ 净化车间（厂房外）"
+      ctx.fillStyle = '#86efac';
+      ctx.beginPath();
+      ctx.moveTo(w - 50, flueY - 8);
+      ctx.lineTo(w - 40, flueY);
+      ctx.lineTo(w - 50, flueY + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#86efac';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('→ 烟气净化（车间外）', w - 60, flueY - 12);
+      // 烟道左端标签
+      ctx.fillStyle = '#86efac';
+      ctx.textAlign = 'left';
+      ctx.fillText('车间集烟主管', 285, flueY - 12);
+
       // ---- (2) 区域底色（v6 布局：2 槽 600 kA + 控制层）----
       // 行 1 电解车间核心区（y=105~495，含 2 槽 + 2 槽控柜）- 深青
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
@@ -539,7 +587,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v6 aluminum  (600 kA 电解槽聚焦)', w - 30, h - 8);
+      ctx.fillText('v7 aluminum  (屋顶烟道+单排阳极+大任务台)', w - 30, h - 8);
     }
   };
 

@@ -765,53 +765,77 @@ export class EquipmentRenderer {
           ctx.strokeRect(px - 6, feedPtY, 12, 5);
         }
 
-        // ③ 阳极三段式：上下两排，共 44 块
-        // 上排 22 块（CELL "前列"）/ 下排 22 块（CELL "后列"）
+        // ③ 阳极单排：22 块（侧视图正确，A 面）
+        // 顶部金黄色"阳极母线"粗条（代表大电流入侧）+ 22 根铝导杆 + 钢爪 + 碳块
         const anodeAreaL = x + W * 0.05;
         const anodeAreaR = x + W * 0.95;
         const anodeAreaW = anodeAreaR - anodeAreaL;
-        const anodesPerRow = 22;
-        const anodeStepX = anodeAreaW / anodesPerRow;
-        const anodeBlockW = anodeStepX * 0.78;
+        const anodeCount = 22;
+        const anodeStepX = anodeAreaW / anodeCount;
+        const anodeBlockW = anodeStepX * 0.85;
 
-        const row1Y = feedPtY + 12;  // 上排
-        const row2Y = row1Y + 36;     // 下排（间距 36px）
+        const anodeBaseY = feedPtY + 14;  // 阳极区域起点
 
-        function drawAnodeRow(rowY: number) {
-          // (a) 铝导杆横排（金黄水平粗条，跨整排）
-          ctx.fillStyle = '#facc15';
-          ctx.strokeStyle = '#a16207';
+        // (a) 阳极母线（顶部金黄超粗条，代表大电流入侧）+ 标签
+        const anodeBusY = anodeBaseY;
+        ctx.fillStyle = '#f59e0b';
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 1;
+        ctx.fillRect(anodeAreaL - 8, anodeBusY, anodeAreaW + 16, 8);
+        ctx.strokeRect(anodeAreaL - 8, anodeBusY, anodeAreaW + 16, 8);
+        // 母线高光线
+        ctx.strokeStyle = '#fef3c7';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(anodeAreaL - 6, anodeBusY + 2);
+        ctx.lineTo(anodeAreaR + 6, anodeBusY + 2);
+        ctx.stroke();
+        // "阳极母线"小标签（左端）
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(anodeAreaL - 8, anodeBusY + 10, 60, 12);
+        ctx.fillStyle = '#facc15';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▎阳极母线', anodeAreaL - 6, anodeBusY + 16);
+
+        // (b) 铝导杆 + 钢爪 + 碳阳极块（每块阳极一组）
+        const stemY1 = anodeBusY + 8;   // 导杆顶（连母线）
+        const stemY2 = stemY1 + 12;     // 导杆底（=钢爪顶）
+        const clawY2 = stemY2 + 8;      // 钢爪底（=碳块顶）
+        const blockH = 22;              // 碳块高度
+        for (let i = 0; i < anodeCount; i++) {
+          const ax = anodeAreaL + anodeStepX * (i + 0.5);
+          // 铝导杆（金黄竖线）
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(ax, stemY1);
+          ctx.lineTo(ax, stemY2);
+          ctx.stroke();
+          // 钢爪（深棕短竖块，比导杆粗）
+          ctx.fillStyle = '#52525b';
+          ctx.strokeStyle = '#27272a';
           ctx.lineWidth = 0.6;
-          ctx.fillRect(anodeAreaL - 4, rowY, anodeAreaW + 8, 4);
-          ctx.strokeRect(anodeAreaL - 4, rowY, anodeAreaW + 8, 4);
-
-          // (b) 钢爪（每块阳极上方一根深棕短竖块）+ (c) 碳阳极块（黑色长方体）
-          for (let i = 0; i < anodesPerRow; i++) {
-            const ax = anodeAreaL + anodeStepX * (i + 0.5);
-            // 钢爪
-            ctx.fillStyle = '#52525b';
-            ctx.fillRect(ax - 2, rowY + 4, 4, 7);
-            // 碳块
-            ctx.fillStyle = '#0f172a';
-            ctx.strokeStyle = '#fbbf24';
-            ctx.lineWidth = 0.5;
-            ctx.fillRect(ax - anodeBlockW / 2, rowY + 11, anodeBlockW, 14);
-            ctx.strokeRect(ax - anodeBlockW / 2, rowY + 11, anodeBlockW, 14);
-            // 碳块表面少量火苗（橙红高光，仅每 4 块来一个，避免太密）
-            if (i % 4 === 0) {
-              const animT = animTime ?? Date.now() / 1000;
-              const flick = 0.5 + 0.5 * Math.sin(animT * 5 + i);
-              ctx.fillStyle = `rgba(255, 140, 30, ${flick * 0.7})`;
-              ctx.fillRect(ax - anodeBlockW / 2 + 1, rowY + 11 + 14 - 2, anodeBlockW - 2, 2);
-            }
+          ctx.fillRect(ax - 3, stemY2, 6, 8);
+          ctx.strokeRect(ax - 3, stemY2, 6, 8);
+          // 碳阳极块（黑色大长方体）
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 0.5;
+          ctx.fillRect(ax - anodeBlockW / 2, clawY2, anodeBlockW, blockH);
+          ctx.strokeRect(ax - anodeBlockW / 2, clawY2, anodeBlockW, blockH);
+          // 碳块底部火苗（动画，间隔 2 块）
+          if (i % 2 === 0) {
+            const animT = animTime ?? Date.now() / 1000;
+            const flick = 0.5 + 0.5 * Math.sin(animT * 5 + i);
+            ctx.fillStyle = `rgba(255, 140, 30, ${flick * 0.8})`;
+            ctx.fillRect(ax - anodeBlockW / 2 + 1, clawY2 + blockH - 3, anodeBlockW - 2, 3);
           }
         }
 
-        drawAnodeRow(row1Y);
-        drawAnodeRow(row2Y);
-
         // ④ 槽壳正面 + 等距侧面投影 + 内部分层窗
-        const shellY1 = row2Y + 26;
+        const shellY1 = clawY2 + blockH + 4;
         const shellY2 = y + H * 0.93;
         const shellH = shellY2 - shellY1;
         const shellL = x + W * 0.04;
@@ -956,9 +980,9 @@ export class EquipmentRenderer {
           ctx.stroke();
         }
 
-        // 滑车（240s 一周期来回移动，4 倍慢于上版，贴近真实换极节奏）
+        // 滑车（600s 一周期来回移动，10 分钟一周期 = 真实换极节奏）
         const animT = animTime ?? Date.now() / 1000;
-        const period = 240;
+        const period = 600;
         const phase = (animT % period) / period;
         const tri = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
         const trolleyX = x + 30 + tri * (width - 80);
@@ -1130,65 +1154,78 @@ export class EquipmentRenderer {
       }
 
       case 'task-board': {
-        // 班组任务台：工位办公屏样式
-        // 深蓝外框 + 顶部"班组生产任务"标题条 + 4 行任务列表（含复选框）+ 时间戳
-        const padX = 6;
+        // 班组任务台：工位办公屏样式（v7 放大版 580×120）
+        const padX = 10;
         const boardL = x + padX;
         const boardR = x + width - padX;
-        const boardT = y + 3;
-        const boardB = y + height - 3;
+        const boardT = y + 4;
+        const boardB = y + height - 4;
         // 屏框
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = '#06b6d4';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
         ctx.strokeRect(boardL, boardT, boardR - boardL, boardB - boardT);
 
-        // 顶部标题条
+        // 顶部标题条（高度根据 height 缩放）
+        const titleH = Math.min(20, (boardB - boardT) * 0.18);
         ctx.fillStyle = '#06b6d4';
-        ctx.fillRect(boardL, boardT, boardR - boardL, 12);
+        ctx.fillRect(boardL, boardT, boardR - boardL, titleH);
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 9px Inter, sans-serif';
+        const titleFontSize = Math.max(10, Math.min(14, titleH - 6));
+        ctx.font = `bold ${titleFontSize}px Inter, sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText('▎ 班组生产任务', boardL + 4, boardT + 6);
-        // 班次
+        ctx.fillText('▎ 班组生产任务', boardL + 8, boardT + titleH / 2);
+        // 班次（右侧）
         ctx.textAlign = 'right';
-        ctx.fillText('3 班 / 系列 5', boardR - 4, boardT + 6);
+        ctx.fillText('3 班 / 系列 5 / 已完成 3·8', boardR - 8, boardT + titleH / 2);
 
-        // 4 行任务列表
-        const taskListT = boardT + 14;
-        const rowH = (boardB - taskListT - 2) / 4;
-        const tasks = [
+        // 任务列表（行数和字号根据尺寸自适应）
+        const isLarge = (boardB - boardT) > 80;
+        const tasks = isLarge ? [
+          { done: true,  text: '#101 出铝 5.0 t  已完成' },
+          { done: true,  text: '#102 换极 4 块  已完成' },
+          { done: true,  text: '巡检阴极母线温度（< 80°C）' },
+          { done: false, text: '#102 极距下调 0.3 cm（待执行）' },
+          { done: false, text: '清理 #101 槽顶打壳锤（待执行）' },
+          { done: false, text: '上报 18:00 当班报表' },
+        ] : [
           { done: true,  text: '#101 出铝 5.0 t' },
           { done: true,  text: '#102 换极 4 块' },
           { done: false, text: '巡检阴极母线温度' },
           { done: false, text: '清理打壳锤 *' },
         ];
+        const taskListT = boardT + titleH + 4;
+        const taskListB = boardB - 4;
+        const rowH = (taskListB - taskListT) / tasks.length;
+        const rowFontSize = isLarge ? 12 : 9;
+        const checkboxSize = isLarge ? 10 : 6;
+
         tasks.forEach((t, i) => {
           const ry = taskListT + i * rowH + rowH / 2;
           // 复选框
           ctx.strokeStyle = '#06b6d4';
-          ctx.lineWidth = 0.8;
-          ctx.strokeRect(boardL + 6, ry - 3, 6, 6);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(boardL + 10, ry - checkboxSize / 2, checkboxSize, checkboxSize);
           if (t.done) {
             ctx.fillStyle = '#22c55e';
-            ctx.fillRect(boardL + 7, ry - 2, 4, 4);
+            ctx.fillRect(boardL + 10 + 1, ry - checkboxSize / 2 + 1, checkboxSize - 2, checkboxSize - 2);
             // ✓ 印
             ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(boardL + 7, ry);
-            ctx.lineTo(boardL + 8.5, ry + 1.5);
-            ctx.lineTo(boardL + 11, ry - 1.5);
+            ctx.moveTo(boardL + 10 + checkboxSize * 0.2, ry);
+            ctx.lineTo(boardL + 10 + checkboxSize * 0.45, ry + checkboxSize * 0.3);
+            ctx.lineTo(boardL + 10 + checkboxSize * 0.8, ry - checkboxSize * 0.3);
             ctx.stroke();
           }
           // 文本
-          ctx.fillStyle = t.done ? '#94a3b8' : '#e5e7eb';
-          ctx.font = (t.done ? '9px' : 'bold 9px') + ' Inter, sans-serif';
+          ctx.fillStyle = t.done ? '#64748b' : '#e5e7eb';
+          ctx.font = (t.done ? `${rowFontSize}px` : `bold ${rowFontSize}px`) + ' Inter, sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText(t.text, boardL + 18, ry);
+          ctx.fillText(t.text, boardL + 10 + checkboxSize + 6, ry);
         });
         break;
       }

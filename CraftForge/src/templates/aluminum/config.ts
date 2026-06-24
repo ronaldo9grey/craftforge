@@ -1,26 +1,26 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V6 (600 kA 电解槽聚焦版)
-// 电解铝车间布局 v6：1280×700
+// VERSION: 2026-06-23-V7 (烟气走屋顶 + 班组任务台放大 + 单排阳极)
+// 电解铝车间布局 v7：1280×700
 //
-// 设计哲学：聚焦电解车间 + 突出大型 600 kA 电解槽细节
-//
-// vs v5 主要变更：
-//   ① 4 槽 → 2 槽（每槽 580×290 大尺寸，充分展示 600 kA 槽细节）
-//   ② 阳极 26 块 → 44 块（600 kA 标准），三段式视觉：铝导杆 + 钢爪 + 碳阳极块
-//   ③ 控制层设备缩小：TRA/FGT/HMI 从 380x85 → 280x60 紧凑电气柜样式
-//   ④ HMI-301 改名"班组任务台" type='task-board'（工位办公屏样式）
-//   ⑤ 槽控柜 2 台（POT-CTRL-101/102），与槽宽对齐 580×60
+// vs v6 主要变更：
+//   ① 烟气净化 FGT-301 不再独立显示在车间内（真实情况是在屋顶烟道 → 厂房外净化车间）
+//      FGT 参数保留（仍可点击参数面板查看），但视觉上由"屋顶水平烟道 + 右上角小烟囱"代替
+//      FGT 位置移到画面外（x=-500）作隐藏处理；参数仍受 dynamics 驱动
+//   ② 班组任务台 280×60 → 580×120（任务列表更清晰、与槽控柜同宽）
+//   ③ 天车 240s → 600s（10 分钟一周期，真实换极节奏）
+//   ④ 阳极改单排 22 块（侧视图正确）+ 顶部金黄阳极母线粗条
+//   ⑤ 布局重新调整以适应任务台放大
 //
 // 布局：
 //   y= 20~50   厂房屋顶
-//   y= 55~95   CRANE-302 天车横梁 + 红色抬包
-//   y=100~110  氧化铝输送管道（2 分支）
+//   y= 55~95   CRANE-302 天车横梁（600s 周期）
+//   y=100~110  氧化铝输送管道
 //   y=120~410  2 槽阵列 CELL-101/102 (每槽 580×290)
 //   y=425~485  2 台槽控柜 POT-CTRL-101/102 (每柜 580×60)
-//   y=500~510  阴极母线（FactoryCanvas 画）
-//   y=540~600  控制层：TRA-301 / FGT-301 / HMI-301 (3 台 × 280×60)
-//   y=620~675  CTRL-401 总控柜 (200×55)
+//   y=500~515  阴极母线（FactoryCanvas 画）
+//   y=525~585  控制层左：整流变压器 + 总控柜
+//   y=525~645  控制层右：班组任务台（放大 580×120）
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -98,12 +98,11 @@ export const aluminumEquipments: Equipment[] = [
   potCtrl('POT-CTRL-102', '#102 槽控柜', 650),
 
   // ============================================================
-  // 控制层：紧凑电气柜样式（每台 280×60，3 台并排 + 居中）
-  // 共 3 台 × 280 + 2 间隔 30 = 900，居中放 x=190~1090
+  // 控制层：左侧整流变压器 + 中间总控柜（行 1） / 右侧班组任务台（占 2 行高）
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 190, y: 540, width: 280, height: 60,
+    x: 30, y: 530, width: 280, height: 60,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -114,9 +113,10 @@ export const aluminumEquipments: Equipment[] = [
       { id: 'bus_temp',          name: '直流母线温度', value: 65,   unit: '°C', min: 20, max: 150, normalMin: 50, normalMax: 80, trend: [], tau: TAU_TEMP },
     ],
   },
+  // 烟气净化 FGT-301：参数保留，位置移到画面外（视觉由 FactoryCanvas 屋顶烟道代替）
   {
-    id: 'FGT-301', name: '烟气净化', type: 'pump',
-    x: 500, y: 540, width: 280, height: 60,
+    id: 'FGT-301', name: '烟气净化（屋顶烟道 → 净化车间）', type: 'pump',
+    x: -500, y: -500, width: 1, height: 1,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'hf_conc',      name: 'HF 浓度',      value: 2.1, unit: 'mg/m³', min: 0, max: 15, normalMin: 0,    normalMax: 3,   trend: [], tau: TAU_HF },
@@ -128,7 +128,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 810, y: 540, width: 280, height: 60,
+    x: 340, y: 530, width: 580, height: 120,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },
@@ -136,7 +136,6 @@ export const aluminumEquipments: Equipment[] = [
       { id: 'task_count',        name: '今日任务数', value: 8, unit: '条', min: 0, max: 30, normalMin: 0, normalMax: 30, trend: [], inertia: false },
       { id: 'done_count',        name: '已完成数',   value: 3, unit: '条', min: 0, max: 30, normalMin: 0, normalMax: 30, trend: [], inertia: false },
       { id: 'global_alarm',      name: '全场报警数', value: 2, unit: '条', min: 0, max: 50, normalMin: 0, normalMax: 5, trend: [], tau: 5 },
-      // 铝水抬包参数（操作上由班组任务台协调）
       { id: 'vacuum_pressure',   name: '抬包真空度', value: -80,  unit: 'kPa',  min: -100, max: 0,   normalMin: -90, normalMax: -65, trend: [], tau: TAU_FAST },
       { id: 'al_metal_temp',     name: '抬包铝水温', value: 920,  unit: '°C',  min: 700,  max: 1000, normalMin: 880, normalMax: 950, trend: [], tau: TAU_TEMP },
       { id: 'al_out_count',      name: '日出铝量',   value: 12,   unit: 't',    min: 0, max: 80, normalMin: 8, normalMax: 24, trend: [], tau: TAU_MID },
@@ -144,11 +143,11 @@ export const aluminumEquipments: Equipment[] = [
   },
 
   // ============================================================
-  // 总控柜
+  // 总控柜（行 2 左侧）
   // ============================================================
   {
     id: 'CTRL-401', name: '电解车间总控柜', type: 'control_box',
-    x: 540, y: 620, width: 200, height: 55,
+    x: 60, y: 600, width: 220, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'main_voltage', name: '配电电压',  value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },
@@ -168,9 +167,7 @@ export const aluminumPipelines: Pipeline[] = [
   { id: 'AP-201', from: 'TRA-301', to: 'CELL-101', fromPoint: 'top', toPoint: 'bottom', medium: '直流电', flowRate: 1.5, color: '#facc15' },
   { id: 'AP-202', from: 'TRA-301', to: 'CELL-102', fromPoint: 'top', toPoint: 'bottom', medium: '直流电', flowRate: 1.5, color: '#facc15' },
 
-  // 烟气：2 槽 → 烟气净化
-  { id: 'AP-401', from: 'CELL-101', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
-  { id: 'AP-402', from: 'CELL-102', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
+  // 烟气：2 槽 → FGT 屋顶汇流（由 FactoryCanvas 画的屋顶烟道代替，不画 Pipeline）
 
   // 槽控 → 槽
   { id: 'AP-501', from: 'POT-CTRL-101', to: 'CELL-101', fromPoint: 'top', toPoint: 'bottom', medium: '槽控', flowRate: 0.3, color: '#a855f7' },
@@ -179,7 +176,6 @@ export const aluminumPipelines: Pipeline[] = [
   // 控制：总控柜 → 各设备
   { id: 'AP-601', from: 'CTRL-401', to: 'HMI-301',  fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
   { id: 'AP-602', from: 'CTRL-401', to: 'TRA-301',  fromPoint: 'left', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'AP-603', from: 'CTRL-401', to: 'FGT-301',  fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
 ];
 
 export const aluminumConfig = {

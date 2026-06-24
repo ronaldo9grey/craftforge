@@ -675,14 +675,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'left';
       ctx.fillText(`系列电流 ${busCurrent} kA / 母线电压 ${secVoltage} V`, w - 254, 90);
 
-      // ---- (7) 物料流向（放在阴极母线下方 y=522 留出空间避开两侧栏）----
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(w - 230, 519, 210, 14);
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 10px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
-      ctx.fillText('氧化铝粉 → 电解 → 铝水 → 抬包', w - 27, 522);
+      // ---- (7) 物料流向 已删除（与阴极母线标签重叠，且信息冗余）----
 
       // ---- (8) 版本水印 ----
       ctx.fillStyle = '#06b6d4';

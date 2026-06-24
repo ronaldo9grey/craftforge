@@ -532,12 +532,40 @@ export const FactoryCanvas: React.FC = () => {
       // 行 1 电解车间核心区（y=85~490 含天车下方+2 槽+2 槽控柜）
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
       ctx.fillRect(0, 85, w, 405);
-      // 阴极母线区（y=500~525）
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.06)';
-      ctx.fillRect(0, 500, w, 25);
-      // 控制层（y=530~685 占满底部）
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
+      // 阴极母线区（y=498~528 提升到 30px 高度）
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.08)';
+      ctx.fillRect(0, 498, w, 30);
+      // 控制层（y=530~685 加深到 0.12，分区更清晰）
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
       ctx.fillRect(0, 530, w, 155);
+
+      // ---- (2.1) 区域间地面横线（baseboard，比虚线网格更明显）----
+      // 电解车间↔阴极母线区
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(15, 490);
+      ctx.lineTo(w - 15, 490);
+      ctx.stroke();
+      // 阴极母线区↔控制层
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(15, 528);
+      ctx.lineTo(w - 15, 528);
+      ctx.stroke();
+      // 控制层底（地面）
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(15, 685);
+      ctx.lineTo(w - 15, 685);
+      ctx.stroke();
+      // baseboard 浅阴影（地面投影感）
+      const baseGrad = ctx.createLinearGradient(0, 685, 0, 700);
+      baseGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
+      baseGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(0, 685, w, 15);
 
       // ---- (2.5) 氧化铝输送管道：y=96 水平主管 + 2 个分支竖管 ----
       const pipeY = 100;
@@ -611,17 +639,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = cellGlow;
       ctx.fillRect(0, 110, w, 360);
 
-      // ---- (4) 地面网格 ----
-      ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 6]);
-      [490, 530, 685].forEach((yy) => {
-        ctx.beginPath();
-        ctx.moveTo(15, yy);
-        ctx.lineTo(w - 15, yy);
-        ctx.stroke();
-      });
-      ctx.setLineDash([]);
+      // ---- (4) 地面网格（已被 (2.1) baseboard 替代，此处不再画 ）----
 
       // ---- (5) 区域标签（左侧带深色背景框）----
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -638,14 +656,24 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('▎ 控制层', 24, 536);
 
       // ---- (6) 关键数据指标（顶部状态条）----
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(w - 250, 78, 240, 16);
-      ctx.strokeStyle = '#06b6d4';
-      ctx.strokeRect(w - 250, 78, 240, 16);
-      ctx.fillStyle = '#06b6d4';
+      // 顶部状态条：实时跟随 TRA-301（整流变压器）的母线电流 + 二次直流电压
+      // 从 equipmentsRef 取最新值（避免 store 订阅导致 re-render）
+      const tra = equipmentsRef.current.find((e) => e.id === 'TRA-301');
+      const busCurParam = tra?.parameters.find((p) => p.id === 'bus_current');
+      const secVoltParam = tra?.parameters.find((p) => p.id === 'secondary_dc_volt');
+      const busCurrent = busCurParam ? Math.round(busCurParam.value) : 600;
+      const secVoltage = secVoltParam ? Math.round(secVoltParam.value) : 1660;
+      // 报警态：偏离正常范围切红色
+      const isAlarm = busCurParam && (busCurParam.value < (busCurParam.normalMin ?? 580) || busCurParam.value > (busCurParam.normalMax ?? 620));
+      const barColor = isAlarm ? '#ef4444' : '#06b6d4';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(w - 260, 78, 250, 16);
+      ctx.strokeStyle = barColor;
+      ctx.strokeRect(w - 260, 78, 250, 16);
+      ctx.fillStyle = barColor;
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('系列电流 600 kA / 母线电压 1660 V', w - 244, 90);
+      ctx.fillText(`系列电流 ${busCurrent} kA / 母线电压 ${secVoltage} V`, w - 254, 90);
 
       // ---- (7) 物料流向（放在阴极母线下方 y=522 留出空间避开两侧栏）----
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -661,7 +689,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v10 aluminum  (删除总控柜+空间撑开+闪烁修复)', w - 30, h - 8);
+      ctx.fillText('v11 aluminum  (标签精修+实时状态条+天车铭牌+baseboard)', w - 30, h - 8);
     }
   };
 

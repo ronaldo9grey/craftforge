@@ -126,14 +126,25 @@ export class EquipmentRenderer {
       // 名称显示在设备上方 - 加大与设备图形的间距，避免被塞阀阀杆/加热炉烟囱/分馏塔顶塔盘等顶部装饰物覆盖
       // 阀门顶部有阀杆+手轮（占 24px 高），标签需再上移
       const nameOffset = type === 'valve' ? 38 : 22;
-      ctx.fillStyle = '#f1f5f9';
+      // 标签带半透明深色背景框，避免被周围管道/设备遮挡
+      const nameY = y - nameOffset;
       ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.fillText(name, x + width / 2, y - nameOffset);
+      const nameW = ctx.measureText(name).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(x + width / 2 - nameW / 2 - 4, nameY - 8, nameW + 8, 16);
+      ctx.fillStyle = '#f1f5f9';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(name, x + width / 2, nameY);
 
-      // 设备ID显示在设备下方 - 与上方间距保持一致
-      ctx.fillStyle = '#94a3b8';
+      // 设备ID显示在设备下方 - 同样带背景框
+      const idY = y + height + 22;
       ctx.font = '10px Roboto Mono, monospace';
-      ctx.fillText(id, x + width / 2, y + height + 22);
+      const idW = ctx.measureText(id).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(x + width / 2 - idW / 2 - 4, idY - 7, idW + 8, 14);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(id, x + width / 2, idY);
     }
     
     // 选中高亮边框
@@ -1018,13 +1029,32 @@ export class EquipmentRenderer {
       }
 
       case 'crane-iso': {
-        // 天车横梁 v2：桁架 + 滑车 + 挂抬包（红色铝水桶）+ 慢速移动 120s
+        // 天车横梁 v2：桁架 + 滑车 + 挂抬包（红色铝水桶）+ 慢速移动 600s
         ctx.fillStyle = '#475569';
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 1.5;
         const beamTop = y + 6;
         const beamBot = y + height - 6;
         const beamMid = (beamTop + beamBot) / 2;
+
+        // 天车铭牌（左端"#302 阳极天车"小铭牌，固定不动，避开滑车移动区域）
+        const plateW = 90, plateH = 14;
+        const plateX = x + 4, plateY = y - plateH - 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(plateX, plateY, plateW, plateH);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(plateX, plateY, plateW, plateH);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▎#302 阳极天车', plateX + 4, plateY + plateH / 2);
+
+        // 重置默认填充
+        ctx.fillStyle = '#475569';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
         ctx.fillRect(x, beamTop - 3, width, 4);
         ctx.fillRect(x, beamBot - 1, width, 4);
 
@@ -1073,7 +1103,7 @@ export class EquipmentRenderer {
         const range = 0.10;
         const tDwell = Math.max(0, Math.min(1, 1 - dist / range));
         const dwell = tDwell * tDwell * (3 - 2 * tDwell);  // smoothstep
-        const ropeLen = 22 + dwell * 10;  // 22 ~ 32 范围，平滑过渡 不再抖动
+        const ropeLen = 20 + dwell * 8;  // 20 ~ 28 范围，避免太深进槽顶集烟罩
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -1198,13 +1228,13 @@ export class EquipmentRenderer {
 
         // 屏幕文字 (POT CTRL)
         ctx.fillStyle = '#06b6d4';
-        ctx.font = 'bold 8px monospace';
+        ctx.font = 'bold 9px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('POT CTRL', screenL + 3, screenT + 2);
-        // 槽号
+        ctx.fillText('槽控柜', screenL + 3, screenT + 2);
+        // 槽号 (中文化：#101)
         ctx.fillStyle = '#fbbf24';
-        ctx.font = 'bold 10px monospace';
+        ctx.font = 'bold 11px Inter, sans-serif';
         ctx.textAlign = 'right';
         const cellNum = id.replace('POT-CTRL-', '#');
         ctx.fillText(cellNum, screenR - 3, screenT + 1);

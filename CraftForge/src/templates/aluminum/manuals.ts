@@ -1,7 +1,7 @@
 import type { EquipmentManual } from '@/types';
 
-// 电解铝车间设备操作手册库
-// 覆盖 8 件关键设备：CELL-101 (代表电解槽) / BUS-101 / TRA-301 / CRA-301 / FGT-301 / POT-202 / FEED-201 / CTRL-401
+// 电解铝车间设备操作手册库 v2
+// 覆盖：CELL-101 (代表电解槽) / POT-CTRL-101 (槽控柜) / TRA-301 / FGT-301 / HMI-301 / CTRL-401
 export const aluminumManuals: Record<string, EquipmentManual> = {
   'CELL-101': {
     overview:

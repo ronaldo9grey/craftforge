@@ -50,6 +50,10 @@ export class EquipmentRenderer {
           // 天车横梁：钢灰
           fillColor = '#475569';
           break;
+        case 'pot-ctrl':
+          // 槽控柜：深灰金属外壳
+          fillColor = '#1f2937';
+          break;
         case 'heater':
           fillColor = '#7c2d12';
           break;
@@ -910,7 +914,7 @@ export class EquipmentRenderer {
         ctx.font = 'bold 12px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const nameTag = id === 'CELL-101' ? '#101 主槽' : id === 'CELL-102' ? '#102 副槽' : '电解槽';
+        const nameTag = id === 'CELL-101' ? '#101' : id === 'CELL-102' ? '#102' : id === 'CELL-103' ? '#103' : id === 'CELL-104' ? '#104' : '电解槽';
         ctx.fillText(nameTag, shellL + 8, shellY2 - 13);
 
         // ============ ⑦ 工人小人（仅在 CELL-101 前显示）============
@@ -962,9 +966,9 @@ export class EquipmentRenderer {
           ctx.stroke();
         }
 
-        // 滑车（120s 一周期来回移动，慢速）
+        // 滑车（240s 一周期来回移动，4 倍慢于上版，贴近真实换极节奏）
         const animT = animTime ?? Date.now() / 1000;
-        const period = 120;
+        const period = 240;
         const phase = (animT % period) / period;
         const tri = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
         const trolleyX = x + 30 + tri * (width - 80);
@@ -1046,6 +1050,92 @@ export class EquipmentRenderer {
           );
           ctx.stroke();
         }
+        break;
+      }
+
+      case 'pot-ctrl': {
+        // 槽控柜（PLC 控制柜）：立式机柜外形 + 顶部状态灯条 + 屏幕 + 散热栅
+        const padX = 10;
+        const cabinetL = x + padX;
+        const cabinetR = x + width - padX;
+        const cabinetT = y + 4;
+        const cabinetB = y + height - 4;
+
+        // 主体柜壳
+        const cabGrad = ctx.createLinearGradient(cabinetL, cabinetT, cabinetR, cabinetT);
+        cabGrad.addColorStop(0, '#1f2937');
+        cabGrad.addColorStop(0.5, '#374151');
+        cabGrad.addColorStop(1, '#1f2937');
+        ctx.fillStyle = cabGrad;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.2;
+        ctx.fillRect(cabinetL, cabinetT, cabinetR - cabinetL, cabinetB - cabinetT);
+        ctx.strokeRect(cabinetL, cabinetT, cabinetR - cabinetL, cabinetB - cabinetT);
+
+        // 顶部 5 个状态灯（绿/绿/绿/黄/绿，第 4 灯闪烁）
+        const lights = ['#22c55e', '#22c55e', '#22c55e', '#facc15', '#22c55e'];
+        const lightSize = 5;
+        const lightGap = 14;
+        const lightTotalW = lights.length * lightSize + (lights.length - 1) * lightGap;
+        const lightStartX = cabinetL + (cabinetR - cabinetL - lightTotalW) / 2;
+        const animT = animTime ?? Date.now() / 1000;
+        for (let i = 0; i < lights.length; i++) {
+          let color = lights[i];
+          if (i === 3 && Math.sin(animT * 4) < 0) color = '#92400e';
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(lightStartX + i * (lightSize + lightGap), cabinetT + 9, lightSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+
+        // 中央液晶屏（黑底 + 青绿色数据波形）
+        const screenL = cabinetL + 18;
+        const screenT = cabinetT + 18;
+        const screenR = cabinetR - 18;
+        const screenB = cabinetB - 18;
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(screenL, screenT, screenR - screenL, screenB - screenT);
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(screenL, screenT, screenR - screenL, screenB - screenT);
+
+        // 屏幕模拟数据波形（运行中的曲线）
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 0.9;
+        ctx.beginPath();
+        const wavY = (screenT + screenB) / 2;
+        for (let wx = screenL + 2; wx < screenR - 2; wx += 3) {
+          const wy = wavY + Math.sin((wx + animT * 35) * 0.18) * 3.5;
+          if (wx === screenL + 2) ctx.moveTo(wx, wy);
+          else ctx.lineTo(wx, wy);
+        }
+        ctx.stroke();
+
+        // 屏幕文字 (POT CTRL)
+        ctx.fillStyle = '#06b6d4';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('POT CTRL', screenL + 3, screenT + 2);
+        // 槽号
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 10px monospace';
+        ctx.textAlign = 'right';
+        const cellNum = id.replace('POT-CTRL-', '#');
+        ctx.fillText(cellNum, screenR - 3, screenT + 1);
+
+        // 左右两侧把手（小竖线）
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cabinetL + 4, cabinetT + 18);
+        ctx.lineTo(cabinetL + 4, cabinetB - 18);
+        ctx.moveTo(cabinetR - 4, cabinetT + 18);
+        ctx.lineTo(cabinetR - 4, cabinetB - 18);
+        ctx.stroke();
         break;
       }
 

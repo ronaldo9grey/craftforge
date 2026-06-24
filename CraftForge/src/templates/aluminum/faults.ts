@@ -99,20 +99,19 @@ export const aluminumFaults: Fault[] = [
     id: 'EF005',
     name: '氧化铝浓度过低（阳极效应前兆）',
     description: 'CELL-102 氧化铝浓度跌至 1.3 wt%，槽噪声升至 80 mV，电压略升 0.15V，如不补料会触发阳极效应',
-    affectedEquipments: ['CELL-102', 'AL-201'],
+    affectedEquipments: ['CELL-102'],
     symptoms: [
       { equipmentId: 'CELL-102', param: 'alumina_conc', paramName: '氧化铝浓度', value: 1.3, unit: 'wt%', normal: '1.8-3.5', trend: 'down' },
       { equipmentId: 'CELL-102', param: 'noise_level',  paramName: '槽噪声',     value: 80,  unit: 'mV',  normal: '0-50',    trend: 'up' },
-      { equipmentId: 'AL-201',   param: 'feed_flow',    paramName: '料仓下料速率', value: 1.0, unit: 'kg/min', normal: '1.5-2.4', trend: 'down' },
+      { equipmentId: 'CELL-102', param: 'break_freq',   paramName: '打壳频次',   value: 3,   unit: '次/h', normal: '4-10', trend: 'down' },
     ],
-    cause: '下料系统流量不足或料仓料位低，氧化铝消耗速度大于补充速度',
+    cause: '下料系统打壳频次不足或气力输送堵料，氧化铝消耗速度大于补充速度',
     steps: [
-      { id: 's1', action: '提高下料速率到 2.2 kg/min', correct: true, order: 1 },
-      { id: 's2', action: '提高流化风压改善下料', correct: true, order: 2 },
+      { id: 's1', action: '提高打壳频次到 7 次/h', correct: true, order: 1 },
+      { id: 's2', action: '检查气力输送管道是否堵塞', correct: true, order: 2 },
       { id: 's3', action: '加大系列电流补偿', correct: false, order: 3 },
     ],
-    hints: ['浓度才 1.3，再降就阳极效应', '风压上去料就下得快', '电流加大消耗更快越糟'],
-    // 发散：氧化铝浓度继续往下走（如果不补料），直至触发阳极效应阈值
+    hints: ['浓度才 1.3，再降就阳极效应', '加快打壳频次让料能进去', '电流加大消耗更快越糟'],
     divergence: {
       drivers: [
         { equipmentId: 'CELL-102', param: 'alumina_conc', rate: -0.02, cap: 0.3, delaySec: 30 },
@@ -157,21 +156,22 @@ export const aluminumFaults: Fault[] = [
   },
   {
     id: 'EF008',
-    name: '下料堵塞（打壳气缸失灵）',
-    description: 'FEED-201 打壳频次降至 1 次/h，气缸压力 0.3 MPa（正常 0.5-0.7），下料中断',
-    affectedEquipments: ['FEED-201', 'CELL-101'],
+    name: '槽控柜通讯中断（PLC 死机）',
+    description: 'POT-CTRL-101 通讯状态变为 0，PLC 负载 95% 接近死机，累积报警 12 条，CELL-101 自动控制失效',
+    affectedEquipments: ['POT-CTRL-101', 'CELL-101'],
     symptoms: [
-      { equipmentId: 'FEED-201', param: 'break_freq', paramName: '打壳频次', value: 1, unit: '次/h', normal: '4-10', trend: 'down' },
-      { equipmentId: 'FEED-201', param: 'cylinder_p', paramName: '气缸压力', value: 0.3, unit: 'MPa', normal: '0.5-0.7', trend: 'down' },
-      { equipmentId: 'FEED-201', param: 'feed_amount',paramName: '下料量',   value: 1.2, unit: 'kg/次', normal: '2-3', trend: 'down' },
+      { equipmentId: 'POT-CTRL-101', param: 'comm_status', paramName: '通讯状态', value: 0,  unit: '', normal: '1', trend: 'down' },
+      { equipmentId: 'POT-CTRL-101', param: 'plc_load',    paramName: 'PLC 负载',  value: 95, unit: '%', normal: '20-70', trend: 'up' },
+      { equipmentId: 'POT-CTRL-101', param: 'alarm_count', paramName: '累积报警', value: 12, unit: '条', normal: '0-5', trend: 'up' },
     ],
-    cause: '气缸压缩空气压力不足或气缸卡涩，打壳锤不能正常落下',
+    cause: 'PLC 程序异常或柜内过热导致 CPU 负载过高，与上位机通讯中断',
     steps: [
-      { id: 's1', action: '检查压缩空气供气管路', correct: true, order: 1 },
-      { id: 's2', action: '提高气缸压力到 0.6 MPa', correct: true, order: 2 },
-      { id: 's3', action: '人工打壳临时维持', correct: true, order: 3 },
+      { id: 's1', action: '检查柜内温度和散热风扇', correct: true, order: 1 },
+      { id: 's2', action: '远程重启 PLC 程序', correct: true, order: 2 },
+      { id: 's3', action: '切换控制模式到本地', correct: true, order: 3 },
+      { id: 's4', action: '不管它继续生产', correct: false, order: 4 },
     ],
-    hints: ['气压不够锤砸不下去', '人工打壳先维持', '气路上要么漏要么堵'],
+    hints: ['PLC 死机时槽控就丢了', '先重启 PLC 看能否恢复', '不行就切本地控制保槽'],
   },
   {
     id: 'EF009',
@@ -212,12 +212,11 @@ export const aluminumFaults: Fault[] = [
   {
     id: 'EF011',
     name: '抬包真空泄漏（铝水抽不上来）',
-    description: 'POT-202 真空度仅 -45 kPa（正常 -90~-65），真空泵电流飙至 65 A，铝水量不增',
-    affectedEquipments: ['POT-202'],
+    description: '集控室监测到抬包真空度仅 -45 kPa（正常 -90~-65），铝水量不增，疑似抬包真空管路泄漏',
+    affectedEquipments: ['HMI-301'],
     symptoms: [
-      { equipmentId: 'POT-202',   param: 'vacuum_pressure', paramName: '抬包真空度', value: -45, unit: 'kPa', normal: '-95~-65', trend: 'up' },
-      { equipmentId: 'POT-202',   param: 'vacuum_motor_a',  paramName: '真空泵电流', value: 65, unit: 'A', normal: '25-50', trend: 'up' },
-      { equipmentId: 'POT-202',   param: 'al_metal_qty',    paramName: '铝水量', value: 2.8, unit: 't', normal: '3.5-5.0', trend: 'down' },
+      { equipmentId: 'HMI-301', param: 'vacuum_pressure', paramName: '抬包真空度', value: -45, unit: 'kPa', normal: '-95~-65', trend: 'up' },
+      { equipmentId: 'HMI-301', param: 'al_metal_temp',   paramName: '抬包铝水温', value: 870, unit: '°C', normal: '880-950', trend: 'down' },
     ],
     cause: '抬包密封圈老化漏气或真空管路接头松动，泵满负荷也抽不上真空',
     steps: [

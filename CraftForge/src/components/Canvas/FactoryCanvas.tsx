@@ -416,33 +416,93 @@ export const FactoryCanvas: React.FC = () => {
       ctx.moveTo(w - 15, 50); ctx.lineTo(w - 15, h - 30);
       ctx.stroke();
 
-      // ---- (2) 区域底色（v4 布局：2 槽大尺寸，行 1 占 110~330）----
-      // 行 1 槽阵列区（y=105~335）- 深青
+      // ---- (2) 区域底色（v5 布局：电解车间核心 + 控制层分离）----
+      // 行 1 电解车间核心区（y=105~395）- 深青（含 4 槽 + 4 槽控柜）
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 105, w, 230);
-      // 行 2 车间内辅助（y=350~435）- 浅橙
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.05)';
-      ctx.fillRect(0, 350, w, 85);
-      // 行 3 电气辅助（y=445~530）- 暖灰
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.10)';
-      ctx.fillRect(0, 445, w, 85);
-      // 行 4 电气控制（y=565~665）- 暗
+      ctx.fillRect(0, 105, w, 290);
+      // 阴极母线区（y=400~430）- 金黄色淡底（视觉分隔上下层）
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.06)';
+      ctx.fillRect(0, 400, w, 30);
+      // 控制层 行 1（y=445~550）
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
+      ctx.fillRect(0, 445, w, 105);
+      // 控制层 行 2（y=565~665）
       ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
       ctx.fillRect(0, 565, w, 100);
 
-      // ---- (3) 灯光氛围：槽阵列区有橙红泛光 ----
-      const cellGlow = ctx.createRadialGradient(w / 2, 230, 80, w / 2, 230, 700);
-      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.18)');
-      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.08)');
+      // ---- (2.5) 氧化铝输送管道（屋顶下方水平横管 + 分支竖管到 4 槽顶部）----
+      const pipeY = 105;
+      // 水平主管
+      const pipeGrad = ctx.createLinearGradient(0, pipeY - 3, 0, pipeY + 6);
+      pipeGrad.addColorStop(0, '#cbd5e1');
+      pipeGrad.addColorStop(0.5, '#94a3b8');
+      pipeGrad.addColorStop(1, '#475569');
+      ctx.fillStyle = pipeGrad;
+      ctx.fillRect(30, pipeY - 3, w - 60, 8);
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(30, pipeY - 3, w - 60, 8);
+      // 4 个分支竖管（连到 4 槽顶部 x 中心）
+      const cellXCenters = [53 + 140, 351 + 140, 649 + 140, 947 + 140];
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 5;
+      cellXCenters.forEach((cx) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, pipeY + 5);
+        ctx.lineTo(cx, 120);
+        ctx.stroke();
+      });
+      // 输送方向指示（管道末端小三角箭头）+ 标签
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(40, pipeY - 8);
+      ctx.lineTo(50, pipeY - 8);
+      ctx.lineTo(45, pipeY - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('氧化铝粉气力输送管 ⟶', 55, pipeY - 4);
+
+      // ---- (2.6) 阴极母线（金黄粗条贯穿 4 槽底部）----
+      const busY = 410;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(30, busY, w - 60, 8);
+      ctx.strokeStyle = '#a16207';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(30, busY, w - 60, 8);
+      // 接地三角符号（左右各一个）
+      ctx.fillStyle = '#94a3b8';
+      [40, w - 50].forEach((bx) => {
+        ctx.beginPath();
+        ctx.moveTo(bx, busY + 10);
+        ctx.lineTo(bx + 10, busY + 10);
+        ctx.lineTo(bx + 5, busY + 18);
+        ctx.closePath();
+        ctx.fill();
+      });
+      // 母线标签
+      ctx.fillStyle = '#facc15';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('━━ 阴极母线 480 kA ━━', w - 70, busY + 4);
+
+      // ---- (3) 灯光氛围：电解槽核心区有橙红泛光 ----
+      const cellGlow = ctx.createRadialGradient(w / 2, 220, 80, w / 2, 220, 600);
+      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.16)');
+      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.06)');
       cellGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = cellGlow;
-      ctx.fillRect(0, 105, w, 280);
+      ctx.fillRect(0, 110, w, 300);
 
       // ---- (4) 地面网格 ----
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 6]);
-      [340, 440, 540, 670].forEach((yy) => {
+      [395, 440, 555, 670].forEach((yy) => {
         ctx.beginPath();
         ctx.moveTo(15, yy);
         ctx.lineTo(w - 15, yy);
@@ -455,10 +515,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 电解槽 (主+副 双槽)', 22, 113);
-      ctx.fillText('▎ 车间内辅助', 22, 358);
-      ctx.fillText('▎ 电气辅助', 22, 453);
-      ctx.fillText('▎ 电气控制', 22, 573);
+      ctx.fillText('▎ 电解车间（4 槽 + 4 槽控）', 22, 113);
+      ctx.fillText('▎ 控制层', 22, 453);
+      ctx.fillText('▎ 总控', 22, 573);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -481,7 +540,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v4 aluminum  (iso-2.5D 深度还原)', w - 30, h - 8);
+      ctx.fillText('v5 aluminum  (聚焦电解车间)', w - 30, h - 8);
     }
   };
 

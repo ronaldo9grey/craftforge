@@ -2,7 +2,7 @@
 export interface Equipment {
   id: string;
   name: string;
-  type: 'reactor' | 'regenerator' | 'fractionator' | 'heater' | 'exchanger' | 'pump' | 'compressor' | 'valve' | 'instrument' | 'robot' | 'conveyor' | 'fixture' | 'weld_gun' | 'control_box' | 'station' | 'cell' | 'cell-iso' | 'crane-iso';
+  type: 'reactor' | 'regenerator' | 'fractionator' | 'heater' | 'exchanger' | 'pump' | 'compressor' | 'valve' | 'instrument' | 'robot' | 'conveyor' | 'fixture' | 'weld_gun' | 'control_box' | 'station' | 'cell' | 'cell-iso' | 'crane-iso' | 'pot-ctrl';
   x: number;
   y: number;
   width: number;

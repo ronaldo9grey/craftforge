@@ -26,23 +26,30 @@ export const FactoryCanvas: React.FC = () => {
   const isDrillRunning = useDrillStore((state) => state.isRunning);
   const currentFault = useDrillStore((state) => state.currentFault);
 
-  // 🔑 闪烁修复：用 ref 持有频繁变化的演练状态
-  // 之前 useEffect 依赖 currentFault → 演练时其内部 trend 数组每秒变化
-  // → React 把它视作"变了" → useEffect cleanup+remount → animate 循环重启 → 闪烁
-  // 现在通过 ref 让 animate 读最新值，useEffect 仅依赖结构性变化
+  // 🔑 闪烁修复 v2：把所有"频繁变化"的状态都用 ref 持有
+  // 之前 useEffect 依赖 equipments → updateParameter 每秒数次 → 数组引用变化 → useEffect cleanup+remount → animate 重启 → 闪烁
+  // 现在 animate 通过 ref 读最新数据，useEffect 仅依赖结构性变化（场景切换/管道结构）
+  const equipmentsRef = useRef(equipments);
+  const pipelinesRef = useRef(pipelines);
   const isDrillRunningRef = useRef(isDrillRunning);
   const currentFaultRef = useRef(currentFault);
   const selectedEquipmentIdRef = useRef(selectedEquipmentId);
+  useEffect(() => { equipmentsRef.current = equipments; }, [equipments]);
+  useEffect(() => { pipelinesRef.current = pipelines; }, [pipelines]);
   useEffect(() => { isDrillRunningRef.current = isDrillRunning; }, [isDrillRunning]);
   useEffect(() => { currentFaultRef.current = currentFault; }, [currentFault]);
   useEffect(() => { selectedEquipmentIdRef.current = selectedEquipmentId; }, [selectedEquipmentId]);
+
+  // 用 activeTemplate 作为"结构变化"的代理键：只有切换场景才重启 animate
+  // 设备列表内部参数变化不再触发 useEffect 重启
 
   // 当前场景的设计尺寸（从注册中心读取）
   const designSize = getSceneMeta(activeTemplate ?? 'fcc')?.designSize ?? FALLBACK_DESIGN_SIZE;
 
   // 计算自适应缩放 - 使用统一的缩放比例，保持设备不变形
+  // 注意：不依赖 equipments（避免演练时频繁变化），改用 equipmentsRef
   const calculateScale = useCallback((canvasWidth: number, canvasHeight: number): { scale: number; offsetX: number; offsetY: number } => {
-    if (equipments.length === 0) return { scale: 1, offsetX: 0, offsetY: 0 };
+    if (equipmentsRef.current.length === 0) return { scale: 1, offsetX: 0, offsetY: 0 };
 
     // 使用统一的缩放比例，保持宽高比；预留 20px 内边距
     const padding = 20;
@@ -57,7 +64,7 @@ export const FactoryCanvas: React.FC = () => {
     const offsetY = (canvasHeight - contentHeight) / 2;
 
     return { scale, offsetX, offsetY };
-  }, [equipments, designSize]);
+  }, [designSize]);
 
   const getEquipmentAtPosition = useCallback((x: number, y: number): Equipment | null => {
     const scale = scaleRef.current;
@@ -67,15 +74,16 @@ export const FactoryCanvas: React.FC = () => {
     const designX = (x - offset.x) / scale;
     const designY = (y - offset.y) / scale;
 
-    for (let i = equipments.length - 1; i >= 0; i--) {
-      const eq = equipments[i];
+    const eqs = equipmentsRef.current;
+    for (let i = eqs.length - 1; i >= 0; i--) {
+      const eq = eqs[i];
       if (designX >= eq.x && designX <= eq.x + eq.width &&
           designY >= eq.y && designY <= eq.y + eq.height) {
         return eq;
       }
     }
     return null;
-  }, [equipments]);
+  }, []);
 
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -184,9 +192,9 @@ export const FactoryCanvas: React.FC = () => {
       // 更新流动偏移
       flowOffsetRef.current += 0.5;
 
-      // 绘制管道（容错）
+      // 绘制管道（容错）- 通过 ref 读，避免数组引用变化触发 useEffect 重启
       try {
-        PipelineRenderer.render(ctx, pipelines, flowOffsetRef.current);
+        PipelineRenderer.render(ctx, pipelinesRef.current, flowOffsetRef.current);
       } catch (err) {
         if (!(window as any).__pipelineErrLogged) {
           (window as any).__pipelineErrLogged = true;
@@ -196,8 +204,8 @@ export const FactoryCanvas: React.FC = () => {
 
       // 绘制设备（把 flowOffset 当作动画时间相位传入，驱动机器人/传送带动画）
       // 用 try/catch 包住每个设备，避免单个设备渲染错误导致整个 animate 循环停摆
-      // 用 ref 读取演练状态，避免每次状态变化触发 useEffect 重启 animate（闪烁根因）
-      equipments.forEach((equipment) => {
+      // 用 ref 读取最新数据，避免每次 store 变化触发 useEffect 重启 animate（闪烁根因）
+      equipmentsRef.current.forEach((equipment) => {
         try {
           const isSelected = equipment.id === selectedEquipmentIdRef.current;
           const isFaulty = !!(isDrillRunningRef.current && currentFaultRef.current?.affectedEquipments.includes(equipment.id));
@@ -224,7 +232,7 @@ export const FactoryCanvas: React.FC = () => {
       cancelAnimationFrame(animationRef.current);
       if (resizeObserver) resizeObserver.disconnect();
     };
-  }, [equipments, pipelines, calculateScale, activeTemplate, designSize]);
+  }, [calculateScale, activeTemplate, designSize]);
 
   const drawBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     // 填充画布外深色底（设备区外部）

@@ -823,6 +823,18 @@ export class EquipmentRenderer {
         ctx.moveTo(anodeAreaL - 8, anodeBusY + 2);
         ctx.lineTo(anodeAreaR + 8, anodeBusY + 2);
         ctx.stroke();
+        // 阳极母线电流走马灯：表面叠加流动虚线，表达电流从 + 极向右扩散到 22 阳极
+        const animTLocal = animTime ?? Date.now() / 1000;
+        ctx.setLineDash([10, 6]);
+        ctx.lineDashOffset = -animTLocal * 40;
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(anodeAreaL - 8, anodeBusY + 4.5);
+        ctx.lineTo(anodeAreaR + 8, anodeBusY + 4.5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
         // "+" 极标签（左端）带圆形背景
         ctx.fillStyle = '#dc2626';
         ctx.beginPath();
@@ -848,6 +860,19 @@ export class EquipmentRenderer {
           ctx.moveTo(ax, stemY1);
           ctx.lineTo(ax, stemY2);
           ctx.stroke();
+          // ④' 电流脉冲粒子（白色亮点沿导杆从上往下 → 表示电流流向阳极块）
+          // 每根导杆有 1 个粒子在循环；不同导杆相位错开形成"瀑布"感
+          const pulsePhase = ((animTLocal * 1.5 + i * 0.07) % 1);
+          const pulseY = stemY1 + pulsePhase * (stemY2 - stemY1);
+          ctx.fillStyle = '#fef9c3';
+          ctx.beginPath();
+          ctx.arc(ax, pulseY, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          // 粒子辉光
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.4)';
+          ctx.beginPath();
+          ctx.arc(ax, pulseY, 3.5, 0, Math.PI * 2);
+          ctx.fill();
           // ⑤ 钢爪
           ctx.fillStyle = '#52525b';
           ctx.strokeStyle = '#27272a';
@@ -986,6 +1011,26 @@ export class EquipmentRenderer {
         // 右侧
         ctx.fillRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
         ctx.strokeRect(shellR - 8, rodY - 5, (x + W + 8) - (shellR - 8), 10);
+
+        // ⑩' 阴极钢棒电流外流走马灯：左侧从内往外（←），右侧从内往外（→）
+        // 表示电流从槽内的铝水/阴极 → 钢棒 → 流出到车间阴极母线
+        ctx.setLineDash([6, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#fde047';
+        // 左侧（流向左：lineDashOffset 正方向 = 虚线往左移）
+        ctx.lineDashOffset = animTLocal * 30;
+        ctx.beginPath();
+        ctx.moveTo(shellL + 8, rodY);
+        ctx.lineTo(x - 8, rodY);
+        ctx.stroke();
+        // 右侧（流向右：lineDashOffset 负方向）
+        ctx.lineDashOffset = -animTLocal * 30;
+        ctx.beginPath();
+        ctx.moveTo(shellR - 8, rodY);
+        ctx.lineTo(x + W + 8, rodY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineDashOffset = 0;
         // "-" 极标签（右端，蓝色圆背景）
         ctx.fillStyle = '#2563eb';
         ctx.beginPath();

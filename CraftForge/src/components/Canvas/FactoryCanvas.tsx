@@ -607,6 +607,16 @@ export const FactoryCanvas: React.FC = () => {
 
       // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）+ DC− 回路示意 ----
       const busY = 505;
+
+      // 实时电流强度（用于联动所有走马灯速度 + 亮度；故障时电流偏离 → 流速显眼变化）
+      const _tra = equipmentsRef.current.find((e) => e.id === 'TRA-301');
+      const _curParam = _tra?.parameters.find((p) => p.id === 'bus_current');
+      const _curVal = _curParam ? _curParam.value : 600;
+      // 归一化到正常 600 kA 为 1.0；偏离则线性放大/缩小
+      const currentRatio = Math.max(0.3, Math.min(2.0, _curVal / 600));
+      // 走马灯速度倍率（电流越大跑得越快，故障跌到 0 → 流速接近停）
+      const dcSpeed = 60 * currentRatio;
+
       // 阴极母线粗条
       ctx.fillStyle = '#facc15';
       ctx.fillRect(30, busY, w - 60, 8);
@@ -615,11 +625,11 @@ export const FactoryCanvas: React.FC = () => {
       ctx.strokeRect(30, busY, w - 60, 8);
 
       // 内部箭头流向（动画走马灯 → 表明电流从右到左回流到 TRA-301）
-      const dcAnim = (Date.now() / 1000) * 30;
-      ctx.setLineDash([8, 6]);
+      const dcAnim = (Date.now() / 1000) * dcSpeed;
+      ctx.setLineDash([12, 6]);
       ctx.lineDashOffset = dcAnim;
-      ctx.strokeStyle = '#92400e';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#7c2d12';
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.moveTo(35, busY + 4);
       ctx.lineTo(w - 35, busY + 4);
@@ -654,6 +664,17 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineTo(55, 528);
       ctx.closePath();
       ctx.fill();
+      // DC− 走马灯（从上到下流回变压器）
+      ctx.setLineDash([10, 5]);
+      ctx.lineDashOffset = -dcAnim;
+      ctx.strokeStyle = '#fef9c3';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(50, busY + 8);
+      ctx.lineTo(50, 535);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
 
       // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -699,11 +720,11 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('+', dcPlusX, 535 - 4);
-      // 走马灯（从下到上）
-      ctx.setLineDash([6, 6]);
+      // 走马灯（从下到上）— 加强亮度和粗度
+      ctx.setLineDash([10, 5]);
       ctx.lineDashOffset = -dcAnim;
-      ctx.strokeStyle = '#fca5a5';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = '#fee2e2';
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.moveTo(dcPlusX, 530);
       ctx.lineTo(dcPlusX, busY + 22);
@@ -764,7 +785,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v12 aluminum  (直流闭环可视化 DC+/DC−)', w - 30, h - 8);
+      ctx.fillText('v13 aluminum  (电流流动可视化 阳极母线+导杆+阴极钢棒+主回路)', w - 30, h - 8);
     }
   };
 

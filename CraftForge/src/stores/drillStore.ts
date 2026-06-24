@@ -68,6 +68,9 @@ interface DrillState {
     oldValue: number,
     newValue: number,
   ) => void;
+  // 非参数化的"操作动作"（如检查夹具/更换阳极/清理碳渣/撕开壳料）
+  // 与故障 steps 比对命中即记 isCorrect=true，否则 false
+  recordCustomAction: (action: string, equipmentId: string) => { correct: boolean; matched?: string };
   getCurrentHint: () => string;
   // 当前已"正确完成"的 step.action 数组（用于演练面板高亮）
   getCompletedSteps: () => string[];
@@ -418,6 +421,45 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         set({ wrongStreak: 0 });
       }
     }
+  },
+
+  recordCustomAction: (action, equipmentId) => {
+    const { currentFault } = get();
+    let isCorrect = false;
+    let matched: string | undefined;
+
+    if (currentFault) {
+      const correctSteps = currentFault.steps.filter((s) => s.correct);
+      const hit = correctSteps.find(
+        (s) => action.includes(s.action) || s.action.includes(action),
+      );
+      if (hit) {
+        isCorrect = true;
+        matched = hit.action;
+      }
+    }
+
+    const record: OperationRecord = {
+      timestamp: Date.now(),
+      action,
+      targetEquipment: equipmentId,
+      isCorrect,
+      aiFeedback: '',
+    };
+    set((state) => ({
+      records: [...state.records, record],
+      wrongStreak: isCorrect ? 0 : state.wrongStreak + 1,
+    }));
+
+    if (currentFault) {
+      if (isCorrect) {
+        soundService.playCorrect();
+      } else {
+        soundService.playWrong();
+      }
+    }
+
+    return { correct: isCorrect, matched };
   },
 
   getCurrentHint: () => {

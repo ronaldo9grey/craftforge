@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, BookOpen, History, Sliders, Check, AlertTriangle, TrendingUp, TrendingDown, Flame } from 'lucide-react';
+import { X, BookOpen, History, Sliders, Check, AlertTriangle, TrendingUp, TrendingDown, Flame, Wrench } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useDrillStore } from '@/stores/drillStore';
@@ -7,9 +7,11 @@ import { useDivergenceStore } from '@/stores/divergenceStore';
 import { fccManuals } from '@/templates/fcc/manuals';
 import { injectionManuals } from '@/templates/injection/manuals';
 import { aluminumManuals } from '@/templates/aluminum/manuals';
+import { getActionsForEquipment } from '@/templates/equipmentActions';
+import { useToastStore } from '@/components/Toast';
 
-// 弹窗内三种视图：参数 / 操作手册 / 历史记录
-type ViewMode = 'params' | 'manual' | 'history';
+// 弹窗内四种视图：参数 / 操作手册 / 历史记录 / 操作动作
+type ViewMode = 'params' | 'manual' | 'history' | 'actions';
 
 export const ParameterPanel: React.FC = () => {
   const selectedEquipmentId = useUIStore((state) => state.selectedEquipmentId);
@@ -164,6 +166,10 @@ export const ParameterPanel: React.FC = () => {
         <button onClick={() => setActiveView('params')} className={tabBtnClass('params')}>
           <Sliders className="w-3.5 h-3.5 shrink-0" />
           参数
+        </button>
+        <button onClick={() => setActiveView('actions')} className={tabBtnClass('actions')}>
+          <Wrench className="w-3.5 h-3.5 shrink-0" />
+          动作
         </button>
         <button onClick={() => setActiveView('manual')} className={tabBtnClass('manual')}>
           <BookOpen className="w-3.5 h-3.5 shrink-0" />
@@ -333,6 +339,11 @@ export const ParameterPanel: React.FC = () => {
         </div>
       )}
 
+      {/* 操作动作视图（非参数化的工艺操作：检查夹具/更换阳极/撕开壳料/清理碳渣等） */}
+      {activeView === 'actions' && (
+        <ActionsView equipmentId={equipment.id} equipmentType={equipment.type} />
+      )}
+
       {/* 历史记录视图 */}
       {activeView === 'history' && (
         <div className="p-4 space-y-2 max-h-96 overflow-y-auto text-sm">
@@ -356,6 +367,76 @@ export const ParameterPanel: React.FC = () => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// ============ 操作动作子面板 ============
+const ActionsView: React.FC<{ equipmentId: string; equipmentType: string }> = ({ equipmentId, equipmentType }) => {
+  const actions = getActionsForEquipment(equipmentType, equipmentId);
+  const recordCustomAction = useDrillStore((s) => s.recordCustomAction);
+  const isDrillRunning = useDrillStore((s) => s.isRunning);
+  const pushToast = useToastStore((s) => s.push);
+
+  if (actions.length === 0) {
+    return (
+      <div className="p-4 text-center text-text-muted text-sm py-8">
+        该设备暂无可执行的工艺动作
+      </div>
+    );
+  }
+
+  // 按 category 分组
+  const grouped = actions.reduce<Record<string, typeof actions>>((acc, a) => {
+    const k = a.category ?? '操作';
+    (acc[k] ??= []).push(a);
+    return acc;
+  }, {});
+  const categoryColors: Record<string, string> = {
+    '检查': 'border-sky-500/50 text-sky-300 hover:bg-sky-500/15',
+    '维护': 'border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/15',
+    '应急': 'border-rose-500/50 text-rose-300 hover:bg-rose-500/15',
+    '操作': 'border-amber-500/50 text-amber-300 hover:bg-amber-500/15',
+  };
+
+  const handleClick = (label: string) => {
+    if (!isDrillRunning) {
+      pushToast({ type: 'info', title: '请先开始演练，再执行工艺动作' });
+      return;
+    }
+    const result = recordCustomAction(label, equipmentId);
+    if (result.correct) {
+      pushToast({ type: 'success', title: `✓ 已执行：${label}`, description: '命中本次故障处方' });
+    } else {
+      pushToast({ type: 'warning', title: `已执行：${label}`, description: '与本次故障处方不匹配' });
+    }
+  };
+
+  return (
+    <div className="p-3 space-y-3 max-h-96 overflow-y-auto">
+      <div className="text-xs text-text-muted leading-relaxed bg-bg-tertiary rounded p-2">
+        💡 这些是<b className="text-text-primary">"动手"</b>类工艺操作（不在滑块参数里）。
+        按 AI 师傅的指示选择对应动作 — 命中故障 SOP 会计分。
+      </div>
+      {Object.entries(grouped).map(([cat, list]) => (
+        <div key={cat} className="space-y-1.5">
+          <div className="text-xs text-text-muted font-semibold pl-1">{cat}</div>
+          <div className="grid grid-cols-1 gap-1.5">
+            {list.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => handleClick(a.label)}
+                disabled={!isDrillRunning}
+                className={`text-left px-3 py-2 rounded border bg-bg-secondary transition disabled:opacity-40 disabled:cursor-not-allowed ${categoryColors[cat] ?? categoryColors['操作']}`}
+                title={a.desc}
+              >
+                <div className="text-sm font-medium">{a.label}</div>
+                {a.desc && <div className="text-xs text-text-muted mt-0.5">{a.desc}</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

@@ -103,20 +103,40 @@ export function buildContext(): string {
     lines.push(`## 关键参数\n${paramLines.join('\n')}`);
   }
 
-  // 4. 最近 3 次操作
-  const recents = drill.records.slice(-3);
+  // 4. 最近 8 次操作（更长视野 — 让师傅看到学员到底动了哪些参数，避免重复发同一条指令）
+  const recents = drill.records.slice(-8);
   if (recents.length > 0) {
     const opLines = recents
-      .map((r, i) => `${i + 1}. ${r.action}${r.isCorrect ? '（正确）' : '（错误/无关）'}`)
+      .map((r, i) => `${i + 1}. ${r.action}${r.isCorrect ? '（✓ 正确方向）' : '（✗ 错误/无关）'}`)
       .join('\n');
-    lines.push(`## 学员最近操作\n${opLines}`);
+    lines.push(`## 学员最近操作（含正误判定）\n${opLines}`);
+  }
+
+  // 5. 故障的标准处方（让 AI 强制沿一条线走，不要中途换方向）
+  //    使用 fault.steps（正确动作列表）+ fault.hints + fault.cause 拼出 SOP
+  if (drill.currentFault) {
+    const f = drill.currentFault;
+    const sopLines: string[] = [];
+    sopLines.push(`根因：${f.cause}`);
+    const correctSteps = (f.steps ?? []).filter((s) => s.correct).sort((a, b) => a.order - b.order);
+    if (correctSteps.length > 0) {
+      sopLines.push('正确处置步骤（你应该围绕这些步骤指导，不要让学员去调其他无关参数）：');
+      correctSteps.forEach((s, i) => sopLines.push(`${i + 1}. ${s.action}`));
+    }
+    if (f.hints && f.hints.length > 0) {
+      sopLines.push(`关键提示：${f.hints.join('；')}`);
+    }
+    lines.push(`## 本次故障标准处方\n${sopLines.join('\n')}`);
   }
 
   return lines.join('\n\n');
 }
 
-/** 截取最近 N 条对话（user/ai）转成 ChatMessage 数组 */
-function recentDialogue(maxTurns = 4): ChatMessage[] {
+/** 截取最近 N 条对话（user/ai）转成 ChatMessage 数组
+ * 默认取 8 轮（16 条消息）— 比之前 4 轮更长，让师傅记得自己说过什么、学员做过什么
+ * 解决"前后矛盾、反复发同一条指令"的问题
+ */
+function recentDialogue(maxTurns = 8): ChatMessage[] {
   const messages = useAIStore.getState().messages;
   const tail = messages.slice(-maxTurns * 2);
   return tail
@@ -137,7 +157,7 @@ export async function* askCoach(
 ): AsyncGenerator<string, void, unknown> {
   const messages: ChatMessage[] = [
     { role: 'system', content: `${buildSystemPrompt()}\n\n${buildContext()}` },
-    ...recentDialogue(3),
+    ...recentDialogue(8),
     { role: 'user', content: userQuestion },
   ];
 

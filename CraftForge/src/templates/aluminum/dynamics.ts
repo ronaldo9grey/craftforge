@@ -89,7 +89,4 @@ export const aluminumCouplings: CouplingRule[] = [
   { from: { equipmentId: 'AL-201', param: 'fluid_air_p' }, to: { equipmentId: 'AL-201', param: 'feed_flow' }, gain: 5, baseline: 0.18, tau: 4 },
   // S. 下料速率 → 氧化铝浓度（CELL-101 受影响）
   { from: { equipmentId: 'AL-201', param: 'feed_flow' }, to: { equipmentId: 'CELL-101', param: 'alumina_conc' }, gain: 0.6, baseline: 1.8, tau: 25 },
-
-  // 铸出率随铝水温度反向（温度低浇不出）
-  { from: { equipmentId: 'POT-202', param: 'al_metal_temp' }, to: { equipmentId: 'CAST-202', param: 'al_yield' }, gain: 0.05, baseline: 920, tau: 10 },
 ];

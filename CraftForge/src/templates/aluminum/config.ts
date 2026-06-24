@@ -1,20 +1,21 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V2 (电解铝车间优化版)
-// 电解铝车间布局 v2：1280×700
+// VERSION: 2026-06-23-V3 (电解车间等距 2.5D 版)
+// 电解铝车间布局 v3：1280×700  *** 聚焦电解车间，删除铸锭机 ***
 //
-// vs v1 主要变更：
-//   ① 4 台电解槽改用专属 type: 'cell'，外观为矮胖型梯形钢壳 + 顶部 8 根阳极棒阵列 + 内部电解质熔体层 + 底部铝水层
-//      尺寸 230×130 → 250×95（更接近真实电解槽长宽比 ~3:1）
-//   ② 主机区高度 70~200 (130h) → 80~175 (95h)，4 槽占据更扁的横向带状
-//   ③ 直流母线 BUS-101 移出行 1（避免与槽阵列竞争空间），改成竖直母线段在 4 槽右侧 (x=1020~1260)
-//   ④ 4 行净距严格 ≥ 30px，每行高度合理：
-//        行 1 主机区   y= 80~175 ( 95h)  → 分隔线 247  净距 72px
-//        行 2 物流主线 y=280~360 ( 80h)  → 分隔线 377  净距 17px
-//        行 3 辅助系统 y=405~485 ( 80h)  → 分隔线 540  净距 55px
-//        行 4 电气控制 y=580~655 ( 75h)
-//   ⑤ 4 槽 x 等间距分布：CELL-101=20, 270, 520, 770，每槽 230×95 + 间隔 20px
-//   ⑥ 物流线重新走线避免穿越（氧化铝从底部进，铝水从底部出）
+// vs v2 主要变更：
+//   ① 删除 CAST-202 铸锭机（属于铸造车间，不在电解车间内）
+//   ② 4 槽 → 8 槽，配电解车间真实多槽阵列感
+//   ③ 槽体使用专属 type='cell-iso' 等距 2.5D 渲染（菱形顶面 + 阳极棒阵列 + 电解质 + 铝水分层 + 火苗粒子）
+//   ④ 新增 CRANE-302 阳极天车横梁（type='crane-iso'，跨整个车间宽度，动画沿 x 移动）
+//   ⑤ 布局重新设计为电解车间专属：
+//        顶部 y=50~90   厂房屋顶 + 天车横梁（FactoryCanvas 绘制 + CRANE-302 实体）
+//        行 1 y=100~200 8 槽等距阵列（每槽 140×100）
+//        行 2 y=240~310 车间内辅助：氧化铝料仓 / 打壳下料 / 抬包 / 烟罩进风
+//        行 3 y=345~430 电气/工艺辅助：整流变压器 / 阳极天车控制 / 烟气净化 / 真空机组
+//        行 4 y=465~535 集控操作 + 母线监控
+//        行 5 y=570~650 电气控制柜
+//   ⑥ 物流线重新走线：氧化铝从料仓 → 8 槽顶部入；铝水从 8 槽底部 → 抬包
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -24,11 +25,12 @@ const TAU_HF = 15;
 const TAU_MECH = 2;
 const TAU_MID = 5;
 
-function cell(id: string, name: string, x: number,
+// 单槽参数模板
+function cell(id: string, name: string, x: number, y: number,
               voltOffset: number, currOffset: number, tempOffset: number): Equipment {
   return {
-    id, name, type: 'cell',
-    x, y: 80, width: 230, height: 95,
+    id, name, type: 'cell-iso',
+    x, y, width: 140, height: 100,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'cell_voltage',  name: '槽电压',     value: 4.15 + voltOffset, unit: 'V',   min: 3.5, max: 60,  normalMin: 4.0, normalMax: 4.3, trend: [], tau: TAU_FAST },
@@ -47,35 +49,41 @@ function cell(id: string, name: string, x: number,
 
 export const aluminumEquipments: Equipment[] = [
   // ============================================================
-  // 行 1：电解槽阵列 (CELL-101~104)
-  // 4 槽 x: 20, 270, 520, 770 / 间隔 20px / 宽 230 / 高 95
-  // 行 1 末尾右侧 1020~1260 (240px) 留给"系列母线汇流条"
+  // 顶部：阳极天车横梁（沿 x 轴移动）
+  // 跨整个车间，y=55 高度 35px
   // ============================================================
-  cell('CELL-101', '#101 电解槽', 20,    0,    0,    0),
-  cell('CELL-102', '#102 电解槽', 270,  -0.05,+2,   -3),
-  cell('CELL-103', '#103 电解槽', 520,  +0.03,-1,   +2),
-  cell('CELL-104', '#104 电解槽', 770,  +0.02,+3,   +1),
-
-  // 系列母线汇流条（行 1 右端，竖向矩形 instrument 展示）
   {
-    id: 'BUS-101', name: '直流母线汇流', type: 'instrument',
-    x: 1020, y: 80, width: 240, height: 95,
+    id: 'CRANE-302', name: '阳极天车横梁', type: 'crane-iso',
+    x: 30, y: 55, width: 1220, height: 40,
     status: 'normal', template: 'aluminum',
     parameters: [
-      { id: 'bus_voltage', name: '母线电压',  value: 1660, unit: 'V', min: 0, max: 2000, normalMin: 1620, normalMax: 1700, trend: [], tau: TAU_FAST },
-      { id: 'bus_current', name: '系列总电流', value: 480, unit: 'kA', min: 0, max: 600, normalMin: 470, normalMax: 500, trend: [], tau: TAU_FAST },
-      { id: 'bus_temp',    name: '母线温度',  value: 65,  unit: '°C', min: 20, max: 150, normalMin: 50, normalMax: 80, trend: [], tau: TAU_TEMP },
+      { id: 'crane_position', name: '横梁位置',   value: 50, unit: '%',  min: 0, max: 100, normalMin: 0, normalMax: 100, trend: [], tau: 5 },
+      { id: 'crane_speed',    name: '行走速度',   value: 0.3, unit: 'm/s', min: 0, max: 1, normalMin: 0.1, normalMax: 0.5, trend: [], tau: TAU_MECH },
+      { id: 'crane_load',     name: '当前载荷',   value: 0,   unit: 't',   min: 0, max: 25, normalMin: 0, normalMax: 20, trend: [], tau: 1 },
     ],
   },
 
   // ============================================================
-  // 行 2：物流主线  y=280~360 (80h)
-  //   左：AL-201 料仓 → FEED-201 打壳下料（向上送入 4 槽）
-  //   右：POT-202 抬包（接收 4 槽铝水）→ CAST-202 铸锭机
+  // 行 1：8 槽等距阵列 (CELL-101 ~ CELL-108)
+  // y=110~210，每槽 140×100，间距 13px
+  // 起始 x=30，8 槽总宽 = 8×140 + 7×13 = 1211
+  // ============================================================
+  cell('CELL-101', '#101', 30,    110,  0,    0,    0),
+  cell('CELL-102', '#102', 183,   110, -0.05,+2,   -3),
+  cell('CELL-103', '#103', 336,   110, +0.03,-1,   +2),
+  cell('CELL-104', '#104', 489,   110, +0.02,+3,   +1),
+  cell('CELL-105', '#105', 642,   110, -0.02,-2,   +3),
+  cell('CELL-106', '#106', 795,   110, +0.05,+1,   -1),
+  cell('CELL-107', '#107', 948,   110, -0.03,+2,   +2),
+  cell('CELL-108', '#108', 1101,  110, +0.04,-3,   -2),
+
+  // ============================================================
+  // 行 2：车间内辅助 y=240~310 (70h)
+  // 氧化铝料仓 → 打壳下料器 (左侧)  /  抬包真空 → 出铝口 (右侧)
   // ============================================================
   {
     id: 'AL-201', name: '氧化铝料仓', type: 'station',
-    x: 30, y: 285, width: 85, height: 70,
+    x: 30, y: 240, width: 100, height: 65,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'silo_level',  name: '料仓料位',   value: 70,   unit: '%',    min: 0,    max: 100, normalMin: 30, normalMax: 90, trend: [], tau: 30 },
@@ -85,7 +93,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'FEED-201', name: '打壳下料器', type: 'fixture',
-    x: 140, y: 295, width: 90, height: 50,
+    x: 150, y: 250, width: 100, height: 50,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'break_freq',   name: '打壳频次', value: 6,   unit: '次/h', min: 0, max: 20, normalMin: 4, normalMax: 10, trend: [], tau: TAU_MID },
@@ -95,7 +103,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'POT-202', name: '铝水抬包', type: 'pump',
-    x: 880, y: 290, width: 120, height: 60,
+    x: 1010, y: 245, width: 120, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'vacuum_pressure', name: '真空度',   value: -80,  unit: 'kPa',  min: -100, max: 0,   normalMin: -90, normalMax: -65, trend: [], tau: TAU_FAST },
@@ -104,22 +112,21 @@ export const aluminumEquipments: Equipment[] = [
     ],
   },
   {
-    id: 'CAST-202', name: '铸锭机', type: 'instrument',
-    x: 1040, y: 285, width: 120, height: 70,
+    id: 'EXIT-202', name: '出铝口', type: 'station',
+    x: 1150, y: 240, width: 100, height: 65,
     status: 'normal', template: 'aluminum',
     parameters: [
-      { id: 'cast_speed',  name: '铸造速度', value: 80, unit: 'mm/min', min: 0, max: 200, normalMin: 60, normalMax: 100, trend: [], tau: TAU_MID },
-      { id: 'cast_count',  name: '铸锭计数', value: 142,unit: '锭',     min: 0, max: 9999, normalMin: 0, normalMax: 9999, trend: [], tau: TAU_MID },
-      { id: 'al_yield',    name: '铸出率',   value: 98, unit: '%',     min: 80, max: 100, normalMin: 96, normalMax: 100, trend: [], tau: 10 },
+      { id: 'al_out_count',  name: '日出铝量', value: 12, unit: 't', min: 0, max: 80, normalMin: 8, normalMax: 24, trend: [], tau: TAU_MID },
+      { id: 'transport_no',  name: '运次号', value: 4, unit: '次', min: 0, max: 999, normalMin: 0, normalMax: 999, trend: [], inertia: false },
     ],
   },
 
   // ============================================================
-  // 行 3：辅助系统  y=405~485 (80h)
+  // 行 3：电气/工艺辅助 y=345~430 (85h)
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 410, width: 220, height: 75,
+    x: 30, y: 345, width: 220, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压', value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -129,8 +136,8 @@ export const aluminumEquipments: Equipment[] = [
     ],
   },
   {
-    id: 'CRA-301', name: '阳极天车', type: 'robot',
-    x: 275, y: 410, width: 145, height: 75,
+    id: 'CRA-301', name: '天车控制柜', type: 'control_box',
+    x: 275, y: 350, width: 180, height: 80,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'anode_change_count', name: '换极次数', value: 4,   unit: '次/班', min: 0, max: 20, normalMin: 3, normalMax: 8, trend: [], tau: TAU_MID },
@@ -139,8 +146,8 @@ export const aluminumEquipments: Equipment[] = [
     ],
   },
   {
-    id: 'FGT-301', name: '烟气净化', type: 'pump',
-    x: 445, y: 410, width: 250, height: 75,
+    id: 'FGT-301', name: '烟气净化系统', type: 'pump',
+    x: 480, y: 345, width: 280, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'hf_conc',      name: 'HF 浓度',      value: 2.1, unit: 'mg/m³', min: 0, max: 15, normalMin: 0,    normalMax: 3,   trend: [], tau: TAU_HF },
@@ -150,8 +157,31 @@ export const aluminumEquipments: Equipment[] = [
     ],
   },
   {
+    id: 'CRANE-301', name: '抬包真空机组', type: 'pump',
+    x: 785, y: 345, width: 200, height: 85,
+    status: 'normal', template: 'aluminum',
+    parameters: [
+      { id: 'vacuum_pump_p',  name: '真空泵压力', value: -88, unit: 'kPa', min: -100, max: 0, normalMin: -95, normalMax: -75, trend: [], tau: TAU_FAST },
+      { id: 'vacuum_motor_a', name: '真空泵电流', value: 35,  unit: 'A',   min: 0,    max: 80, normalMin: 25, normalMax: 50, trend: [], tau: TAU_FAST },
+    ],
+  },
+  {
+    id: 'BUS-101', name: '直流母线汇流', type: 'instrument',
+    x: 1005, y: 345, width: 245, height: 85,
+    status: 'normal', template: 'aluminum',
+    parameters: [
+      { id: 'bus_voltage', name: '母线电压',  value: 1660, unit: 'V', min: 0, max: 2000, normalMin: 1620, normalMax: 1700, trend: [], tau: TAU_FAST },
+      { id: 'bus_current', name: '系列总电流', value: 480, unit: 'kA', min: 0, max: 600, normalMin: 470, normalMax: 500, trend: [], tau: TAU_FAST },
+      { id: 'bus_temp',    name: '母线温度',  value: 65,  unit: '°C', min: 20, max: 150, normalMin: 50, normalMax: 80, trend: [], tau: TAU_TEMP },
+    ],
+  },
+
+  // ============================================================
+  // 行 4：集控操作 y=465~535 (70h)
+  // ============================================================
+  {
     id: 'HMI-301', name: '集控操作站', type: 'instrument',
-    x: 720, y: 410, width: 200, height: 75,
+    x: 540, y: 465, width: 200, height: 70,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'series_no',     name: '系列号',   value: 5, unit: '', min: 1, max: 10, normalMin: 1, normalMax: 10, trend: [], inertia: false },
@@ -159,22 +189,13 @@ export const aluminumEquipments: Equipment[] = [
       { id: 'alarm_count',   name: '报警条数', value: 2, unit: '条', min: 0, max: 50, normalMin: 0, normalMax: 5, trend: [], tau: 5 },
     ],
   },
-  {
-    id: 'CRANE-301', name: '抬包真空机组', type: 'pump',
-    x: 945, y: 410, width: 220, height: 75,
-    status: 'normal', template: 'aluminum',
-    parameters: [
-      { id: 'vacuum_pump_p',  name: '真空泵压力', value: -88, unit: 'kPa', min: -100, max: 0, normalMin: -95, normalMax: -75, trend: [], tau: TAU_FAST },
-      { id: 'vacuum_motor_a', name: '真空泵电流', value: 35,  unit: 'A',   min: 0,    max: 80, normalMin: 25, normalMax: 50, trend: [], tau: TAU_FAST },
-    ],
-  },
 
   // ============================================================
-  // 行 4：电气控制 y=580~655 (75h)
+  // 行 5：电气控制 y=570~650 (80h)
   // ============================================================
   {
     id: 'CTRL-401', name: '直流母线监控柜', type: 'control_box',
-    x: 540, y: 580, width: 200, height: 75,
+    x: 540, y: 575, width: 200, height: 75,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'main_voltage', name: '配电电压',  value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },
@@ -185,48 +206,41 @@ export const aluminumEquipments: Equipment[] = [
 ];
 
 // ============================================================
-// 管线 v2：配色不变，走线优化避免穿越
-// 氧化铝粉=灰 / 铝水=橙红 / 直流大电流=金黄 / 控制=紫 / 烟气=深绿 / 真空=蓝
+// 管线
+// 配色：氧化铝粉=灰 / 铝水=橙红 / 直流大电流=金黄 / 控制=紫 / 烟气=深绿 / 真空=蓝
+// 简化版（8 槽全连会画太密，只代表性连前 4 槽 + 后 4 槽）
 // ============================================================
 export const aluminumPipelines: Pipeline[] = [
-  // ① 氧化铝供料：料仓 → 下料器 → 4 槽（下料从槽顶进）
+  // ① 氧化铝供料
   { id: 'AP-001', from: 'AL-201',   to: 'FEED-201', fromPoint: 'right', toPoint: 'left',   medium: '氧化铝粉', flowRate: 0.6, color: '#94a3b8' },
   { id: 'AP-002', from: 'FEED-201', to: 'CELL-101', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
-  { id: 'AP-003', from: 'FEED-201', to: 'CELL-102', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
-  { id: 'AP-004', from: 'FEED-201', to: 'CELL-103', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
-  { id: 'AP-005', from: 'FEED-201', to: 'CELL-104', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
+  { id: 'AP-003', from: 'FEED-201', to: 'CELL-104', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
+  { id: 'AP-004', from: 'FEED-201', to: 'CELL-108', fromPoint: 'top',   toPoint: 'bottom', medium: '下料', flowRate: 0.5, color: '#94a3b8' },
 
-  // ② 铝水抽吸：4 槽 → 抬包 → 铸锭
-  { id: 'AP-101', from: 'CELL-101', to: 'POT-202',  fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
-  { id: 'AP-102', from: 'CELL-102', to: 'POT-202',  fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
-  { id: 'AP-103', from: 'CELL-103', to: 'POT-202',  fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
-  { id: 'AP-104', from: 'CELL-104', to: 'POT-202',  fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
-  { id: 'AP-110', from: 'POT-202',  to: 'CAST-202', fromPoint: 'right',  toPoint: 'left', medium: '铝水', flowRate: 1.0, color: '#f97316' },
+  // ② 铝水抽吸（代表性走 4 条）
+  { id: 'AP-101', from: 'CELL-101', to: 'POT-202', fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
+  { id: 'AP-102', from: 'CELL-104', to: 'POT-202', fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
+  { id: 'AP-103', from: 'CELL-108', to: 'POT-202', fromPoint: 'bottom', toPoint: 'top', medium: '铝水', flowRate: 1.0, color: '#f97316' },
+  { id: 'AP-110', from: 'POT-202',  to: 'EXIT-202', fromPoint: 'right', toPoint: 'left', medium: '运出', flowRate: 1.0, color: '#f97316' },
 
-  // ③ 直流大电流：整流变压器 → 母线汇流（行 1 末端）→ 4 槽（每槽右进左出）
-  { id: 'AP-201', from: 'TRA-301', to: 'BUS-101',  fromPoint: 'top',   toPoint: 'bottom', medium: '直流电', flowRate: 1.5, color: '#facc15' },
-  { id: 'AP-202', from: 'BUS-101', to: 'CELL-101', fromPoint: 'left',  toPoint: 'right',  medium: '直流电', flowRate: 1.5, color: '#facc15' },
-  { id: 'AP-203', from: 'BUS-101', to: 'CELL-102', fromPoint: 'left',  toPoint: 'right',  medium: '直流电', flowRate: 1.5, color: '#facc15' },
-  { id: 'AP-204', from: 'BUS-101', to: 'CELL-103', fromPoint: 'left',  toPoint: 'right',  medium: '直流电', flowRate: 1.5, color: '#facc15' },
-  { id: 'AP-205', from: 'BUS-101', to: 'CELL-104', fromPoint: 'left',  toPoint: 'right',  medium: '直流电', flowRate: 1.5, color: '#facc15' },
+  // ③ 直流大电流：整流 → 母线 → 4 槽（代表）
+  { id: 'AP-201', from: 'TRA-301', to: 'BUS-101',  fromPoint: 'right', toPoint: 'left',  medium: '直流电', flowRate: 1.5, color: '#facc15' },
+  { id: 'AP-202', from: 'BUS-101', to: 'CELL-104', fromPoint: 'top',   toPoint: 'bottom',medium: '直流电', flowRate: 1.5, color: '#facc15' },
+  { id: 'AP-203', from: 'BUS-101', to: 'CELL-108', fromPoint: 'top',   toPoint: 'bottom',medium: '直流电', flowRate: 1.5, color: '#facc15' },
 
-  // ④ 阳极天车作业：天车在行 3，槽在行 1，垂直走线 → 2 条代表性指向 CELL-101 / CELL-102
-  { id: 'AP-301', from: 'CRA-301', to: 'CELL-101', fromPoint: 'top', toPoint: 'bottom', medium: '换极', flowRate: 0.4, color: '#a855f7' },
-  { id: 'AP-302', from: 'CRA-301', to: 'CELL-102', fromPoint: 'top', toPoint: 'bottom', medium: '换极', flowRate: 0.4, color: '#a855f7' },
-
-  // ⑤ 烟气净化：4 槽 → 烟气净化（行 3）
+  // ④ 烟气净化（4 槽 → 烟气）
   { id: 'AP-401', from: 'CELL-101', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
-  { id: 'AP-402', from: 'CELL-102', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
-  { id: 'AP-403', from: 'CELL-103', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
-  { id: 'AP-404', from: 'CELL-104', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
+  { id: 'AP-402', from: 'CELL-104', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
+  { id: 'AP-403', from: 'CELL-105', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
+  { id: 'AP-404', from: 'CELL-108', to: 'FGT-301', fromPoint: 'bottom', toPoint: 'top', medium: '烟气', flowRate: 0.7, color: '#16a34a' },
 
-  // ⑥ 真空抽吸：真空机组 → 抬包
-  { id: 'AP-501', from: 'CRANE-301', to: 'POT-202', fromPoint: 'top', toPoint: 'right', medium: '真空', flowRate: 0.5, color: '#3b82f6' },
+  // ⑤ 真空抽吸
+  { id: 'AP-501', from: 'CRANE-301', to: 'POT-202', fromPoint: 'top', toPoint: 'left', medium: '真空', flowRate: 0.5, color: '#3b82f6' },
 
-  // ⑦ 控制信号（紫色）：CTRL → HMI / FGT / TRA
+  // ⑥ 控制信号
   { id: 'AP-601', from: 'CTRL-401', to: 'HMI-301', fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'AP-602', from: 'CTRL-401', to: 'TRA-301', fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'AP-603', from: 'HMI-301',  to: 'CTRL-401', fromPoint: 'bottom', toPoint: 'right', medium: '反馈', flowRate: 0.3, color: '#a855f7' },
+  { id: 'AP-602', from: 'CTRL-401', to: 'TRA-301', fromPoint: 'left', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
+  { id: 'AP-603', from: 'CTRL-401', to: 'CRA-301', fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
 ];
 
 export const aluminumConfig = {

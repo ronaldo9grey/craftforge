@@ -380,55 +380,113 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v5 injection', w - 30, h - 8);
     }
 
-    // 铝电解场景：5 大功能分区底色 + 区域标签
+    // 铝电解场景 v3：电解车间沉浸式专属视觉 - 厂房屋顶 + 5 区域底色 + 氛围灯光
     if (activeTemplate === 'aluminum') {
-      // 区域 1：电解槽阵列区（y=40~255）- 青色（象征电解质颜色）
-      ctx.fillStyle = 'rgba(6, 182, 212, 0.08)';
-      ctx.fillRect(0, 45, w, 210);
-      // 区域 2：物流主线区（y=260~375）- 浅橙（铝水）
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.07)';
-      ctx.fillRect(0, 260, w, 115);
-      // 区域 3：辅助系统区（y=380~540）- 浅灰
-      ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
-      ctx.fillRect(0, 380, w, 160);
-      // 区域 4：电气控制区（y=560~665）- 暗蓝
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
-      ctx.fillRect(0, 560, w, 105);
+      // ---- (0) 厂房整体深色底（车间夜间集控大屏感）----
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#0c1424');
+      grad.addColorStop(0.5, '#0a0f1c');
+      grad.addColorStop(1, '#0e1828');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
 
-      // 区域分隔细虚线
+      // ---- (1) 厂房屋顶钢架轮廓（顶部 y=20~50 区域）----
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      // 屋顶主轮廓（人字坡）
+      ctx.beginPath();
+      ctx.moveTo(10, 50);
+      ctx.lineTo(w / 2, 18);
+      ctx.lineTo(w - 10, 50);
+      ctx.stroke();
+      // 屋顶桁架斜线
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1;
-      ctx.setLineDash([5, 5]);
-      [257, 377, 555].forEach((yy) => {
+      for (let tx = 60; tx < w - 60; tx += 80) {
         ctx.beginPath();
-        ctx.moveTo(10, yy);
-        ctx.lineTo(w - 10, yy);
+        ctx.moveTo(tx, 50);
+        ctx.lineTo(tx + 40, 30);
+        ctx.stroke();
+      }
+      // 两侧立柱
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(15, 50); ctx.lineTo(15, h - 30);
+      ctx.moveTo(w - 15, 50); ctx.lineTo(w - 15, h - 30);
+      ctx.stroke();
+
+      // ---- (2) 区域底色 ----
+      // 行 1 槽阵列区（y=100~215）- 深青（电解车间核心）
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
+      ctx.fillRect(0, 100, w, 115);
+      // 行 2 车间内辅助（y=235~315）- 浅橙（铝水流向）
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.05)';
+      ctx.fillRect(0, 235, w, 80);
+      // 行 3 电气辅助（y=340~435）- 暖灰
+      ctx.fillStyle = 'rgba(100, 116, 139, 0.10)';
+      ctx.fillRect(0, 340, w, 95);
+      // 行 4 集控（y=460~540）- 浅紫
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
+      ctx.fillRect(0, 460, w, 80);
+      // 行 5 电气控制（y=565~665）- 暗
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+      ctx.fillRect(0, 565, w, 100);
+
+      // ---- (3) 灯光氛围：天车下方有泛光（橙红，模拟槽体发出的炽热光）----
+      const cellGlow = ctx.createRadialGradient(w / 2, 200, 50, w / 2, 200, 600);
+      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.15)');
+      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.06)');
+      cellGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = cellGlow;
+      ctx.fillRect(0, 100, w, 250);
+
+      // ---- (4) 地面网格（增强透视感）----
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 6]);
+      // 横线
+      [220, 320, 440, 545, 670].forEach((yy) => {
+        ctx.beginPath();
+        ctx.moveTo(15, yy);
+        ctx.lineTo(w - 15, yy);
         ctx.stroke();
       });
       ctx.setLineDash([]);
 
-      // 区域标签
+      // ---- (5) 区域标签 ----
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 电解槽阵列', 15, 55);
-      ctx.fillText('▎ 物流主线', 15, 265);
-      ctx.fillText('▎ 辅助系统', 15, 385);
-      ctx.fillText('▎ 电气控制', 15, 565);
+      ctx.fillText('▎ 槽阵列 (电解槽×8)', 22, 108);
+      ctx.fillText('▎ 车间内辅助', 22, 243);
+      ctx.fillText('▎ 电气/工艺辅助', 22, 348);
+      ctx.fillText('▎ 集控操作', 22, 468);
+      ctx.fillText('▎ 电气控制', 22, 573);
 
-      // 物料流向
+      // ---- (6) 关键数据指标（顶部状态条）----
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(w - 250, 100, 240, 18);
+      ctx.strokeStyle = '#06b6d4';
+      ctx.strokeRect(w - 250, 100, 240, 18);
       ctx.fillStyle = '#06b6d4';
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('氧化铝粉 → 下料 → 电解 → 铝水 → 抬包 → 铸锭', w - 30, 265);
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('系列电流 480 kA / 母线电压 1660 V', w - 244, 112);
 
-      // 🎯 版本水印
+      // ---- (7) 物料流向 ----
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('氧化铝粉 → 电解 → 铝水 → 抬包 → 出铝口', w - 25, 240);
+
+      // ---- (8) 版本水印 ----
       ctx.fillStyle = '#06b6d4';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v2 aluminum', w - 30, h - 8);
+      ctx.fillText('v3 aluminum  (iso-2.5D)', w - 30, h - 8);
     }
   };
 

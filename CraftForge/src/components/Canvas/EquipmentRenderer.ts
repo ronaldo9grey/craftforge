@@ -42,8 +42,13 @@ export class EquipmentRenderer {
           fillColor = '#374151';
           break;
         case 'cell':
+        case 'cell-iso':
           // 电解槽：深青色（呼应电解质冰晶石熔体颜色）
           fillColor = '#0c4a6e';
+          break;
+        case 'crane-iso':
+          // 天车横梁：钢灰
+          fillColor = '#475569';
           break;
         case 'heater':
           fillColor = '#7c2d12';
@@ -697,6 +702,203 @@ export class EquipmentRenderer {
         // 槽边沿铭牌（中央顶部小标识带）
         ctx.fillStyle = '#fbbf24';
         ctx.fillRect(x + width / 2 - 12, shellTop - 2, 24, 4);
+        break;
+      }
+
+      case 'cell-iso': {
+        // 电解槽等距 2.5D 视觉
+        // 真实造型：长方体钢壳 + 顶面菱形（俯视看到的阳极棒阵列）+ 正面 + 右侧面
+        //
+        //         ╱──────────╲       ← 顶面菱形（阳极棒阵列）
+        //        ╱            ╲
+        //       ╱──────────────╲
+        //       │              │╲    ← 正面 + 侧面
+        //       │              │ ╲
+        //       │              │  ╲
+        //       └──────────────┘
+        //
+        // 坐标：x, y 是包围盒左上角，width/height 是整体外接矩形
+        const isoDepth = 18;       // 等距视角 z 轴投影深度
+        const topH = 22;           // 顶面菱形高度
+        const sideH = height - topH - 4; // 正面+侧面高度
+        const bodyW = width - isoDepth;
+
+        // ---- (1) 顶面菱形（阳极棒阵列）----
+        const topLeft  = { x: x + isoDepth,       y: y + topH };
+        const topRight = { x: x + width,           y: y + topH };
+        const topFar   = { x: x + width - isoDepth, y: y };
+        const topNear  = { x: x,                   y: y + topH };
+        ctx.fillStyle = '#1c1917';   // 槽顶碳板黑色
+        ctx.strokeStyle = '#fbbf24';  // 金黄边沿
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(topLeft.x, topLeft.y);
+        ctx.lineTo(topFar.x, topFar.y);
+        ctx.lineTo(topRight.x, topRight.y);
+        ctx.lineTo(topNear.x + bodyW, topNear.y + 0);  // 等同 topLeft.x + bodyW, y+topH
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 阳极棒阵列（8 根碳棒，竖直插在槽顶 → 看上去是顶面菱形内的小圆点 + 顶部细钢棒）
+        // 简化：在顶面菱形上分布 8 个椭圆代表阳极头
+        const anodeCount = 8;
+        ctx.fillStyle = '#facc15';  // 金黄导电柄
+        for (let i = 0; i < anodeCount; i++) {
+          const t = (i + 0.5) / anodeCount;
+          // 顶面菱形上等距点（沿菱形长对角线方向）
+          const cx = topNear.x + t * (topRight.x - topNear.x);
+          const cy = topNear.y + t * (topRight.y - topNear.y);
+          // 椭圆代表竖立阳极头部
+          ctx.beginPath();
+          ctx.ellipse(cx, cy - 2, 5, 3, 0, 0, Math.PI * 2);
+          ctx.fillStyle = '#fef3c7';
+          ctx.fill();
+          ctx.strokeStyle = '#facc15';
+          ctx.stroke();
+          // 阳极棒直插（短竖线表示阳极头部上方导电棒）
+          ctx.strokeStyle = '#a16207';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - 5);
+          ctx.lineTo(cx, cy - 12);
+          ctx.stroke();
+        }
+
+        // ---- (2) 正面（前壁，深灰钢壳）----
+        ctx.fillStyle = '#374151';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1;
+        ctx.fillRect(x, y + topH, bodyW, sideH);
+        ctx.strokeRect(x, y + topH, bodyW, sideH);
+
+        // 正面内部分层（电解质 + 铝水），透过半透明"开窗"看进去
+        const winX = x + 6;
+        const winY = y + topH + 5;
+        const winW = bodyW - 12;
+        const winH = sideH - 10;
+        const bathLayer = winH * 0.55;
+        const alLayer   = winH * 0.45;
+
+        // 电解质层（青色亮带）
+        ctx.fillStyle = '#0ea5e9';
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(winX, winY, winW, bathLayer);
+        // 表面高光线
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        ctx.moveTo(winX, winY + 2);
+        ctx.lineTo(winX + winW, winY + 2);
+        ctx.stroke();
+
+        // 铝水层（橙红）
+        ctx.fillStyle = '#f97316';
+        ctx.globalAlpha = 0.75;
+        ctx.fillRect(winX, winY + bathLayer, winW, alLayer);
+        ctx.globalAlpha = 1;
+
+        // ---- (3) 右侧面（等距投影）----
+        const sideShift = isoDepth;
+        ctx.fillStyle = '#1f2937';
+        ctx.beginPath();
+        ctx.moveTo(x + bodyW, y + topH);
+        ctx.lineTo(x + width, y);
+        ctx.lineTo(x + width, y + topH + sideH - isoDepth);
+        ctx.lineTo(x + bodyW, y + topH + sideH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        void sideShift;
+
+        // ---- (4) 火苗粒子（动画效果）----
+        // 简化：用正弦波控制 3 簇火苗的高度和颜色
+        const animT = animTime ?? Date.now() / 1000;
+        for (let f = 0; f < 3; f++) {
+          const fx = x + 15 + f * (bodyW - 30) / 2;
+          const flameH = 4 + 3 * Math.sin(animT * 4 + f * 1.5);
+          const grad = ctx.createLinearGradient(fx, winY - flameH, fx, winY + 2);
+          grad.addColorStop(0, 'rgba(255,180,40,0)');
+          grad.addColorStop(0.5, 'rgba(255,140,20,0.9)');
+          grad.addColorStop(1, 'rgba(220,60,30,0.95)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.ellipse(fx, winY - flameH / 2, 4, flameH, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // ---- (5) 槽号铭牌（提示性"槽"字，真实槽号由外部标签显示）----
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(x + 4, y + topH + sideH - 14, 22, 12);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('槽', x + 6, y + topH + sideH - 8);
+        break;
+      }
+
+      case 'crane-iso': {
+        // 天车横梁：横跨整车间的钢梁 + 沿 x 轴动画移动小车
+        // 整体：x, y, width, height = 包围盒
+        // 钢梁主体：占满 width，高度 height
+        ctx.fillStyle = '#475569';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        // 钢梁桁架风格：上下两条平行钢，中间斜杠
+        const beamTop = y + 6;
+        const beamBot = y + height - 6;
+        const beamMid = (beamTop + beamBot) / 2;
+        ctx.fillRect(x, beamTop - 3, width, 4);
+        ctx.fillRect(x, beamBot - 1, width, 4);
+
+        // 斜支撑（桁架样式）
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.5;
+        const segLen = 35;
+        for (let sx = x; sx < x + width; sx += segLen * 2) {
+          ctx.beginPath();
+          ctx.moveTo(sx, beamTop);
+          ctx.lineTo(sx + segLen, beamBot);
+          ctx.moveTo(sx + segLen, beamTop);
+          ctx.lineTo(sx + segLen * 2, beamBot);
+          ctx.stroke();
+        }
+
+        // 滑车（沿 x 轴慢移动画）
+        const animT = animTime ?? Date.now() / 1000;
+        const period = 25; // 25s 一个周期
+        const phase = (animT % period) / period; // 0~1
+        // 用三角波让滑车来回往返
+        const tri = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+        const trolleyX = x + 30 + tri * (width - 80);
+        const trolleyW = 50;
+        // 滑车主体
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(trolleyX, beamMid - 8, trolleyW, 16);
+        ctx.strokeStyle = '#a16207';
+        ctx.strokeRect(trolleyX, beamMid - 8, trolleyW, 16);
+        // 滑车轮（左右各 2 个小圆点）
+        ctx.fillStyle = '#1f2937';
+        [4, trolleyW - 4].forEach((dx) => {
+          ctx.beginPath();
+          ctx.arc(trolleyX + dx, beamMid - 8, 2.5, 0, Math.PI * 2);
+          ctx.arc(trolleyX + dx, beamMid + 8, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // 起吊钩（垂下细线）
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(trolleyX + trolleyW / 2, beamMid + 8);
+        ctx.lineTo(trolleyX + trolleyW / 2, beamMid + 22);
+        ctx.stroke();
+        // 钩头
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(trolleyX + trolleyW / 2, beamMid + 24, 3, 0, Math.PI * 2);
+        ctx.fill();
         break;
       }
 

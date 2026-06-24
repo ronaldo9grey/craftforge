@@ -114,17 +114,27 @@ export class EquipmentRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 名称显示在设备上方 - 加大与设备图形的间距，避免被塞阀阀杆/加热炉烟囱/分馏塔顶塔盘等顶部装饰物覆盖
-    // 阀门顶部有阀杆+手轮（占 24px 高），标签需再上移
-    const nameOffset = type === 'valve' ? 38 : 22;
-    ctx.fillStyle = '#f1f5f9';
-    ctx.font = 'bold 12px Inter, sans-serif';
-    ctx.fillText(name, x + width / 2, y - nameOffset);
+    // ⭐ 自带铭牌/标题的设备类型，跳过外部 name + id 渲染，避免与其他元素重叠
+    //   - cell-iso：内部左下角已画"#101 · 600 kA"铭牌
+    //   - task-board：顶部标题条已显示"班组生产任务"
+    //   - pot-ctrl：内部已画"POT-CTRL-101"
+    //   - crane-iso：横梁极扁，外部 name 会糊在管道/抬包上
+    const SELF_LABELED = ['cell-iso', 'task-board', 'pot-ctrl', 'crane-iso'];
+    const skipExternalLabel = SELF_LABELED.includes(type);
 
-    // 设备ID显示在设备下方 - 与上方间距保持一致
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px Roboto Mono, monospace';
-    ctx.fillText(id, x + width / 2, y + height + 22);
+    if (!skipExternalLabel) {
+      // 名称显示在设备上方 - 加大与设备图形的间距，避免被塞阀阀杆/加热炉烟囱/分馏塔顶塔盘等顶部装饰物覆盖
+      // 阀门顶部有阀杆+手轮（占 24px 高），标签需再上移
+      const nameOffset = type === 'valve' ? 38 : 22;
+      ctx.fillStyle = '#f1f5f9';
+      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillText(name, x + width / 2, y - nameOffset);
+
+      // 设备ID显示在设备下方 - 与上方间距保持一致
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px Roboto Mono, monospace';
+      ctx.fillText(id, x + width / 2, y + height + 22);
+    }
     
     // 选中高亮边框
     if (isSelected) {

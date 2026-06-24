@@ -152,14 +152,31 @@ export const FactoryCanvas: React.FC = () => {
       // 更新流动偏移
       flowOffsetRef.current += 0.5;
 
-      // 绘制管道
-      PipelineRenderer.render(ctx, pipelines, flowOffsetRef.current);
+      // 绘制管道（容错）
+      try {
+        PipelineRenderer.render(ctx, pipelines, flowOffsetRef.current);
+      } catch (err) {
+        if (!(window as any).__pipelineErrLogged) {
+          (window as any).__pipelineErrLogged = true;
+          console.error('[PipelineRenderer] 管道渲染出错:', err);
+        }
+      }
 
       // 绘制设备（把 flowOffset 当作动画时间相位传入，驱动机器人/传送带动画）
+      // 用 try/catch 包住每个设备，避免单个设备渲染错误导致整个 animate 循环停摆
       equipments.forEach((equipment) => {
-        const isSelected = equipment.id === selectedEquipmentId;
-        const isFaulty = !!(isDrillRunning && currentFault?.affectedEquipments.includes(equipment.id));
-        EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty, flowOffsetRef.current);
+        try {
+          const isSelected = equipment.id === selectedEquipmentId;
+          const isFaulty = !!(isDrillRunning && currentFault?.affectedEquipments.includes(equipment.id));
+          EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty, flowOffsetRef.current);
+        } catch (err) {
+          // 只在第一次报错时打印（避免每秒 60 次刷屏）
+          if (!(window as any).__renderErrLogged?.[equipment.id]) {
+            (window as any).__renderErrLogged ??= {};
+            (window as any).__renderErrLogged[equipment.id] = true;
+            console.error(`[EquipmentRenderer] 渲染设备 ${equipment.id} (${equipment.type}) 出错:`, err);
+          }
+        }
       });
 
       ctx.restore();

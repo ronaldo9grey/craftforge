@@ -14,6 +14,11 @@ export class EquipmentRenderer {
     const animTime = time ?? 0;
     
     const { x, y, width, height, status, type, name, id } = equipment;
+
+    // 跳过尺寸过小或位置在画布外的设备（用于"隐藏但保留参数"的场景，例如 FGT-301 屋顶烟道代替）
+    if (width < 10 || height < 10 || x < -100 || y < -100) {
+      return;
+    }
     
     // 确定颜色
     let fillColor = '#475569';

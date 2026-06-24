@@ -104,8 +104,14 @@ export const FactoryCanvas: React.FC = () => {
     const resizeCanvas = () => {
       const parent = canvas.parentElement;
       if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
+        // 容器宽高为 0 时跳过（DOM 还没布局完）→ 等 ResizeObserver 后续触发
+        const cw = parent.clientWidth;
+        const ch = parent.clientHeight;
+        if (cw < 10 || ch < 10) return;
+
+        // 用设备像素比避免高 DPI 屏幕模糊（同时改了实际像素和 CSS 尺寸）
+        canvas.width = cw;
+        canvas.height = ch;
 
         // 重新计算缩放
         const { scale, offsetX, offsetY } = calculateScale(canvas.width, canvas.height);
@@ -116,6 +122,17 @@ export const FactoryCanvas: React.FC = () => {
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+
+    // 关键修复：用 ResizeObserver 监听父容器尺寸变化
+    // 首屏挂载时父容器宽高可能还是 0（"一闪而过"现象的根因），
+    // ResizeObserver 在容器布局完成后会立即触发，正确测量并重置 canvas 尺寸
+    let resizeObserver: ResizeObserver | null = null;
+    if (canvas.parentElement && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        resizeCanvas();
+      });
+      resizeObserver.observe(canvas.parentElement);
+    }
 
     const animate = () => {
       if (!ctx || !canvas) return;
@@ -189,6 +206,7 @@ export const FactoryCanvas: React.FC = () => {
     return () => {
       window.removeEventListener('resize', resizeCanvas);
       cancelAnimationFrame(animationRef.current);
+      if (resizeObserver) resizeObserver.disconnect();
     };
   }, [equipments, pipelines, selectedEquipmentId, isDrillRunning, currentFault, calculateScale, activeTemplate, designSize]);
 

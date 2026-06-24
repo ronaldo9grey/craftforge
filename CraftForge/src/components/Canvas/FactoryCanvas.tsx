@@ -155,6 +155,10 @@ export const FactoryCanvas: React.FC = () => {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // 双保险：每帧开始时重置变换矩阵到单位矩阵
+      // 防止任何子绘制泄漏的 translate/scale 累积导致画面漂移
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+
       // 绘制背景
       drawBackground(ctx, canvas.width, canvas.height);
 

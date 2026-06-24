@@ -9,6 +9,7 @@ export class EquipmentRenderer {
     time: number = 0
   ) {
     ctx.save();
+    try {
 
     // 动画时间相位（用于传送带、机器人摆动等）
     const animTime = time ?? 0;
@@ -134,7 +135,11 @@ export class EquipmentRenderer {
       ctx.setLineDash([]);
     }
     
-    ctx.restore();
+    } finally {
+      // 关键：用 try/finally 确保即便中间分支抛错，ctx.restore() 也一定执行
+      // 否则会导致每帧 translate 累积，画面持续向下漂移（"瞬间正确然后逐渐下移"现象的根因）
+      ctx.restore();
+    }
   }
   
   private static drawEquipmentShape(

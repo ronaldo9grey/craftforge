@@ -41,6 +41,10 @@ export class EquipmentRenderer {
         case 'regenerator':
           fillColor = '#374151';
           break;
+        case 'cell':
+          // 电解槽：深青色（呼应电解质冰晶石熔体颜色）
+          fillColor = '#0c4a6e';
+          break;
         case 'heater':
           fillColor = '#7c2d12';
           break;
@@ -629,7 +633,73 @@ export class EquipmentRenderer {
         ctx.fill();
         ctx.stroke();
         break;
-        
+
+      case 'cell': {
+        // 电解槽：矮胖梯形外壳 + 顶部 8 块阳极棒阵列 + 电解质熔体层 + 槽边沿
+        // 真实形态：1-2m 高、12-18m 长、3-5m 宽的钢壳，顶上排排碳阳极
+        const padTop = 8;
+        const anodeRowH = 14;             // 阳极棒高度区
+        const bathH = Math.max(8, height * 0.35);  // 电解质层高度
+        const shellTop = y + padTop + anodeRowH;
+
+        // 槽体外壳（轻微梯形，下窄上宽）
+        ctx.beginPath();
+        ctx.moveTo(x + 6, shellTop);
+        ctx.lineTo(x + width - 6, shellTop);
+        ctx.lineTo(x + width - 12, y + height - 4);
+        ctx.lineTo(x + 12, y + height - 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 电解质熔体层（青色亮带，位于槽内上层）
+        ctx.fillStyle = '#0ea5e9';
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(x + 10, shellTop + 4, width - 20, bathH);
+        ctx.globalAlpha = 1;
+        // 熔体表面高光线
+        ctx.strokeStyle = '#7dd3fc';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + 12, shellTop + 5);
+        ctx.lineTo(x + width - 12, shellTop + 5);
+        ctx.stroke();
+
+        // 底部铝水层（暖橙色）
+        ctx.fillStyle = '#f97316';
+        ctx.globalAlpha = 0.7;
+        const alTop = shellTop + 4 + bathH;
+        const alH = (y + height - 8) - alTop;
+        if (alH > 4) ctx.fillRect(x + 12, alTop, width - 24, alH);
+        ctx.globalAlpha = 1;
+
+        // 顶部阳极棒阵列（8 根碳块，竖直长方体）
+        const anodeCount = 8;
+        const anodeW = Math.floor((width - 20) / anodeCount) - 2;
+        ctx.fillStyle = '#1c1917';  // 碳黑
+        ctx.strokeStyle = '#78716c';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < anodeCount; i++) {
+          const ax = x + 10 + i * (anodeW + 2);
+          ctx.fillRect(ax, y + 4, anodeW, anodeRowH);
+          ctx.strokeRect(ax, y + 4, anodeW, anodeRowH);
+          // 导电棒（小黄竖线连接到顶部母线）
+          ctx.strokeStyle = '#facc15';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(ax + anodeW / 2, y);
+          ctx.lineTo(ax + anodeW / 2, y + 4);
+          ctx.stroke();
+          ctx.strokeStyle = '#78716c';
+          ctx.lineWidth = 1;
+        }
+
+        // 槽边沿铭牌（中央顶部小标识带）
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(x + width / 2 - 12, shellTop - 2, 24, 4);
+        break;
+      }
+
       default:
         this.roundRect(ctx, x, y, width, height, 4);
         ctx.fill();

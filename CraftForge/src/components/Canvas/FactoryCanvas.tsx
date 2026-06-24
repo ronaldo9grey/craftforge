@@ -377,7 +377,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v4 injection', w - 30, h - 8);
+      ctx.fillText('v5 injection', w - 30, h - 8);
     }
 
     // 铝电解场景：5 大功能分区底色 + 区域标签
@@ -428,7 +428,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v1 aluminum', w - 30, h - 8);
+      ctx.fillText('v2 aluminum', w - 30, h - 8);
     }
   };
 

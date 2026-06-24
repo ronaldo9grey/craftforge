@@ -54,6 +54,10 @@ export class EquipmentRenderer {
           // 槽控柜：深灰金属外壳
           fillColor = '#1f2937';
           break;
+        case 'task-board':
+          // 班组任务台：深蓝办公屏
+          fillColor = '#1e293b';
+          break;
         case 'heater':
           fillColor = '#7c2d12';
           break;
@@ -711,153 +715,145 @@ export class EquipmentRenderer {
       }
 
       case 'cell-iso': {
-        // 电解槽 2.5D 深度还原 (460×220 大尺寸)
-        // 真实造型参考 240-500 kA 大型预焙阳极电解槽：
-        //   - 顶部集烟罩（梯形罩斗，往上收口）
-        //   - 26 块阳极碳块整齐排列在槽顶（黑色矩形）
-        //   - 每块阳极通过金黄导电棒连到槽顶横向母线
-        //   - 槽体钢壳（深灰长方体，有等距斜投影右侧面）
-        //   - 槽内分层：电解质（青色）+ 铝水（橙红）
-        //   - 槽底阴极母线粗条（金黄横条）+ 阴极导电棒
-        //   - 槽边铭牌
-        //   - 微小工人小人在槽前巡检（仅在 #101 主槽前显示）
-        //
-        // 视觉布局：
-        //   y=0    ~  35h   集烟罩 + 烟道竖管
-        //   y=35h  ~ 70h    阳极导电柄阵列 + 顶部母线
-        //   y=70h  ~ 90h    阳极头部（顶视碳块）
-        //   y=90h  ~ 170h   槽壳正面 + 侧面投影 + 电解质/铝水分层窗
-        //   y=170h ~ 200h   阴极母线 + 接地标识
-        //   y=200h ~ 220h   地面阴影
-        //
-        // 简化处理：使用比例避免硬编码（适配不同 width/height）
+        // 电解槽 2.5D 深度还原 v6 (适配 580×290 大尺寸 + 600 kA 44 阳极三段式)
+        // 真实造型参考 600 kA 大型预焙阳极电解槽：
+        //   - 顶部集烟罩（梯形罩斗 + 烟道）
+        //   - 4 个打壳下料点（顶面排列）
+        //   - 44 块阳极三段式：① 铝导杆（金黄横排）② 钢爪（深棕短竖块）③ 碳阳极块（炭黑长方体）
+        //     分上下两排，每排 22 块（600 kA 标准布置）
+        //   - 槽壳钢结构 + 内部电解质/铝水分层（开窗）
+        //   - 阴极母线（金黄粗条 + 接地）
+        //   - 工人小人（仅在 CELL-101 前）
         const W = width, H = height;
         const cx = x + W / 2;
 
-        // ============ ① 集烟罩（梯形，往上收口）============
-        const hoodTop    = { l: x + W * 0.20, r: x + W * 0.80 }; // 顶部窄
-        const hoodBottom = { l: x + W * 0.05, r: x + W * 0.95 }; // 底部宽
+        // ① 集烟罩（梯形）+ 烟道
+        const hoodTopL = x + W * 0.30, hoodTopR = x + W * 0.70;
+        const hoodBotL = x + W * 0.05, hoodBotR = x + W * 0.95;
         const hoodY1 = y;
-        const hoodY2 = y + H * 0.13;
+        const hoodY2 = y + H * 0.10;
         ctx.fillStyle = '#475569';
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(hoodTop.l, hoodY1);
-        ctx.lineTo(hoodTop.r, hoodY1);
-        ctx.lineTo(hoodBottom.r, hoodY2);
-        ctx.lineTo(hoodBottom.l, hoodY2);
+        ctx.moveTo(hoodTopL, hoodY1);
+        ctx.lineTo(hoodTopR, hoodY1);
+        ctx.lineTo(hoodBotR, hoodY2);
+        ctx.lineTo(hoodBotL, hoodY2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        // 罩内黑色阴影（暗化）
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.fill();
-        // 烟道（向上引到屋顶）：在罩顶中央画一条粗灰管引到画布顶部
+        // 烟道（中央竖管）
         ctx.strokeStyle = '#64748b';
         ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(cx, hoodY1);
-        ctx.lineTo(cx, y - 20);
+        ctx.lineTo(cx, y - 18);
         ctx.stroke();
         ctx.lineWidth = 1;
 
-        // ============ ② 阳极导电柄阵列（26 根金黄竖直棒）============
-        const anodeCount = 26;
-        const anodeAreaL = x + W * 0.08;
-        const anodeAreaR = x + W * 0.92;
-        const anodeAreaW = anodeAreaR - anodeAreaL;
-        const stepX = anodeAreaW / anodeCount;
-        const stemY1 = y + H * 0.14; // 导电柄顶
-        const stemY2 = y + H * 0.32; // 导电柄底（=阳极头顶）
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < anodeCount; i++) {
-          const ax = anodeAreaL + stepX * (i + 0.5);
-          ctx.beginPath();
-          ctx.moveTo(ax, stemY1);
-          ctx.lineTo(ax, stemY2);
-          ctx.stroke();
-          // 导电柄顶部小方块（夹具）
-          ctx.fillStyle = '#a16207';
-          ctx.fillRect(ax - 2, stemY1 - 2, 4, 4);
-        }
-        // 顶部横向母线（金黄粗横条，连接所有导电柄顶）
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(anodeAreaL - 4, stemY1 - 4, anodeAreaW + 8, 4);
+        // ② 槽顶集烟罩下方的 4 个打壳下料点（小方块代表）
+        const feedPtY = hoodY2 + 4;
+        ctx.fillStyle = '#fbbf24';
         ctx.strokeStyle = '#a16207';
-        ctx.lineWidth = 0.8;
-        ctx.strokeRect(anodeAreaL - 4, stemY1 - 4, anodeAreaW + 8, 4);
+        ctx.lineWidth = 1;
+        for (let p = 0; p < 4; p++) {
+          const px = x + W * (0.18 + p * 0.21);
+          ctx.fillRect(px - 6, feedPtY, 12, 5);
+          ctx.strokeRect(px - 6, feedPtY, 12, 5);
+        }
 
-        // ============ ③ 阳极碳块阵列（26 块黑色矩形）============
-        const anodeBlockH = H * 0.10;
-        const anodeBlockY = stemY2;
-        const anodeBlockW = stepX * 0.85;
-        ctx.fillStyle = '#0f172a';
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 0.6;
-        for (let i = 0; i < anodeCount; i++) {
-          const bx = anodeAreaL + stepX * (i + 0.5) - anodeBlockW / 2;
-          ctx.fillRect(bx, anodeBlockY, anodeBlockW, anodeBlockH);
-          ctx.strokeRect(bx, anodeBlockY, anodeBlockW, anodeBlockH);
-          // 阳极间隙处的橙红色高光（电解质表面火苗）
-          if (i < anodeCount - 1) {
-            const gapX = bx + anodeBlockW;
-            const flameY = anodeBlockY + anodeBlockH;
-            const animT = animTime ?? Date.now() / 1000;
-            const flick = 0.6 + 0.4 * Math.sin(animT * 6 + i);
-            ctx.fillStyle = `rgba(255, 140, 30, ${flick * 0.7})`;
-            ctx.fillRect(gapX, flameY - 2, stepX * 0.15, 3);
+        // ③ 阳极三段式：上下两排，共 44 块
+        // 上排 22 块（CELL "前列"）/ 下排 22 块（CELL "后列"）
+        const anodeAreaL = x + W * 0.05;
+        const anodeAreaR = x + W * 0.95;
+        const anodeAreaW = anodeAreaR - anodeAreaL;
+        const anodesPerRow = 22;
+        const anodeStepX = anodeAreaW / anodesPerRow;
+        const anodeBlockW = anodeStepX * 0.78;
+
+        const row1Y = feedPtY + 12;  // 上排
+        const row2Y = row1Y + 36;     // 下排（间距 36px）
+
+        function drawAnodeRow(rowY: number) {
+          // (a) 铝导杆横排（金黄水平粗条，跨整排）
+          ctx.fillStyle = '#facc15';
+          ctx.strokeStyle = '#a16207';
+          ctx.lineWidth = 0.6;
+          ctx.fillRect(anodeAreaL - 4, rowY, anodeAreaW + 8, 4);
+          ctx.strokeRect(anodeAreaL - 4, rowY, anodeAreaW + 8, 4);
+
+          // (b) 钢爪（每块阳极上方一根深棕短竖块）+ (c) 碳阳极块（黑色长方体）
+          for (let i = 0; i < anodesPerRow; i++) {
+            const ax = anodeAreaL + anodeStepX * (i + 0.5);
+            // 钢爪
+            ctx.fillStyle = '#52525b';
+            ctx.fillRect(ax - 2, rowY + 4, 4, 7);
+            // 碳块
             ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 0.5;
+            ctx.fillRect(ax - anodeBlockW / 2, rowY + 11, anodeBlockW, 14);
+            ctx.strokeRect(ax - anodeBlockW / 2, rowY + 11, anodeBlockW, 14);
+            // 碳块表面少量火苗（橙红高光，仅每 4 块来一个，避免太密）
+            if (i % 4 === 0) {
+              const animT = animTime ?? Date.now() / 1000;
+              const flick = 0.5 + 0.5 * Math.sin(animT * 5 + i);
+              ctx.fillStyle = `rgba(255, 140, 30, ${flick * 0.7})`;
+              ctx.fillRect(ax - anodeBlockW / 2 + 1, rowY + 11 + 14 - 2, anodeBlockW - 2, 2);
+            }
           }
         }
 
-        // ============ ④ 槽壳正面 + 侧面等距投影 ============
-        const shellY1 = anodeBlockY + anodeBlockH;
-        const shellY2 = y + H * 0.85;
-        const shellH = shellY2 - shellY1;
-        const shellL = x + W * 0.05;
-        const shellR = x + W * 0.95;
-        const isoDepth = 20;
+        drawAnodeRow(row1Y);
+        drawAnodeRow(row2Y);
 
-        // 右侧面（深灰梯形等距投影）
+        // ④ 槽壳正面 + 等距侧面投影 + 内部分层窗
+        const shellY1 = row2Y + 26;
+        const shellY2 = y + H * 0.93;
+        const shellH = shellY2 - shellY1;
+        const shellL = x + W * 0.04;
+        const shellR = x + W * 0.96;
+        const isoDepth = 22;
+
+        // 右侧面（等距）
         ctx.fillStyle = '#1f2937';
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 1.2;
         ctx.beginPath();
         ctx.moveTo(shellR, shellY1);
-        ctx.lineTo(shellR + isoDepth, shellY1 - isoDepth * 0.5);
-        ctx.lineTo(shellR + isoDepth, shellY2 - isoDepth * 0.5);
+        ctx.lineTo(shellR + isoDepth, shellY1 - isoDepth * 0.45);
+        ctx.lineTo(shellR + isoDepth, shellY2 - isoDepth * 0.45);
         ctx.lineTo(shellR, shellY2);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        // 顶面（等距投影长方形 → 视为槽顶覆盖板，前方已被阳极覆盖了所以基本看不到，画窄一条）
+        // 顶面（等距长方形上沿）
         ctx.fillStyle = '#374151';
         ctx.beginPath();
         ctx.moveTo(shellL, shellY1);
-        ctx.lineTo(shellL + isoDepth, shellY1 - isoDepth * 0.5);
-        ctx.lineTo(shellR + isoDepth, shellY1 - isoDepth * 0.5);
+        ctx.lineTo(shellL + isoDepth, shellY1 - isoDepth * 0.45);
+        ctx.lineTo(shellR + isoDepth, shellY1 - isoDepth * 0.45);
         ctx.lineTo(shellR, shellY1);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-
-        // 正面（钢壳）
+        // 正面钢壳
         ctx.fillStyle = '#334155';
         ctx.fillRect(shellL, shellY1, shellR - shellL, shellH);
         ctx.strokeRect(shellL, shellY1, shellR - shellL, shellH);
 
-        // 槽内分层"开窗"
-        const winInset = 8;
+        // 内部分层"开窗"
+        const winInset = 10;
         const winL = shellL + winInset;
         const winR = shellR - winInset;
         const winT = shellY1 + winInset;
         const winB = shellY2 - winInset;
-        const winH = winB - winT;
-        const bathLayer = winH * 0.58;
-
-        // 电解质层（青色）
+        const winHwin = winB - winT;
+        const bathLayer = winHwin * 0.55;
+        // 电解质层（青色渐变）
         const bathGrad = ctx.createLinearGradient(winL, winT, winL, winT + bathLayer);
         bathGrad.addColorStop(0, '#0ea5e9');
         bathGrad.addColorStop(1, '#0369a1');
@@ -865,75 +861,69 @@ export class EquipmentRenderer {
         ctx.globalAlpha = 0.85;
         ctx.fillRect(winL, winT, winR - winL, bathLayer);
         ctx.globalAlpha = 1;
-        // 电解质表面高光
+        // 表面高光
         ctx.strokeStyle = '#7dd3fc';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(winL, winT + 2);
         ctx.lineTo(winR, winT + 2);
         ctx.stroke();
-
-        // 铝水层（橙红）
+        // 铝水层（橙红渐变）
         const alGrad = ctx.createLinearGradient(winL, winT + bathLayer, winL, winB);
         alGrad.addColorStop(0, '#fb923c');
         alGrad.addColorStop(1, '#9a3412');
         ctx.fillStyle = alGrad;
         ctx.globalAlpha = 0.9;
-        ctx.fillRect(winL, winT + bathLayer, winR - winL, winH - bathLayer);
+        ctx.fillRect(winL, winT + bathLayer, winR - winL, winHwin - bathLayer);
         ctx.globalAlpha = 1;
-        // 铝水面高光
+        // 铝水分界高光
         ctx.strokeStyle = '#fcd34d';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(winL + 4, winT + bathLayer + 1);
-        ctx.lineTo(winR - 4, winT + bathLayer + 1);
+        ctx.moveTo(winL + 6, winT + bathLayer + 1);
+        ctx.lineTo(winR - 6, winT + bathLayer + 1);
         ctx.stroke();
 
-        // ============ ⑤ 阴极母线（槽底金黄粗条）============
-        const cathodeY = shellY2 + 4;
+        // ⑤ 阴极母线（槽底金黄粗条）+ 接地三角
+        const cathodeY = shellY2 + 5;
         ctx.fillStyle = '#facc15';
-        ctx.fillRect(shellL - 8, cathodeY, shellR - shellL + 16 + isoDepth, 6);
+        ctx.fillRect(shellL - 10, cathodeY, shellR - shellL + 20 + isoDepth, 7);
         ctx.strokeStyle = '#a16207';
         ctx.lineWidth = 0.8;
-        ctx.strokeRect(shellL - 8, cathodeY, shellR - shellL + 16 + isoDepth, 6);
-        // 母线接地标识（左右各一个三角接地符号）
+        ctx.strokeRect(shellL - 10, cathodeY, shellR - shellL + 20 + isoDepth, 7);
         ctx.fillStyle = '#94a3b8';
-        for (const ex of [shellL - 4, shellR + 4]) {
+        for (const ex of [shellL - 6, shellR + 6]) {
           ctx.beginPath();
-          ctx.moveTo(ex, cathodeY + 7);
-          ctx.lineTo(ex + 6, cathodeY + 7);
-          ctx.lineTo(ex + 3, cathodeY + 14);
+          ctx.moveTo(ex, cathodeY + 8);
+          ctx.lineTo(ex + 7, cathodeY + 8);
+          ctx.lineTo(ex + 3.5, cathodeY + 16);
           ctx.closePath();
           ctx.fill();
         }
 
-        // ============ ⑥ 铭牌（左下角）============
+        // ⑥ 铭牌
         ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(shellL + 4, shellY2 - 22, 80, 18);
+        ctx.fillRect(shellL + 6, shellY2 - 22, 96, 18);
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 12px Inter, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const nameTag = id === 'CELL-101' ? '#101' : id === 'CELL-102' ? '#102' : id === 'CELL-103' ? '#103' : id === 'CELL-104' ? '#104' : '电解槽';
-        ctx.fillText(nameTag, shellL + 8, shellY2 - 13);
+        const nameTag = id === 'CELL-101' ? '#101 · 600 kA' : id === 'CELL-102' ? '#102 · 600 kA' : '电解槽';
+        ctx.fillText(nameTag, shellL + 10, shellY2 - 13);
 
-        // ============ ⑦ 工人小人（仅在 CELL-101 前显示）============
+        // ⑦ 工人小人（仅在 CELL-101）
         if (id === 'CELL-101') {
-          const wx = shellL + 60;
-          const wy = y + H - 12;
-          // 头
+          const wx = shellL + 50;
+          const wy = y + H - 8;
           ctx.fillStyle = '#fcd34d';
           ctx.beginPath();
           ctx.arc(wx, wy - 16, 3, 0, Math.PI * 2);
           ctx.fill();
-          // 身体（橙色工服）
           ctx.fillStyle = '#ea580c';
           ctx.fillRect(wx - 3, wy - 12, 6, 8);
-          // 腿
           ctx.fillStyle = '#1f2937';
           ctx.fillRect(wx - 3, wy - 4, 2.5, 4);
           ctx.fillRect(wx + 0.5, wy - 4, 2.5, 4);
-          // 安全帽顶（黄色）
           ctx.fillStyle = '#facc15';
           ctx.beginPath();
           ctx.arc(wx, wy - 18, 3.5, Math.PI, 0);
@@ -1136,6 +1126,70 @@ export class EquipmentRenderer {
         ctx.moveTo(cabinetR - 4, cabinetT + 18);
         ctx.lineTo(cabinetR - 4, cabinetB - 18);
         ctx.stroke();
+        break;
+      }
+
+      case 'task-board': {
+        // 班组任务台：工位办公屏样式
+        // 深蓝外框 + 顶部"班组生产任务"标题条 + 4 行任务列表（含复选框）+ 时间戳
+        const padX = 6;
+        const boardL = x + padX;
+        const boardR = x + width - padX;
+        const boardT = y + 3;
+        const boardB = y + height - 3;
+        // 屏框
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(boardL, boardT, boardR - boardL, boardB - boardT);
+        ctx.strokeRect(boardL, boardT, boardR - boardL, boardB - boardT);
+
+        // 顶部标题条
+        ctx.fillStyle = '#06b6d4';
+        ctx.fillRect(boardL, boardT, boardR - boardL, 12);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▎ 班组生产任务', boardL + 4, boardT + 6);
+        // 班次
+        ctx.textAlign = 'right';
+        ctx.fillText('3 班 / 系列 5', boardR - 4, boardT + 6);
+
+        // 4 行任务列表
+        const taskListT = boardT + 14;
+        const rowH = (boardB - taskListT - 2) / 4;
+        const tasks = [
+          { done: true,  text: '#101 出铝 5.0 t' },
+          { done: true,  text: '#102 换极 4 块' },
+          { done: false, text: '巡检阴极母线温度' },
+          { done: false, text: '清理打壳锤 *' },
+        ];
+        tasks.forEach((t, i) => {
+          const ry = taskListT + i * rowH + rowH / 2;
+          // 复选框
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(boardL + 6, ry - 3, 6, 6);
+          if (t.done) {
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(boardL + 7, ry - 2, 4, 4);
+            // ✓ 印
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(boardL + 7, ry);
+            ctx.lineTo(boardL + 8.5, ry + 1.5);
+            ctx.lineTo(boardL + 11, ry - 1.5);
+            ctx.stroke();
+          }
+          // 文本
+          ctx.fillStyle = t.done ? '#94a3b8' : '#e5e7eb';
+          ctx.font = (t.done ? '9px' : 'bold 9px') + ' Inter, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(t.text, boardL + 18, ry);
+        });
         break;
       }
 

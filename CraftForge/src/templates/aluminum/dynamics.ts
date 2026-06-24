@@ -25,9 +25,9 @@ function cellCouplings(cellId: string): CouplingRule[] {
     // A. 极距 → 槽电压
     { from: { equipmentId: cellId, param: 'anode_distance' }, to: { equipmentId: cellId, param: 'cell_voltage' }, gain: 0.15, baseline: 4.5, tau: 3 },
     // B. 系列电流 → 槽电压
-    { from: { equipmentId: cellId, param: 'series_current' }, to: { equipmentId: cellId, param: 'cell_voltage' }, gain: 0.002, baseline: 480, tau: 2 },
+    { from: { equipmentId: cellId, param: 'series_current' }, to: { equipmentId: cellId, param: 'cell_voltage' }, gain: 0.002, baseline: 600, tau: 2 },
     // C. 系列电流 → 电解质温度
-    { from: { equipmentId: cellId, param: 'series_current' }, to: { equipmentId: cellId, param: 'bath_temp' }, gain: 0.4, baseline: 480, tau: 30 },
+    { from: { equipmentId: cellId, param: 'series_current' }, to: { equipmentId: cellId, param: 'bath_temp' }, gain: 0.4, baseline: 600, tau: 30 },
     // D. 氧化铝浓度 → 槽噪声
     { from: { equipmentId: cellId, param: 'alumina_conc' }, to: { equipmentId: cellId, param: 'noise_level' }, gain: -20, baseline: 2.5, tau: 10 },
     // E. 氧化铝浓度 → 电流效率
@@ -46,22 +46,18 @@ function cellCouplings(cellId: string): CouplingRule[] {
 export const aluminumCouplings: CouplingRule[] = [
   ...cellCouplings('CELL-101'),
   ...cellCouplings('CELL-102'),
-  ...cellCouplings('CELL-103'),
-  ...cellCouplings('CELL-104'),
 
   // I. 整流二次直流电压 → 每槽系列电流
   { from: { equipmentId: 'TRA-301', param: 'secondary_dc_volt' }, to: { equipmentId: 'CELL-101', param: 'series_current' }, gain: 1.0, baseline: 1660, tau: 2 },
   { from: { equipmentId: 'TRA-301', param: 'secondary_dc_volt' }, to: { equipmentId: 'CELL-102', param: 'series_current' }, gain: 1.0, baseline: 1660, tau: 2 },
-  { from: { equipmentId: 'TRA-301', param: 'secondary_dc_volt' }, to: { equipmentId: 'CELL-103', param: 'series_current' }, gain: 1.0, baseline: 1660, tau: 2 },
-  { from: { equipmentId: 'TRA-301', param: 'secondary_dc_volt' }, to: { equipmentId: 'CELL-104', param: 'series_current' }, gain: 1.0, baseline: 1660, tau: 2 },
 
   // J. 调压档位 → 二次电压
   { from: { equipmentId: 'TRA-301', param: 'tap_position' }, to: { equipmentId: 'TRA-301', param: 'secondary_dc_volt' }, gain: 10, baseline: 18, tau: 1.5 },
 
   // K. CELL-101 系列电流 → 母线电流（汇总，取代表）
-  { from: { equipmentId: 'CELL-101', param: 'series_current' }, to: { equipmentId: 'TRA-301', param: 'bus_current' }, gain: 1.0, baseline: 480, tau: 1 },
+  { from: { equipmentId: 'CELL-101', param: 'series_current' }, to: { equipmentId: 'TRA-301', param: 'bus_current' }, gain: 1.0, baseline: 600, tau: 1 },
   // L. 母线电流 → 母线温度
-  { from: { equipmentId: 'TRA-301', param: 'bus_current' }, to: { equipmentId: 'TRA-301', param: 'bus_temp' }, gain: 0.06, baseline: 480, tau: 30 },
+  { from: { equipmentId: 'TRA-301', param: 'bus_current' }, to: { equipmentId: 'TRA-301', param: 'bus_temp' }, gain: 0.06, baseline: 600, tau: 30 },
 
   // M. CELL-101 电解质温度 → HF 排放
   { from: { equipmentId: 'CELL-101', param: 'bath_temp' }, to: { equipmentId: 'FGT-301', param: 'hf_conc' }, gain: 0.06, baseline: 955, tau: 15 },

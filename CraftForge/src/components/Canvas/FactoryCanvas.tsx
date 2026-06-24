@@ -416,23 +416,22 @@ export const FactoryCanvas: React.FC = () => {
       ctx.moveTo(w - 15, 50); ctx.lineTo(w - 15, h - 30);
       ctx.stroke();
 
-      // ---- (2) 区域底色（v5 布局：电解车间核心 + 控制层分离）----
-      // 行 1 电解车间核心区（y=105~395）- 深青（含 4 槽 + 4 槽控柜）
+      // ---- (2) 区域底色（v6 布局：2 槽 600 kA + 控制层）----
+      // 行 1 电解车间核心区（y=105~495，含 2 槽 + 2 槽控柜）- 深青
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 105, w, 290);
-      // 阴极母线区（y=400~430）- 金黄色淡底（视觉分隔上下层）
+      ctx.fillRect(0, 105, w, 390);
+      // 阴极母线区（y=500~520）- 金黄淡底
       ctx.fillStyle = 'rgba(250, 204, 21, 0.06)';
-      ctx.fillRect(0, 400, w, 30);
-      // 控制层 行 1（y=445~550）
+      ctx.fillRect(0, 500, w, 20);
+      // 控制层（y=525~610）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
-      ctx.fillRect(0, 445, w, 105);
-      // 控制层 行 2（y=565~665）
+      ctx.fillRect(0, 525, w, 85);
+      // 总控（y=615~680）
       ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
-      ctx.fillRect(0, 565, w, 100);
+      ctx.fillRect(0, 615, w, 65);
 
-      // ---- (2.5) 氧化铝输送管道（屋顶下方水平横管 + 分支竖管到 4 槽顶部）----
+      // ---- (2.5) 氧化铝输送管道：水平主管 + 2 个分支竖管（连到 2 槽顶部）----
       const pipeY = 105;
-      // 水平主管
       const pipeGrad = ctx.createLinearGradient(0, pipeY - 3, 0, pipeY + 6);
       pipeGrad.addColorStop(0, '#cbd5e1');
       pipeGrad.addColorStop(0.5, '#94a3b8');
@@ -442,8 +441,8 @@ export const FactoryCanvas: React.FC = () => {
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
       ctx.strokeRect(30, pipeY - 3, w - 60, 8);
-      // 4 个分支竖管（连到 4 槽顶部 x 中心）
-      const cellXCenters = [53 + 140, 351 + 140, 649 + 140, 947 + 140];
+      // 2 个分支竖管（连到 2 槽顶部 x 中心）
+      const cellXCenters = [30 + 290, 650 + 290];
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 5;
       cellXCenters.forEach((cx) => {
@@ -452,7 +451,7 @@ export const FactoryCanvas: React.FC = () => {
         ctx.lineTo(cx, 120);
         ctx.stroke();
       });
-      // 输送方向指示（管道末端小三角箭头）+ 标签
+      // 输送方向箭头 + 标签
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
       ctx.moveTo(40, pipeY - 8);
@@ -466,14 +465,14 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'bottom';
       ctx.fillText('氧化铝粉气力输送管 ⟶', 55, pipeY - 4);
 
-      // ---- (2.6) 阴极母线（金黄粗条贯穿 4 槽底部）----
-      const busY = 410;
+      // ---- (2.6) 阴极母线（金黄粗条贯穿 2 槽底部）----
+      const busY = 505;
       ctx.fillStyle = '#facc15';
       ctx.fillRect(30, busY, w - 60, 8);
       ctx.strokeStyle = '#a16207';
       ctx.lineWidth = 1;
       ctx.strokeRect(30, busY, w - 60, 8);
-      // 接地三角符号（左右各一个）
+      // 接地三角
       ctx.fillStyle = '#94a3b8';
       [40, w - 50].forEach((bx) => {
         ctx.beginPath();
@@ -488,21 +487,21 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      ctx.fillText('━━ 阴极母线 480 kA ━━', w - 70, busY + 4);
+      ctx.fillText('━━ 阴极母线 600 kA ━━', w - 70, busY + 4);
 
-      // ---- (3) 灯光氛围：电解槽核心区有橙红泛光 ----
-      const cellGlow = ctx.createRadialGradient(w / 2, 220, 80, w / 2, 220, 600);
-      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.16)');
-      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.06)');
+      // ---- (3) 灯光氛围：槽阵列区橙红泛光 ----
+      const cellGlow = ctx.createRadialGradient(w / 2, 270, 100, w / 2, 270, 700);
+      cellGlow.addColorStop(0, 'rgba(249, 115, 22, 0.18)');
+      cellGlow.addColorStop(0.5, 'rgba(249, 115, 22, 0.08)');
       cellGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = cellGlow;
-      ctx.fillRect(0, 110, w, 300);
+      ctx.fillRect(0, 110, w, 410);
 
       // ---- (4) 地面网格 ----
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 6]);
-      [395, 440, 555, 670].forEach((yy) => {
+      [495, 525, 615, 675].forEach((yy) => {
         ctx.beginPath();
         ctx.moveTo(15, yy);
         ctx.lineTo(w - 15, yy);
@@ -515,9 +514,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 电解车间（4 槽 + 4 槽控）', 22, 113);
-      ctx.fillText('▎ 控制层', 22, 453);
-      ctx.fillText('▎ 总控', 22, 573);
+      ctx.fillText('▎ 电解车间 (2 × 600 kA 槽)', 22, 113);
+      ctx.fillText('▎ 控制层', 22, 528);
+      ctx.fillText('▎ 总控', 22, 623);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -527,7 +526,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#06b6d4';
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('系列电流 480 kA / 母线电压 1660 V', w - 244, 112);
+      ctx.fillText('系列电流 600 kA / 母线电压 1660 V', w - 244, 112);
 
       // ---- (7) 物料流向 ----
       ctx.fillStyle = '#94a3b8';
@@ -540,7 +539,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v5 aluminum  (聚焦电解车间)', w - 30, h - 8);
+      ctx.fillText('v6 aluminum  (600 kA 电解槽聚焦)', w - 30, h - 8);
     }
   };
 

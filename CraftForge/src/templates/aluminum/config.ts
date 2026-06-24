@@ -1,24 +1,23 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V8 (布局优化 + 槽控柜缩窄)
-// 电解铝车间布局 v8：1280×700
+// VERSION: 2026-06-23-V10 (删除总控柜 + 空间重排 + 闪烁修复)
+// 电解铝车间布局 v10：1280×700
 //
-// vs v7 主要变更：
-//   ① 电解槽高度 290 → 250（让上下都留出文字呼吸空间）
-//   ② 槽控柜 580×60 → 240×55（不再跟槽等宽，居中显示更美观）
-//   ③ 重排垂直布局：氧化铝输送管/屋顶烟道/阴极母线 等文字标签全部不再被遮挡
+// vs v9 主要变更：
+//   ① 删除 CTRL-401 总控柜（无显示必要，参数已被槽控柜/班组任务台覆盖）
+//   ② 电解槽高度 250 → 290（充分利用空间，槽体细节更清晰）
+//   ③ 控制层下移，垂直留出更多文字呼吸空间
+//   ④ 闪烁修复（在 FactoryCanvas.tsx 中处理）
 //
 // 布局：
-//   y=  4~24   厂房屋顶（人字坡 + 桁架）
-//   y= 26~36   屋顶烟道（深绿水平管，标签放在 y=22 屋顶下边缘内）
-//   y= 42~82   CRANE-302 天车横梁 + 红色抬包
-//   y= 96~104  氧化铝输送管道（标签放在管道下方 y=108）
-//   y=120~370  2 槽阵列 CELL-101/102 (每槽 580×250)
-//   y=388~443  2 台槽控柜 POT-CTRL-101/102 (每柜 240×55 居中)
-//   y=458~470  阴极母线（FactoryCanvas 画，标签放在 y=476）
-//   y=495~555  控制层左：整流变压器 (280×60)
-//   y=495~615  控制层右：班组任务台 (580×120)
-//   y=625~680  总控柜 (220×55)
+//   y=  4~24   厂房屋顶
+//   y= 26~36   屋顶烟道
+//   y= 42~82   天车横梁
+//   y= 96~104  氧化铝输送管道
+//   y=120~410  2 槽阵列 CELL-101/102 (每槽 580×290)
+//   y=425~480  2 台槽控柜 POT-CTRL-101/102 (每柜 240×55 居中)
+//   y=500~512  阴极母线
+//   y=535~620  控制层：整流变压器 + 班组任务台
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -31,7 +30,7 @@ const TAU_MID = 5;
 function cell(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'cell-iso',
-    x, y: 120, width: 580, height: 250,
+    x, y: 120, width: 580, height: 290,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'cell_voltage',  name: '槽电压',     value: 4.15, unit: 'V',   min: 3.5, max: 60,  normalMin: 4.0, normalMax: 4.3, trend: [], tau: TAU_FAST },
@@ -54,8 +53,8 @@ function cell(id: string, name: string, x: number): Equipment {
 function potCtrl(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'pot-ctrl',
-    // 槽控柜居中放在槽下方：x = 槽 x + (580-240)/2 = 槽 x + 170
-    x: x + 170, y: 388, width: 240, height: 55,
+    // 槽控柜居中放在槽下方
+    x: x + 170, y: 425, width: 240, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'plc_load',     name: 'PLC 负载',  value: 35, unit: '%', min: 0, max: 100, normalMin: 20, normalMax: 70, trend: [], tau: 3 },
@@ -101,7 +100,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 495, width: 280, height: 60,
+    x: 30, y: 535, width: 280, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -127,7 +126,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 340, y: 495, width: 580, height: 120,
+    x: 340, y: 535, width: 580, height: 140,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },
@@ -142,20 +141,9 @@ export const aluminumEquipments: Equipment[] = [
   },
 
   // ============================================================
-  // 总控柜（行 2 左侧）
+  // 已删除：CTRL-401 电解车间总控柜（v9 之前存在；现确认无显示必要 —
+  // 配电电压/通讯/换极次数等参数实际由槽控柜/班组任务台覆盖，去除后下方腾出空间）
   // ============================================================
-  {
-    id: 'CTRL-401', name: '电解车间总控柜', type: 'control_box',
-    x: 60, y: 625, width: 220, height: 55,
-    status: 'normal', template: 'aluminum',
-    parameters: [
-      { id: 'main_voltage', name: '配电电压',  value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },
-      { id: 'comm_status',  name: '通讯状态',  value: 1,   unit: '',  min: 0,   max: 1,   normalMin: 1,   normalMax: 1,   trend: [], inertia: false },
-      { id: 'panel_temp',   name: '柜内温度',  value: 32,  unit: '°C',min: 0,   max: 60,  normalMin: 20,  normalMax: 40,  trend: [], tau: TAU_TEMP },
-      { id: 'anode_change_count', name: '换极次数', value: 4,   unit: '次/班', min: 0, max: 20, normalMin: 3, normalMax: 8, trend: [], tau: TAU_MID },
-      { id: 'lift_force',         name: '天车提升力', value: 12, unit: 't',   min: 0, max: 25, normalMin: 8, normalMax: 16, trend: [], tau: TAU_MECH },
-    ],
-  },
 ];
 
 // ============================================================
@@ -171,10 +159,6 @@ export const aluminumPipelines: Pipeline[] = [
   // 槽控 → 槽
   { id: 'AP-501', from: 'POT-CTRL-101', to: 'CELL-101', fromPoint: 'top', toPoint: 'bottom', medium: '槽控', flowRate: 0.3, color: '#a855f7' },
   { id: 'AP-502', from: 'POT-CTRL-102', to: 'CELL-102', fromPoint: 'top', toPoint: 'bottom', medium: '槽控', flowRate: 0.3, color: '#a855f7' },
-
-  // 控制：总控柜 → 各设备
-  { id: 'AP-601', from: 'CTRL-401', to: 'HMI-301',  fromPoint: 'top',  toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'AP-602', from: 'CTRL-401', to: 'TRA-301',  fromPoint: 'left', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
 ];
 
 export const aluminumConfig = {

@@ -26,6 +26,17 @@ export const FactoryCanvas: React.FC = () => {
   const isDrillRunning = useDrillStore((state) => state.isRunning);
   const currentFault = useDrillStore((state) => state.currentFault);
 
+  // 🔑 闪烁修复：用 ref 持有频繁变化的演练状态
+  // 之前 useEffect 依赖 currentFault → 演练时其内部 trend 数组每秒变化
+  // → React 把它视作"变了" → useEffect cleanup+remount → animate 循环重启 → 闪烁
+  // 现在通过 ref 让 animate 读最新值，useEffect 仅依赖结构性变化
+  const isDrillRunningRef = useRef(isDrillRunning);
+  const currentFaultRef = useRef(currentFault);
+  const selectedEquipmentIdRef = useRef(selectedEquipmentId);
+  useEffect(() => { isDrillRunningRef.current = isDrillRunning; }, [isDrillRunning]);
+  useEffect(() => { currentFaultRef.current = currentFault; }, [currentFault]);
+  useEffect(() => { selectedEquipmentIdRef.current = selectedEquipmentId; }, [selectedEquipmentId]);
+
   // 当前场景的设计尺寸（从注册中心读取）
   const designSize = getSceneMeta(activeTemplate ?? 'fcc')?.designSize ?? FALLBACK_DESIGN_SIZE;
 
@@ -185,10 +196,11 @@ export const FactoryCanvas: React.FC = () => {
 
       // 绘制设备（把 flowOffset 当作动画时间相位传入，驱动机器人/传送带动画）
       // 用 try/catch 包住每个设备，避免单个设备渲染错误导致整个 animate 循环停摆
+      // 用 ref 读取演练状态，避免每次状态变化触发 useEffect 重启 animate（闪烁根因）
       equipments.forEach((equipment) => {
         try {
-          const isSelected = equipment.id === selectedEquipmentId;
-          const isFaulty = !!(isDrillRunning && currentFault?.affectedEquipments.includes(equipment.id));
+          const isSelected = equipment.id === selectedEquipmentIdRef.current;
+          const isFaulty = !!(isDrillRunningRef.current && currentFaultRef.current?.affectedEquipments.includes(equipment.id));
           EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty, flowOffsetRef.current);
         } catch (err) {
           // 只在第一次报错时打印（避免每秒 60 次刷屏）
@@ -212,7 +224,7 @@ export const FactoryCanvas: React.FC = () => {
       cancelAnimationFrame(animationRef.current);
       if (resizeObserver) resizeObserver.disconnect();
     };
-  }, [equipments, pipelines, selectedEquipmentId, isDrillRunning, currentFault, calculateScale, activeTemplate, designSize]);
+  }, [equipments, pipelines, calculateScale, activeTemplate, designSize]);
 
   const drawBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     // 填充画布外深色底（设备区外部）
@@ -508,19 +520,16 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'right';
       ctx.fillText('→ 烟气净化（车间外）', w - 64, flueY - 12);
 
-      // ---- (2) 区域底色（v8 布局：电解车间 + 控制层）----
-      // 行 1 电解车间核心区（y=85~455，含天车下方+2 槽+2 槽控柜）
+      // ---- (2) 区域底色（v10 布局：删除总控柜，控制层下移撑满底部）----
+      // 行 1 电解车间核心区（y=85~490 含天车下方+2 槽+2 槽控柜）
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 85, w, 370);
-      // 阴极母线区（y=460~485）
+      ctx.fillRect(0, 85, w, 405);
+      // 阴极母线区（y=500~525）
       ctx.fillStyle = 'rgba(250, 204, 21, 0.06)';
-      ctx.fillRect(0, 460, w, 25);
-      // 控制层（y=490~620）
+      ctx.fillRect(0, 500, w, 25);
+      // 控制层（y=530~685 占满底部）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
-      ctx.fillRect(0, 490, w, 130);
-      // 总控（y=625~685）
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
-      ctx.fillRect(0, 625, w, 60);
+      ctx.fillRect(0, 530, w, 155);
 
       // ---- (2.5) 氧化铝输送管道：y=96 水平主管 + 2 个分支竖管 ----
       const pipeY = 100;
@@ -560,8 +569,8 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'top';
       ctx.fillText('氧化铝粉气力输送管 ⟶', 62, pipeY + 11);
 
-      // ---- (2.6) 阴极母线（y=465 金黄粗条贯穿 2 槽底部）----
-      const busY = 465;
+      // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）----
+      const busY = 505;
       ctx.fillStyle = '#facc15';
       ctx.fillRect(30, busY, w - 60, 8);
       ctx.strokeStyle = '#a16207';
@@ -598,7 +607,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.18)';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 6]);
-      [455, 490, 620, 685].forEach((yy) => {
+      [490, 530, 685].forEach((yy) => {
         ctx.beginPath();
         ctx.moveTo(15, yy);
         ctx.lineTo(w - 15, yy);
@@ -616,14 +625,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('▎ 电解车间 (2 × 600 kA 槽)', 24, 91);
 
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 493, 70, 14);
+      ctx.fillRect(20, 533, 70, 14);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 控制层', 24, 496);
-
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 628, 60, 14);
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 总控', 24, 631);
+      ctx.fillText('▎ 控制层', 24, 536);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -635,21 +639,21 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'left';
       ctx.fillText('系列电流 600 kA / 母线电压 1660 V', w - 244, 90);
 
-      // ---- (7) 物料流向（加深色背景框）----
+      // ---- (7) 物料流向（放在阴极母线下方 y=522 留出空间避开两侧栏）----
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(w - 230, 482, 210, 14);
+      ctx.fillRect(w - 230, 519, 210, 14);
       ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold 10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
-      ctx.fillText('氧化铝粉 → 电解 → 铝水 → 抬包', w - 27, 485);
+      ctx.fillText('氧化铝粉 → 电解 → 铝水 → 抬包', w - 27, 522);
 
       // ---- (8) 版本水印 ----
       ctx.fillStyle = '#06b6d4';
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v9 aluminum  (侧面解剖图+天车平滑+标签防遮挡)', w - 30, h - 8);
+      ctx.fillText('v10 aluminum  (删除总控柜+空间撑开+闪烁修复)', w - 30, h - 8);
     }
   };
 

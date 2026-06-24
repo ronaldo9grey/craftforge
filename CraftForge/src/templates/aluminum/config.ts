@@ -1,26 +1,24 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V7 (烟气走屋顶 + 班组任务台放大 + 单排阳极)
-// 电解铝车间布局 v7：1280×700
+// VERSION: 2026-06-23-V8 (布局优化 + 槽控柜缩窄)
+// 电解铝车间布局 v8：1280×700
 //
-// vs v6 主要变更：
-//   ① 烟气净化 FGT-301 不再独立显示在车间内（真实情况是在屋顶烟道 → 厂房外净化车间）
-//      FGT 参数保留（仍可点击参数面板查看），但视觉上由"屋顶水平烟道 + 右上角小烟囱"代替
-//      FGT 位置移到画面外（x=-500）作隐藏处理；参数仍受 dynamics 驱动
-//   ② 班组任务台 280×60 → 580×120（任务列表更清晰、与槽控柜同宽）
-//   ③ 天车 240s → 600s（10 分钟一周期，真实换极节奏）
-//   ④ 阳极改单排 22 块（侧视图正确）+ 顶部金黄阳极母线粗条
-//   ⑤ 布局重新调整以适应任务台放大
+// vs v7 主要变更：
+//   ① 电解槽高度 290 → 250（让上下都留出文字呼吸空间）
+//   ② 槽控柜 580×60 → 240×55（不再跟槽等宽，居中显示更美观）
+//   ③ 重排垂直布局：氧化铝输送管/屋顶烟道/阴极母线 等文字标签全部不再被遮挡
 //
 // 布局：
-//   y= 20~50   厂房屋顶
-//   y= 55~95   CRANE-302 天车横梁（600s 周期）
-//   y=100~110  氧化铝输送管道
-//   y=120~410  2 槽阵列 CELL-101/102 (每槽 580×290)
-//   y=425~485  2 台槽控柜 POT-CTRL-101/102 (每柜 580×60)
-//   y=500~515  阴极母线（FactoryCanvas 画）
-//   y=525~585  控制层左：整流变压器 + 总控柜
-//   y=525~645  控制层右：班组任务台（放大 580×120）
+//   y=  4~24   厂房屋顶（人字坡 + 桁架）
+//   y= 26~36   屋顶烟道（深绿水平管，标签放在 y=22 屋顶下边缘内）
+//   y= 42~82   CRANE-302 天车横梁 + 红色抬包
+//   y= 96~104  氧化铝输送管道（标签放在管道下方 y=108）
+//   y=120~370  2 槽阵列 CELL-101/102 (每槽 580×250)
+//   y=388~443  2 台槽控柜 POT-CTRL-101/102 (每柜 240×55 居中)
+//   y=458~470  阴极母线（FactoryCanvas 画，标签放在 y=476）
+//   y=495~555  控制层左：整流变压器 (280×60)
+//   y=495~615  控制层右：班组任务台 (580×120)
+//   y=625~680  总控柜 (220×55)
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -33,7 +31,7 @@ const TAU_MID = 5;
 function cell(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'cell-iso',
-    x, y: 120, width: 580, height: 290,
+    x, y: 120, width: 580, height: 250,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'cell_voltage',  name: '槽电压',     value: 4.15, unit: 'V',   min: 3.5, max: 60,  normalMin: 4.0, normalMax: 4.3, trend: [], tau: TAU_FAST },
@@ -56,7 +54,8 @@ function cell(id: string, name: string, x: number): Equipment {
 function potCtrl(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'pot-ctrl',
-    x, y: 425, width: 580, height: 60,
+    // 槽控柜居中放在槽下方：x = 槽 x + (580-240)/2 = 槽 x + 170
+    x: x + 170, y: 388, width: 240, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'plc_load',     name: 'PLC 负载',  value: 35, unit: '%', min: 0, max: 100, normalMin: 20, normalMax: 70, trend: [], tau: 3 },
@@ -74,7 +73,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'CRANE-302', name: '阳极天车横梁', type: 'crane-iso',
-    x: 30, y: 55, width: 1220, height: 45,
+    x: 30, y: 42, width: 1220, height: 40,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'crane_position', name: '横梁位置',   value: 50, unit: '%',  min: 0, max: 100, normalMin: 0, normalMax: 100, trend: [], tau: 5 },
@@ -102,7 +101,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 530, width: 280, height: 60,
+    x: 30, y: 495, width: 280, height: 60,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -128,7 +127,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 340, y: 530, width: 580, height: 120,
+    x: 340, y: 495, width: 580, height: 120,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },
@@ -147,7 +146,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'CTRL-401', name: '电解车间总控柜', type: 'control_box',
-    x: 60, y: 600, width: 220, height: 55,
+    x: 60, y: 625, width: 220, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'main_voltage', name: '配电电压',  value: 380, unit: 'V', min: 350, max: 410, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },

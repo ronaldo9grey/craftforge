@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Paperclip, Volume2, VolumeX, User, Bot, Sparkles } from 'lucide-react';
+import { Send, Paperclip, Volume2, VolumeX, User, Bot, Sparkles, X } from 'lucide-react';
 import { useAIStore } from '@/stores/aiStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -148,11 +148,37 @@ export const RightSidebar: React.FC = () => {
   // 数字人头像：流式中显示"思考态"循环嘴型，朗读中显示精确字级嘴型
   const speakingForAvatar = isSpeaking || isProcessing;
 
-  // 右侧边栏始终显示，不再支持关闭
+  // 折叠状态：从 uiStore 取（与左侧栏一致）
+  const sidebarRightOpen = useUIStore((s) => s.sidebarRightOpen);
+  const toggleSidebarRight = useUIStore((s) => s.toggleSidebarRight);
+
+  // 折叠时只显示一条窄条，给画布让出空间
+  if (!sidebarRightOpen) {
+    return (
+      <div className="w-8 bg-bg-secondary border-l border-border flex flex-col items-center pt-3">
+        <button
+          className="text-text-secondary hover:text-text-primary p-1.5 rounded hover:bg-bg-tertiary"
+          title="展开 AI 师傅面板"
+          onClick={toggleSidebarRight}
+        >
+          <Bot className="w-5 h-5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-80 bg-bg-secondary border-l border-border flex flex-col h-full">
       {/* 数字人头像区域 - 老张 SVG 形象 */}
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border relative">
+        {/* 折叠按钮（右上角） */}
+        <button
+          onClick={toggleSidebarRight}
+          className="absolute top-2 right-2 text-text-secondary hover:text-text-primary p-1 rounded hover:bg-bg-tertiary"
+          title="折叠 AI 师傅面板（给画布让出空间）"
+        >
+          <X className="w-4 h-4" />
+        </button>
         <div className="flex flex-col items-center">
           <AvatarOldZhang
             mood={avatarMood}

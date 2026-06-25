@@ -18,14 +18,14 @@ import type { Equipment, Pipeline } from '@/types';
 
 export const bakingEquipments: Equipment[] = [
 
-  // ========== 行 1：4 个焙烧炉室（核心主力，每个炉室是 1 个独立 reactor） ==========
+  // ========== 行 1：4 个焙烧炉室（核心主力，每个炉室是 1 个独立 reactor）==========
 
   // ① 装炉口 / 1 号炉室（升温阶段 500°C）
   {
     id: 'BAKE-K1',
     name: '1号炉室·升温',
     type: 'reactor',
-    x: 40, y: 150, width: 220, height: 165,
+    x: 40, y: 155, width: 220, height: 150,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'room_temp',  name: '炉室温度', value: 520,  unit: '°C', min: 300, max: 1200, normalMin: 480, normalMax: 560, trend: [], tau: 30 },
@@ -41,7 +41,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'BAKE-K2',
     name: '2号炉室·升温',
     type: 'reactor',
-    x: 280, y: 150, width: 220, height: 165,
+    x: 280, y: 155, width: 220, height: 150,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'room_temp',  name: '炉室温度', value: 870,  unit: '°C', min: 300, max: 1200, normalMin: 830, normalMax: 920, trend: [], tau: 30 },
@@ -57,7 +57,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'BAKE-K3',
     name: '3号炉室·恒温',
     type: 'reactor',
-    x: 520, y: 150, width: 220, height: 165,
+    x: 520, y: 155, width: 220, height: 150,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'room_temp',  name: '炉室温度', value: 1100, unit: '°C', min: 300, max: 1200, normalMin: 1085, normalMax: 1115, trend: [], tau: 30 },
@@ -73,7 +73,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'BAKE-K4',
     name: '4号炉室·降温',
     type: 'reactor',
-    x: 760, y: 150, width: 220, height: 165,
+    x: 760, y: 155, width: 220, height: 150,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'room_temp',  name: '炉室温度', value: 620,  unit: '°C', min: 100, max: 1200, normalMin: 580, normalMax: 680, trend: [], tau: 30 },
@@ -84,12 +84,12 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑤ 出炉位（25~30 天，待出炉的成品熟阳极）
+  // ⑤ 出炉位
   {
     id: 'OUT-K5',
     name: '5号出炉位',
     type: 'station',
-    x: 1000, y: 150, width: 240, height: 165,
+    x: 1000, y: 155, width: 240, height: 150,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'finished_count', name: '待出炉块数', value: 32,   unit: '块', min: 0, max: 200, normalMin: 0,    normalMax: 80, trend: [], tau: 60 },
@@ -100,12 +100,12 @@ export const bakingEquipments: Equipment[] = [
 
   // ========== 行 2：抽烟系统（焙烧炉的"肺"） ==========
 
-  // ⑥ 烟道汇流箱（4 个炉室排烟汇总点）
+  // ⑥ 烟道汇流箱
   {
     id: 'FLUE-301',
     name: '烟道汇流箱',
     type: 'exchanger',
-    x: 40, y: 350, width: 320, height: 90,
+    x: 40, y: 360, width: 320, height: 85,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'flue_pressure', name: '烟道负压',  value: -280, unit: 'Pa',   min: -800, max: 0,    normalMin: -400, normalMax: -200, trend: [], tau: 5 },
@@ -113,12 +113,12 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑦ 抽烟机（大型变频引风机）
+  // ⑦ 抽烟机
   {
     id: 'FAN-401',
     name: '抽烟机组',
     type: 'pump',
-    x: 380, y: 350, width: 200, height: 90,
+    x: 380, y: 360, width: 200, height: 85,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'fan_speed',    name: '抽烟机转速', value: 1380, unit: 'rpm',  min: 800, max: 1800, normalMin: 1350, normalMax: 1500, trend: [], tau: 4 },
@@ -127,12 +127,12 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑧ 烟气净化器（除尘+脱氟）
+  // ⑧ 烟气净化器
   {
     id: 'PUR-501',
     name: '烟气净化器',
     type: 'reactor',
-    x: 600, y: 350, width: 220, height: 90,
+    x: 600, y: 360, width: 220, height: 85,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'inlet_dust',   name: '入口含尘', value: 250, unit: 'mg/m³', min: 0, max: 1000, normalMin: 150, normalMax: 350, trend: [], tau: 10 },
@@ -141,20 +141,18 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑨ 烟囱（最终排放）
+  // ⑨ 烟囱
   {
     id: 'STACK-601',
     name: '排放烟囱',
     type: 'fractionator',
-    x: 840, y: 350, width: 100, height: 90,
+    x: 840, y: 360, width: 100, height: 85,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'stack_temp',  name: '排放温度', value: 165, unit: '°C',    min: 80,  max: 300, normalMin: 140, normalMax: 200, trend: [], tau: 20 },
       { id: 'stack_o2',    name: '出口氧含量',value: 8.5, unit: '%',    min: 0,   max: 21,  normalMin: 6,   normalMax: 10,  trend: [], tau: 8 },
     ],
   },
-
-  // ⑩ 备用：水冷出口（烟囱右侧）— 没必要的话也可不放，目前留空
 
   // ========== 行 3：辅助供给系统 ==========
 
@@ -163,7 +161,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'GAS-701',
     name: '燃料气调压站',
     type: 'valve',
-    x: 40, y: 460, width: 240, height: 60,
+    x: 40, y: 490, width: 240, height: 60,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'gas_pressure', name: '燃料气压力', value: 10.2, unit: 'kPa',  min: 0, max: 25, normalMin: 8,   normalMax: 12,  trend: [], tau: 4 },
@@ -172,12 +170,12 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑫ 焦床料仓（焦炭粉填料系统）
+  // ⑫ 焦床料仓
   {
     id: 'COKE-801',
     name: '焦床填料仓',
     type: 'reactor',
-    x: 300, y: 460, width: 220, height: 60,
+    x: 300, y: 490, width: 220, height: 60,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'coke_level',     name: '焦床料位',   value: 65,  unit: '%',  min: 0, max: 100, normalMin: 50, normalMax: 90, trend: [], tau: 20 },
@@ -185,12 +183,12 @@ export const bakingEquipments: Equipment[] = [
     ],
   },
 
-  // ⑬ 炉室操作 HMI
+  // ⑬ 炉室温度曲线监控屏
   {
     id: 'HMI-901',
     name: '炉室温度曲线监控屏',
     type: 'exchanger',
-    x: 540, y: 460, width: 400, height: 60,
+    x: 540, y: 490, width: 400, height: 60,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'curve_target',   name: '目标曲线',  value: 1100, unit: '°C',  min: 0, max: 1500, normalMin: 0, normalMax: 1500, trend: [], tau: 1 },
@@ -205,7 +203,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'HMI-902',
     name: '火道温度对比',
     type: 'exchanger',
-    x: 40, y: 540, width: 480, height: 110,
+    x: 40, y: 575, width: 480, height: 95,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'max_dev',  name: '最大温差',  value: 12, unit: '°C', min: 0,  max: 100, normalMin: 0, normalMax: 20, trend: [], tau: 1 },
@@ -218,7 +216,7 @@ export const bakingEquipments: Equipment[] = [
     id: 'HMI-903',
     name: '班组任务台',
     type: 'task-board',
-    x: 540, y: 540, width: 700, height: 110,
+    x: 540, y: 575, width: 700, height: 95,
     status: 'normal', template: 'baking',
     parameters: [
       { id: 'shift_target', name: '当班指标', value: 80,   unit: '块', min: 0, max: 200, normalMin: 70, normalMax: 100, trend: [], tau: 1 },

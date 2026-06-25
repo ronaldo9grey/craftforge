@@ -959,30 +959,30 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillRect(0, 0, w, h);
 
       // ---- (1) 区域底色 ----
-      // 行 1 焙烧炉室阵列 (y=130~325)
+      // 行 1 焙烧炉室阵列 (y=120~325，高 205)
       ctx.fillStyle = 'rgba(220, 38, 38, 0.06)';
-      ctx.fillRect(0, 120, w, 215);
-      // 行 2 抽烟净化系统 (y=340~445)
+      ctx.fillRect(0, 120, w, 205);
+      // 行 2 抽烟净化系统 (y=340~460，高 120)
       ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
-      ctx.fillRect(0, 340, w, 105);
-      // 行 3 辅助供给 (y=450~525)
+      ctx.fillRect(0, 340, w, 120);
+      // 行 3 辅助供给 (y=475~560，高 85)
       ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
-      ctx.fillRect(0, 450, w, 80);
-      // 控制层 (y=535~660)
+      ctx.fillRect(0, 475, w, 85);
+      // 控制层 (y=565~680，高 115)
       ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
-      ctx.fillRect(0, 535, w, 125);
+      ctx.fillRect(0, 565, w, 115);
 
-      // baseboard 分割线
+      // baseboard 分割线（落在各区域下边沿）
       ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)';
       ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(15, 335); ctx.lineTo(w - 15, 335); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 325); ctx.lineTo(w - 15, 325); ctx.stroke();
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 449); ctx.lineTo(w - 15, 449); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 463); ctx.lineTo(w - 15, 463); ctx.stroke();
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 532); ctx.lineTo(w - 15, 532); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 562); ctx.lineTo(w - 15, 562); ctx.stroke();
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(15, 665); ctx.lineTo(w - 15, 665); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 683); ctx.lineTo(w - 15, 683); ctx.stroke();
 
       // ---- (2) 顶部工艺流程横幅（y=40~76）----
       // 表达: 装炉 → 升温 → 恒温 → 降温 → 出炉
@@ -1051,7 +1051,7 @@ export const FactoryCanvas: React.FC = () => {
         ctx.fillText(num, ncx, ncy + 1);
       });
 
-      // ---- (4) 区域标签（居左 + 无背景 + 工艺主轴放流程横幅上方）----
+      // ---- (4) 区域标签（居左 + 无背景；主轴在横幅上方；其余靠分割线避开设备）----
       ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
@@ -1060,24 +1060,24 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#fde68a';
       ctx.fillText('▎ 焙烧主轴', 24, 26);
 
-      // 抽烟净化系统标签
+      // 抽烟净化系统标签（紧贴分割线 y=325 之下 9px，BAKE 区域底部之外、FLUE 设备上方）
       ctx.fillStyle = '#67e8f9';
-      ctx.fillText('▎ 抽烟净化', 24, 343);
+      ctx.fillText('▎ 抽烟净化', 24, 334);
 
-      // 辅助供给标签
-      ctx.fillStyle = '#fde68a';
-      ctx.fillText('▎ 辅助供给', 24, 457);
+      // 辅助供给标签（紧贴分割线 y=463 之下 9px）
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('▎ 辅助供给', 24, 472);
 
-      // 控制层标签
+      // 控制层标签（紧贴分割线 y=562 之上 5px，避开 HMI-902 name 标签 y=553）
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制层', 24, 540);
+      ctx.fillText('▎ 控制层', 24, 558);
 
       // ---- (5) 版本水印 ----
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v1 baking  (焙烧炉室+火焰动画+工艺横幅+区域分色)', w - 30, h - 8);
+      ctx.fillText('v2 baking  (布局加宽呼吸+各区域分割线下方安全位放标签)', w - 30, h - 8);
     }
   };
 

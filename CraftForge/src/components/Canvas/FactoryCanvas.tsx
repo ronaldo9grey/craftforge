@@ -192,9 +192,10 @@ export const FactoryCanvas: React.FC = () => {
       // 更新流动偏移
       flowOffsetRef.current += 0.5;
 
-      // 绘制管道（容错）- 通过 ref 读，避免数组引用变化触发 useEffect 重启
+      // ===== 三阶段绘制（解决文字被设备/管道遮挡） =====
+      // 第 1 阶段：管道线条（在设备之下，避免遮挡设备渲染细节）
       try {
-        PipelineRenderer.render(ctx, pipelinesRef.current, flowOffsetRef.current);
+        PipelineRenderer.renderLines(ctx, pipelinesRef.current, flowOffsetRef.current, equipmentsRef.current);
       } catch (err) {
         if (!(window as any).__pipelineErrLogged) {
           (window as any).__pipelineErrLogged = true;
@@ -202,16 +203,14 @@ export const FactoryCanvas: React.FC = () => {
         }
       }
 
-      // 绘制设备（把 flowOffset 当作动画时间相位传入，驱动机器人/传送带动画）
+      // 第 2 阶段：设备本体（盖在管道之上，正常展示设备）
       // 用 try/catch 包住每个设备，避免单个设备渲染错误导致整个 animate 循环停摆
-      // 用 ref 读取最新数据，避免每次 store 变化触发 useEffect 重启 animate（闪烁根因）
       equipmentsRef.current.forEach((equipment) => {
         try {
           const isSelected = equipment.id === selectedEquipmentIdRef.current;
           const isFaulty = !!(isDrillRunningRef.current && currentFaultRef.current?.affectedEquipments.includes(equipment.id));
           EquipmentRenderer.render(ctx, equipment, isSelected, isFaulty, flowOffsetRef.current);
         } catch (err) {
-          // 只在第一次报错时打印（避免每秒 60 次刷屏）
           if (!(window as any).__renderErrLogged?.[equipment.id]) {
             (window as any).__renderErrLogged ??= {};
             (window as any).__renderErrLogged[equipment.id] = true;
@@ -219,6 +218,16 @@ export const FactoryCanvas: React.FC = () => {
           }
         }
       });
+
+      // 第 3 阶段：管道 medium 标签（最高 z 序，盖在管道线和设备本体之上，永不被遮挡）
+      try {
+        PipelineRenderer.renderLabels(ctx, pipelinesRef.current);
+      } catch (err) {
+        if (!(window as any).__pipelineLabelErrLogged) {
+          (window as any).__pipelineLabelErrLogged = true;
+          console.error('[PipelineRenderer] 标签渲染出错:', err);
+        }
+      }
 
       ctx.restore();
 

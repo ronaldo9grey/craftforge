@@ -1,13 +1,31 @@
-import type { Pipeline } from '@/types';
+import type { Pipeline, Equipment } from '@/types';
 
 export class PipelineRenderer {
-  static render(ctx: CanvasRenderingContext2D, pipelines: Pipeline[], flowOffset: number) {
-    // 两遍渲染解决 z 序问题：
-    //   第一遍：仅画管道线条 + 流动动画（不画 medium 标签）
-    //   第二遍：画所有 medium 标签 — 这样标签框一定盖在所有线之上，不被后画的线穿过
+  /** 当前一帧的设备坐标映射 — 由 render 入口注入，供 getConnectionPoint 读取真实坐标 */
+  private static liveEquipmentMap: Record<string, { x: number; y: number; w: number; h: number }> = {};
+
+  static render(ctx: CanvasRenderingContext2D, pipelines: Pipeline[], flowOffset: number, equipments?: Equipment[]) {
+    this.renderLines(ctx, pipelines, flowOffset, equipments);
+    this.renderLabels(ctx, pipelines);
+  }
+
+  /** 只画管道线条 + 箭头 + 流动动画（用于在设备之前画） */
+  static renderLines(ctx: CanvasRenderingContext2D, pipelines: Pipeline[], flowOffset: number, equipments?: Equipment[]) {
+    // 用实时 equipments 数组构建坐标映射，覆盖下方硬编码 fallback 表
+    if (equipments && equipments.length > 0) {
+      const m: Record<string, { x: number; y: number; w: number; h: number }> = {};
+      for (const eq of equipments) {
+        m[eq.id] = { x: eq.x, y: eq.y, w: eq.width, h: eq.height };
+      }
+      this.liveEquipmentMap = m;
+    }
     pipelines.forEach((pipeline) => {
       this.drawPipeline(ctx, pipeline, flowOffset, /* drawLabelToo */ false);
     });
+  }
+
+  /** 只画管道 medium 标签（用于在设备之后画，确保 z 序最高） */
+  static renderLabels(ctx: CanvasRenderingContext2D, pipelines: Pipeline[]) {
     pipelines.forEach((pipeline) => {
       this.drawPipelineLabelOnly(ctx, pipeline);
     });
@@ -234,7 +252,7 @@ export class PipelineRenderer {
       'INST-101': { x: 550, y: 200, w: 50, h: 50 },
     };
 
-    const pos = equipmentPositions[equipmentId];
+    const pos = this.liveEquipmentMap[equipmentId] ?? equipmentPositions[equipmentId];
     if (!pos) return null;
 
     switch (point) {

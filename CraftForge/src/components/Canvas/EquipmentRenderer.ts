@@ -135,6 +135,10 @@ export class EquipmentRenderer {
           // 班组任务台：深蓝办公屏
           fillColor = '#1e293b';
           break;
+        case 'form-press':
+          // 振压成型机：钢蓝金属机身
+          fillColor = '#334155';
+          break;
         case 'heater':
           fillColor = '#7c2d12';
           break;
@@ -213,7 +217,7 @@ export class EquipmentRenderer {
     //   - pot-ctrl：内部已画"POT-CTRL-101"
     //   - crane-iso：横梁极扁，外部 name 会糊在管道/抬包上
     //   - exchanger：圆柱体上方 25% 空白带画了浮动内部铭牌
-    const SELF_LABELED = ['cell-iso', 'task-board', 'pot-ctrl', 'crane-iso', 'exchanger'];
+    const SELF_LABELED = ['cell-iso', 'task-board', 'pot-ctrl', 'crane-iso', 'exchanger', 'form-press'];
     const skipExternalLabel = SELF_LABELED.includes(type);
 
     if (!skipExternalLabel) {
@@ -1454,6 +1458,153 @@ export class EquipmentRenderer {
           ctx.textBaseline = 'middle';
           ctx.fillText(t.text, boardL + 10 + checkboxSize + 6, ry);
         });
+        break;
+      }
+
+      case 'form-press': {
+        // ============ 振压成型机专属渲染 ============
+        // 构造：① 顶部龙门梁（带液压油缸）② 活塞动画（上下行程）③ 模具底座
+        //       ④ 振压脉冲（红色冲击波） ⑤ 模具内糊料填充进度 ⑥ 振动横纹
+        const animT = animTime ?? Date.now() / 1000;
+        // 振压周期（按 press_time=95s 折算成 4s 动画一周期，便于人眼观察）
+        const cyclePeriod = 4;
+        const phase = (animT % cyclePeriod) / cyclePeriod;          // 0~1
+        // 活塞行程：上 → 下（前 30% 下行）→ 振压保压（30~70%）→ 上行（70~95%）→ 停（95~100%）
+        let pistonY = 0;       // 0 = 上止点, 1 = 下止点
+        let pressing = false;
+        if (phase < 0.3) {
+          pistonY = phase / 0.3;
+        } else if (phase < 0.7) {
+          pistonY = 1;
+          pressing = true;
+        } else if (phase < 0.95) {
+          pistonY = 1 - (phase - 0.7) / 0.25;
+        } else {
+          pistonY = 0;
+        }
+
+        // ① 龙门梁（顶部，宽板）
+        const frameH = 22;
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(x + 10, y + 4, width - 20, frameH);
+        ctx.strokeRect(x + 10, y + 4, width - 20, frameH);
+
+        // 龙门两侧立柱
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(x + 14, y + 4, 16, height - 30);   // 左柱
+        ctx.fillRect(x + width - 30, y + 4, 16, height - 30); // 右柱
+        ctx.strokeRect(x + 14, y + 4, 16, height - 30);
+        ctx.strokeRect(x + width - 30, y + 4, 16, height - 30);
+
+        // ② 液压油缸（顶部中央悬挂）
+        const cylX = x + width / 2;
+        const cylTop = y + frameH + 4;
+        const cylBot = y + frameH + 40;
+        const cylW = 60;
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(cylX - cylW / 2, cylTop, cylW, cylBot - cylTop);
+        ctx.strokeRect(cylX - cylW / 2, cylTop, cylW, cylBot - cylTop);
+        // 油缸顶部圆头
+        ctx.beginPath();
+        ctx.ellipse(cylX, cylTop, cylW / 2, 6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#64748b';
+        ctx.fill();
+        ctx.stroke();
+
+        // ③ 活塞杆（粗银色金属棒）+ 压头（黑色矩形）
+        const pistonTopY = cylBot;
+        const moldTopY = y + height - 50;     // 模具上沿
+        const pistonRange = moldTopY - pistonTopY - 30; // 下行最大行程
+        const pistonHeadY = pistonTopY + pistonY * pistonRange;
+        // 活塞杆
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
+        ctx.strokeRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
+        // 压头（带模具压块）
+        const headW = 140;
+        const headH = 28;
+        ctx.fillStyle = pressing ? '#dc2626' : '#1e293b';
+        ctx.fillRect(cylX - headW / 2, pistonHeadY, headW, headH);
+        ctx.strokeRect(cylX - headW / 2, pistonHeadY, headW, headH);
+        // 压头标识
+        ctx.fillStyle = pressing ? '#fde68a' : '#94a3b8';
+        ctx.font = 'bold 10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pressing ? '振压中' : '压头', cylX, pistonHeadY + headH / 2);
+
+        // ④ 振压冲击波（pressing 期间，从压头四周往外扩散）
+        if (pressing) {
+          const shockPhase = ((animT * 3) % 1);   // 一秒 3 次冲击
+          const shockR = 30 + shockPhase * 60;
+          ctx.strokeStyle = `rgba(220, 38, 38, ${(1 - shockPhase) * 0.6})`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(cylX, pistonHeadY + headH / 2, shockR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // ⑤ 模具底座（占下方 50px）+ 模具腔内糊料
+        const moldL = cylX - 100;
+        const moldR = cylX + 100;
+        const moldT = moldTopY;
+        const moldB = y + height - 8;
+        // 模具外壳
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(moldL - 12, moldT, (moldR - moldL) + 24, moldB - moldT);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(moldL - 12, moldT, (moldR - moldL) + 24, moldB - moldT);
+        // 模具腔内糊料（暗橙红色，pressing 时变更亮表示加压加热）
+        const pasteColor = pressing ? '#ea580c' : '#9a3412';
+        ctx.fillStyle = pasteColor;
+        // 填充高度跟 phase 走：第 30% 时已加满
+        const fillH = Math.min(1, phase / 0.3) * (moldB - moldT - 8);
+        ctx.fillRect(moldL, moldB - fillH, moldR - moldL, fillH);
+        // 糊料表面热气波纹（不规则横线表示热气蒸腾）
+        if (fillH > 4) {
+          ctx.strokeStyle = 'rgba(254, 215, 170, 0.6)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          ctx.lineDashOffset = -animT * 15;
+          ctx.beginPath();
+          ctx.moveTo(moldL + 2, moldB - fillH + 2);
+          ctx.lineTo(moldR - 2, moldB - fillH + 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+        }
+
+        // ⑥ 模具底座振动横纹（pressing 时振动幅度大，否则只是 slight）
+        const vibAmp = pressing ? 2 : 0.3;
+        const vibOff = Math.sin(animT * 30) * vibAmp;
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(moldL - 12, moldB + vibOff);
+        ctx.lineTo(moldR + 12, moldB + vibOff);
+        ctx.stroke();
+
+        // ⑦ 内部铭牌（顶部龙门梁中间，金色文字 + 黑描边）
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+        ctx.strokeText(`${name}  ${id}`, x + width / 2, y + 4 + frameH / 2);
+        ctx.fillStyle = '#fde68a';
+        ctx.fillText(`${name}  ${id}`, x + width / 2, y + 4 + frameH / 2);
+
+        // ⑧ 顶部状态条："振压中" / "下一周期" 提示
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(x + width - 100, y + frameH + 8, 88, 22);
+        ctx.fillStyle = pressing ? '#dc2626' : '#22d3ee';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pressing ? '⚡ 振压中' : '↺ 下料中', x + width - 100 + 44, y + frameH + 8 + 11);
         break;
       }
 

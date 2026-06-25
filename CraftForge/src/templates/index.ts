@@ -37,6 +37,12 @@ import { aluminumFaults } from './aluminum/faults';
 import { aluminumMeta } from './aluminum/meta';
 import { aluminumCoach } from './aluminum/coach';
 
+// —— 阳极振压成型（电解铝上游）——
+import { anodeEquipments, anodePipelines } from './anode/config';
+import { anodeFaults } from './anode/faults';
+import { anodeMeta } from './anode/meta';
+import { anodeCoach } from './anode/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -75,6 +81,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: aluminumEquipments,
     pipelines: aluminumPipelines,
     faults: aluminumFaults,
+  },
+  anode: {
+    meta: anodeMeta,
+    coach: anodeCoach,
+    equipments: anodeEquipments,
+    pipelines: anodePipelines,
+    faults: anodeFaults,
   },
 };
 

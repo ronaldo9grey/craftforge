@@ -6,7 +6,8 @@ import type { Equipment, Pipeline } from '@/types';
 // vs v10 主要变更：
 //   ① 阴极母线 y=505 → y=415 紧贴电解槽底部（工艺逻辑：母线从槽底引出，必须耦合显示）
 //   ② 槽控柜 y=425 → y=445（让位给阴极母线 + 给变压器留够空间）
-//   ③ 整流变压器 y=535 → y=540 略下移 + 高度优化避免文字与母线重叠
+//   ③ 整流变压器 y=535 → y=565 充分下移避免文字与母线/槽控柜重叠
+//   ④ 班组任务台 y=535 → y=555 配套下移
 //
 // 布局：
 //   y=  4~24   厂房屋顶
@@ -16,7 +17,7 @@ import type { Equipment, Pipeline } from '@/types';
 //   y=120~410  2 槽阵列 CELL-101/102 (每槽 580×290)
 //   y=415~425  阴极母线（紧贴槽底！）
 //   y=445~500  2 台槽控柜 POT-CTRL-101/102
-//   y=540~625  控制层：整流变压器 + 班组任务台
+//   y=555~680  控制层：整流变压器 + 班组任务台
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -99,7 +100,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 540, width: 280, height: 85,
+    x: 30, y: 565, width: 280, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -125,7 +126,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 340, y: 540, width: 580, height: 140,
+    x: 340, y: 555, width: 580, height: 125,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },

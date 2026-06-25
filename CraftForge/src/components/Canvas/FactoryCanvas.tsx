@@ -538,9 +538,9 @@ export const FactoryCanvas: React.FC = () => {
       // 槽控柜区（y=440~510）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
       ctx.fillRect(0, 440, w, 90);
-      // 控制层（y=535~685）
+      // 控制层（y=550~685）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
-      ctx.fillRect(0, 535, w, 150);
+      ctx.fillRect(0, 550, w, 135);
 
       // ---- (2.1) 区域间地面横线（baseboard，比虚线网格更明显）----
       // 槽底↔阴极母线区
@@ -559,8 +559,8 @@ export const FactoryCanvas: React.FC = () => {
       // 槽控柜↔控制层
       ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(15, 533);
-      ctx.lineTo(w - 15, 533);
+      ctx.moveTo(15, 548);
+      ctx.lineTo(w - 15, 548);
       ctx.stroke();
       // 控制层底（地面）
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
@@ -668,20 +668,20 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(50, busY + 8);
-      ctx.lineTo(50, 540);            // 接到变压器顶部
+      ctx.lineTo(50, 565);            // 接到变压器顶部
       ctx.stroke();
       // 端子箭头
       ctx.fillStyle = '#facc15';
       ctx.beginPath();
-      ctx.moveTo(50, 540);
-      ctx.lineTo(45, 533);
-      ctx.lineTo(55, 533);
+      ctx.moveTo(50, 565);
+      ctx.lineTo(45, 558);
+      ctx.lineTo(55, 558);
       ctx.closePath();
       ctx.fill();
       // DC− 电流：闪电图标从上往下滑回变压器（3.5s/周期，方向 = PI/2 向下）
       const dcMinusPeriod = 3.5 / Math.max(0.3, currentRatio);
       const dcMinusPhase = (tNow / dcMinusPeriod) % 1;
-      const dcMinusY = (busY + 8) + dcMinusPhase * (540 - (busY + 8));
+      const dcMinusY = (busY + 8) + dcMinusPhase * (565 - (busY + 8));
       drawLightning(ctx, 50, dcMinusY, Math.PI / 2, 16);
 
       // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
@@ -695,7 +695,7 @@ export const FactoryCanvas: React.FC = () => {
 
       // 变压器 DC− 端子标识（小红蓝圆点 + 文字）
       const traDcMinusX = 50;
-      const traDcMinusY = 540;
+      const traDcMinusY = 565;
       ctx.fillStyle = '#2563eb';
       ctx.beginPath();
       ctx.arc(traDcMinusX, traDcMinusY - 4, 6, 0, Math.PI * 2);
@@ -709,14 +709,14 @@ export const FactoryCanvas: React.FC = () => {
       // DC+ 直流主回路：变压器右端 → ↑ → 槽底右侧（沿画布右边缘走线，避开槽控柜）
       // 视觉闭环：变压器 DC+(右) → ↑(沿控制层) → →(沿槽控柜下) → ↑(沿画布右) → 槽底
       const dcPlusX = 290;            // 变压器右端
-      // 路径：(290, 540) → ↑ → (290, 530) → → → (w-35, 530) → ↑ → (w-35, busY+12)
-      // 利用槽控柜区域底部 y=530（即控制层上沿）做横走线 — 不穿越任何设备
-      const dcPlusRouteY = 530;
+      // 路径：(290, 565) → ↑ → (290, 545) → → → (w-35, 545) → ↑ → (w-35, busY+12)
+      // 利用槽控柜区与控制层之间的空白带 y=545 做横走线 — 不穿越任何设备
+      const dcPlusRouteY = 545;
       const dcPlusEndY = busY + 12;   // 紧贴阴极母线下方接入
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(dcPlusX, 540);
+      ctx.moveTo(dcPlusX, 565);
       ctx.lineTo(dcPlusX, dcPlusRouteY);
       ctx.lineTo(w - 35, dcPlusRouteY);
       ctx.lineTo(w - 35, dcPlusEndY);
@@ -724,20 +724,17 @@ export const FactoryCanvas: React.FC = () => {
       // DC+ 红圆点
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
-      ctx.arc(dcPlusX, 540 - 4, 6, 0, Math.PI * 2);
+      ctx.arc(dcPlusX, 565 - 4, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 9px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('+', dcPlusX, 540 - 4);
+      ctx.fillText('+', dcPlusX, 565 - 4);
       // DC+ 电流：闪电图标沿主回路三段折线滑动（4s/周期）
-      // 段 1 (dcPlusX, 540) → (dcPlusX, dcPlusRouteY) 向上
-      // 段 2 (dcPlusX, dcPlusRouteY) → (w-35, dcPlusRouteY) 向右
-      // 段 3 (w-35, dcPlusRouteY) → (w-35, dcPlusEndY) 向上
       const dcPlusPeriod = 4 / Math.max(0.3, currentRatio);
       const dcPlusPhase = (tNow / dcPlusPeriod) % 1;
-      const seg1Len = 540 - dcPlusRouteY;
+      const seg1Len = 565 - dcPlusRouteY;
       const seg2Len = (w - 35) - dcPlusX;
       const seg3Len = dcPlusRouteY - dcPlusEndY;
       const totalLen = seg1Len + seg2Len + seg3Len;
@@ -745,7 +742,7 @@ export const FactoryCanvas: React.FC = () => {
       let dcPlusBallX: number, dcPlusBallY: number, dcPlusAngle: number;
       if (traveled < seg1Len) {
         dcPlusBallX = dcPlusX;
-        dcPlusBallY = 540 - traveled;
+        dcPlusBallY = 565 - traveled;
         dcPlusAngle = -Math.PI / 2;
       } else if (traveled < seg1Len + seg2Len) {
         const tSeg = traveled - seg1Len;
@@ -787,9 +784,9 @@ export const FactoryCanvas: React.FC = () => {
 
       // 控制层标签
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 538, 70, 14);
+      ctx.fillRect(20, 553, 70, 14);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 控制层', 24, 541);
+      ctx.fillText('▎ 控制层', 24, 556);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       // 顶部状态条：实时跟随 TRA-301（整流变压器）的母线电流 + 二次直流电压
@@ -818,7 +815,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v16 aluminum  (阴极母线耦合槽底 + 变压器下移避让)', w - 30, h - 8);
+      ctx.fillText('v17 aluminum  (变压器进一步下移避免文字重叠)', w - 30, h - 8);
     }
   };
 

@@ -394,16 +394,16 @@ export const FactoryCanvas: React.FC = () => {
       // 下排机器人区（y=400~575）
       ctx.fillStyle = 'rgba(251, 191, 36, 0.04)';
       ctx.fillRect(0, 400, w, 175);
-      // 控制柜区域浅底色（y=595 起 高 85 - 让 CTRL name 标签 y=583 完全在分割线之上）
+      // 控制柜区域浅底色（y=615 起 高 85，紧贴 CTRL 设备 y=625~695）
       ctx.fillStyle = '#0a1629';
-      ctx.fillRect(0, 595, w, 85);
+      ctx.fillRect(0, 615, w, 105);
 
-      // baseboard 分割线（下移到 y=590，让 CTRL name 标签 y=583 不再压线）
+      // baseboard 分割线（下移到 y=610）
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(15, 390); ctx.lineTo(w - 15, 390); ctx.stroke();
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 590); ctx.lineTo(w - 15, 590); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 610); ctx.lineTo(w - 15, 610); ctx.stroke();
 
       // 工艺横幅
       drawProcessBanner([
@@ -508,7 +508,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#fde68a';
       ctx.fillText('▎ 物流/安全通道', 24, 398);
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制区', 24, 603);
+      ctx.fillText('▎ 控制区', 24, 623);
 
       // 🎯 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';

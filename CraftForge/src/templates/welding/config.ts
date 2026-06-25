@@ -123,7 +123,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 4：产线控制柜
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 605, width: 120, height: 70,
+    x: 580, y: 625, width: 120, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压',   value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },

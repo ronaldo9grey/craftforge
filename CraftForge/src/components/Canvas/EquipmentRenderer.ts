@@ -1599,25 +1599,49 @@ export class EquipmentRenderer {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText('▎ 班组生产任务', boardL + 8, boardT + titleH / 2);
-        // 班次（右侧）
+        // 班次（右侧）— 按场景区分
         ctx.textAlign = 'right';
-        ctx.fillText('3 班 / 系列 5 / 已完成 3·8', boardR - 8, boardT + titleH / 2);
+        // 通过 id 判断场景：HMI-802 在阳极场景中表达"阳极车间"；电解铝场景 HMI-301 表达"电解铝"
+        const isAnodeBoard = id === 'HMI-802';
+        const shiftLabel = isAnodeBoard
+          ? '中班 / 振压线 / 已完成 35·60'
+          : '3 班 / 系列 5 / 已完成 3·8';
+        ctx.fillText(shiftLabel, boardR - 8, boardT + titleH / 2);
 
-        // 任务列表（行数和字号根据尺寸自适应）
+        // 任务列表（行数和字号根据尺寸自适应；按场景定制内容）
         const isLarge = (boardB - boardT) > 80;
-        const tasks = isLarge ? [
-          { done: true,  text: '#101 出铝 5.0 t  已完成' },
-          { done: true,  text: '#102 换极 4 块  已完成' },
-          { done: true,  text: '巡检阴极母线温度（< 80°C）' },
-          { done: false, text: '#102 极距下调 0.3 cm（待执行）' },
-          { done: false, text: '清理 #101 槽顶打壳锤（待执行）' },
-          { done: false, text: '上报 18:00 当班报表' },
-        ] : [
-          { done: true,  text: '#101 出铝 5.0 t' },
-          { done: true,  text: '#102 换极 4 块' },
-          { done: false, text: '巡检阴极母线温度' },
-          { done: false, text: '清理打壳锤 *' },
-        ];
+        let tasks: Array<{ done: boolean; text: string }>;
+        if (isAnodeBoard) {
+          // 阳极振压成型车间任务清单
+          tasks = isLarge ? [
+            { done: true,  text: '糊料温度调到 150°C  已完成' },
+            { done: true,  text: '模具预热到 135°C    已完成' },
+            { done: true,  text: '真空度抽到 ≤ 5 kPa  已完成' },
+            { done: false, text: '振压本班 25 块（待完成）' },
+            { done: false, text: '密度抽检 2 块送实验室（待执行）' },
+            { done: false, text: '清理冷却台堆积坯块（待执行）' },
+          ] : [
+            { done: true,  text: '糊料温度 150°C' },
+            { done: true,  text: '模具预热 135°C' },
+            { done: false, text: '振压本班 25 块' },
+            { done: false, text: '密度抽检 2 块' },
+          ];
+        } else {
+          // 电解铝车间任务清单（默认/兜底）
+          tasks = isLarge ? [
+            { done: true,  text: '#101 出铝 5.0 t  已完成' },
+            { done: true,  text: '#102 换极 4 块  已完成' },
+            { done: true,  text: '巡检阴极母线温度（< 80°C）' },
+            { done: false, text: '#102 极距下调 0.3 cm（待执行）' },
+            { done: false, text: '清理 #101 槽顶打壳锤（待执行）' },
+            { done: false, text: '上报 18:00 当班报表' },
+          ] : [
+            { done: true,  text: '#101 出铝 5.0 t' },
+            { done: true,  text: '#102 换极 4 块' },
+            { done: false, text: '巡检阴极母线温度' },
+            { done: false, text: '清理打壳锤 *' },
+          ];
+        }
         const taskListT = boardT + titleH + 4;
         const taskListB = boardB - 4;
         const rowH = (taskListB - taskListT) / tasks.length;

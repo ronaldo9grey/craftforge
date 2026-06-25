@@ -528,30 +528,39 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'right';
       ctx.fillText('→ 烟气净化（车间外）', w - 64, flueY - 12);
 
-      // ---- (2) 区域底色（v10 布局：删除总控柜，控制层下移撑满底部）----
-      // 行 1 电解车间核心区（y=85~490 含天车下方+2 槽+2 槽控柜）
+      // ---- (2) 区域底色（v11 布局：阴极母线耦合到电解槽底部）----
+      // 行 1 电解车间核心区（y=85~435 含天车下方+2 槽+阴极母线）
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 85, w, 405);
-      // 阴极母线区（y=498~528 提升到 30px 高度）
+      ctx.fillRect(0, 85, w, 350);
+      // 阴极母线区（y=412~432 紧贴电解槽底，工艺逻辑：母线从槽底引出）
       ctx.fillStyle = 'rgba(250, 204, 21, 0.08)';
-      ctx.fillRect(0, 498, w, 30);
-      // 控制层（y=530~685 加深到 0.12，分区更清晰）
+      ctx.fillRect(0, 412, w, 20);
+      // 槽控柜区（y=440~510）
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
+      ctx.fillRect(0, 440, w, 90);
+      // 控制层（y=535~685）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
-      ctx.fillRect(0, 530, w, 155);
+      ctx.fillRect(0, 535, w, 150);
 
       // ---- (2.1) 区域间地面横线（baseboard，比虚线网格更明显）----
-      // 电解车间↔阴极母线区
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+      // 槽底↔阴极母线区
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(15, 490);
-      ctx.lineTo(w - 15, 490);
+      ctx.moveTo(15, 411);
+      ctx.lineTo(w - 15, 411);
       ctx.stroke();
-      // 阴极母线区↔控制层
-      ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
+      // 阴极母线区↔槽控柜
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(15, 528);
-      ctx.lineTo(w - 15, 528);
+      ctx.moveTo(15, 433);
+      ctx.lineTo(w - 15, 433);
+      ctx.stroke();
+      // 槽控柜↔控制层
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(15, 533);
+      ctx.lineTo(w - 15, 533);
       ctx.stroke();
       // 控制层底（地面）
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
@@ -605,8 +614,8 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'top';
       ctx.fillText('氧化铝粉气力输送管 ⟶', 62, pipeY + 11);
 
-      // ---- (2.6) 阴极母线（y=505 金黄粗条贯穿 2 槽底部）+ DC− 回路示意 ----
-      const busY = 505;
+      // ---- (2.6) 阴极母线（y=415 紧贴电解槽底部 y=410）+ DC− 回路示意 ----
+      const busY = 415;
 
       // 实时电流强度（用于联动所有脉冲球速度；故障时电流偏离 → 球速肉眼可见变化）
       const _tra = equipmentsRef.current.find((e) => e.id === 'TRA-301');
@@ -653,26 +662,26 @@ export const FactoryCanvas: React.FC = () => {
         ctx.fill();
       });
 
-      // DC− 回流连接线：母线左端往下接到整流变压器 DC− 端子
-      // 让"电流闭环"可视化：阴极母线 → ↓ → 变压器
+      // DC− 回流连接线：阴极母线左端 ↓ 到变压器 DC− 端子
+      // 工艺逻辑：电流从槽底阴极母线沿外侧线缆引到变压器（避开槽控柜区域 x=200~440）
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(50, busY + 8);
-      ctx.lineTo(50, 535);            // 接到变压器顶部
+      ctx.lineTo(50, 540);            // 接到变压器顶部
       ctx.stroke();
       // 端子箭头
       ctx.fillStyle = '#facc15';
       ctx.beginPath();
-      ctx.moveTo(50, 535);
-      ctx.lineTo(45, 528);
-      ctx.lineTo(55, 528);
+      ctx.moveTo(50, 540);
+      ctx.lineTo(45, 533);
+      ctx.lineTo(55, 533);
       ctx.closePath();
       ctx.fill();
       // DC− 电流：闪电图标从上往下滑回变压器（3.5s/周期，方向 = PI/2 向下）
       const dcMinusPeriod = 3.5 / Math.max(0.3, currentRatio);
       const dcMinusPhase = (tNow / dcMinusPeriod) % 1;
-      const dcMinusY = (busY + 8) + dcMinusPhase * (535 - (busY + 8));
+      const dcMinusY = (busY + 8) + dcMinusPhase * (540 - (busY + 8));
       drawLightning(ctx, 50, dcMinusY, Math.PI / 2, 16);
 
       // 母线标签：加深色背景框 + 改为"DC − 阴极母线"明确语义
@@ -686,7 +695,7 @@ export const FactoryCanvas: React.FC = () => {
 
       // 变压器 DC− 端子标识（小红蓝圆点 + 文字）
       const traDcMinusX = 50;
-      const traDcMinusY = 535;
+      const traDcMinusY = 540;
       ctx.fillStyle = '#2563eb';
       ctx.beginPath();
       ctx.arc(traDcMinusX, traDcMinusY - 4, 6, 0, Math.PI * 2);
@@ -697,53 +706,57 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'middle';
       ctx.fillText('−', traDcMinusX, traDcMinusY - 4);
 
-      // DC+ 直流主回路：变压器右端 → ↑ → 槽底右侧
-      // 视觉闭环：变压器 DC+(右) → ↑ → 阳极母线 / 阴极母线 DC−(左) → ↓ → 变压器 DC−(左)
+      // DC+ 直流主回路：变压器右端 → ↑ → 槽底右侧（沿画布右边缘走线，避开槽控柜）
+      // 视觉闭环：变压器 DC+(右) → ↑(沿控制层) → →(沿槽控柜下) → ↑(沿画布右) → 槽底
       const dcPlusX = 290;            // 变压器右端
-      // 路径：(290, 535) → ↑ → (290, busY+18) → →  → (w-35, busY+18) → ↑ → (w-35, 472)
+      // 路径：(290, 540) → ↑ → (290, 530) → → → (w-35, 530) → ↑ → (w-35, busY+12)
+      // 利用槽控柜区域底部 y=530（即控制层上沿）做横走线 — 不穿越任何设备
+      const dcPlusRouteY = 530;
+      const dcPlusEndY = busY + 12;   // 紧贴阴极母线下方接入
       ctx.strokeStyle = '#dc2626';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(dcPlusX, 535);
-      ctx.lineTo(dcPlusX, busY + 22);   // 上到母线区下方
-      ctx.lineTo(w - 35, busY + 22);    // 横向走到右
-      ctx.lineTo(w - 35, 472);          // 上到槽底
+      ctx.moveTo(dcPlusX, 540);
+      ctx.lineTo(dcPlusX, dcPlusRouteY);
+      ctx.lineTo(w - 35, dcPlusRouteY);
+      ctx.lineTo(w - 35, dcPlusEndY);
       ctx.stroke();
       // DC+ 红圆点
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
-      ctx.arc(dcPlusX, 535 - 4, 6, 0, Math.PI * 2);
+      ctx.arc(dcPlusX, 540 - 4, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 9px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('+', dcPlusX, 535 - 4);
+      ctx.fillText('+', dcPlusX, 540 - 4);
       // DC+ 电流：闪电图标沿主回路三段折线滑动（4s/周期）
-      // 路径：(dcPlusX, 535) → (dcPlusX, busY+22) → (w-35, busY+22) → (w-35, 472)
-      // 闪电方向跟当前段方向保持一致：段 1 向上 / 段 2 向右 / 段 3 向上
+      // 段 1 (dcPlusX, 540) → (dcPlusX, dcPlusRouteY) 向上
+      // 段 2 (dcPlusX, dcPlusRouteY) → (w-35, dcPlusRouteY) 向右
+      // 段 3 (w-35, dcPlusRouteY) → (w-35, dcPlusEndY) 向上
       const dcPlusPeriod = 4 / Math.max(0.3, currentRatio);
       const dcPlusPhase = (tNow / dcPlusPeriod) % 1;
-      const seg1Len = 535 - (busY + 22);     // 段 1：竖向上
-      const seg2Len = (w - 35) - dcPlusX;    // 段 2：横向右
-      const seg3Len = (busY + 22) - 472;     // 段 3：竖向上
+      const seg1Len = 540 - dcPlusRouteY;
+      const seg2Len = (w - 35) - dcPlusX;
+      const seg3Len = dcPlusRouteY - dcPlusEndY;
       const totalLen = seg1Len + seg2Len + seg3Len;
       const traveled = dcPlusPhase * totalLen;
       let dcPlusBallX: number, dcPlusBallY: number, dcPlusAngle: number;
       if (traveled < seg1Len) {
         dcPlusBallX = dcPlusX;
-        dcPlusBallY = 535 - traveled;
-        dcPlusAngle = -Math.PI / 2;          // 向上
+        dcPlusBallY = 540 - traveled;
+        dcPlusAngle = -Math.PI / 2;
       } else if (traveled < seg1Len + seg2Len) {
         const tSeg = traveled - seg1Len;
         dcPlusBallX = dcPlusX + tSeg;
-        dcPlusBallY = busY + 22;
-        dcPlusAngle = 0;                     // 向右
+        dcPlusBallY = dcPlusRouteY;
+        dcPlusAngle = 0;
       } else {
         const tSeg = traveled - seg1Len - seg2Len;
         dcPlusBallX = w - 35;
-        dcPlusBallY = (busY + 22) - tSeg;
-        dcPlusAngle = -Math.PI / 2;          // 向上
+        dcPlusBallY = dcPlusRouteY - tSeg;
+        dcPlusAngle = -Math.PI / 2;
       }
       drawLightning(ctx, dcPlusBallX, dcPlusBallY, dcPlusAngle, 18, 'rgba(254, 202, 202, 0.7)');
 
@@ -766,10 +779,17 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'top';
       ctx.fillText('▎ 电解车间 (2 × 600 kA 槽)', 24, 91);
 
+      // 槽控柜区域标签（位于槽控柜区上沿 y=440 之上）
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 533, 70, 14);
+      ctx.fillRect(20, 437, 75, 14);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 控制层', 24, 536);
+      ctx.fillText('▎ 槽控柜', 24, 440);
+
+      // 控制层标签
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(20, 538, 70, 14);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('▎ 控制层', 24, 541);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       // 顶部状态条：实时跟随 TRA-301（整流变压器）的母线电流 + 二次直流电压
@@ -798,7 +818,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v15 aluminum  (脉冲球→闪电图标 + 恢复原走马灯)', w - 30, h - 8);
+      ctx.fillText('v16 aluminum  (阴极母线耦合槽底 + 变压器下移避让)', w - 30, h - 8);
     }
   };
 

@@ -1,13 +1,12 @@
 import type { Equipment, Pipeline } from '@/types';
 
-// VERSION: 2026-06-23-V10 (删除总控柜 + 空间重排 + 闪烁修复)
-// 电解铝车间布局 v10：1280×700
+// VERSION: 2026-06-23-V11 (阴极母线与电解槽耦合 + 整流变压器下移避免重叠)
+// 电解铝车间布局 v11：1280×700
 //
-// vs v9 主要变更：
-//   ① 删除 CTRL-401 总控柜（无显示必要，参数已被槽控柜/班组任务台覆盖）
-//   ② 电解槽高度 250 → 290（充分利用空间，槽体细节更清晰）
-//   ③ 控制层下移，垂直留出更多文字呼吸空间
-//   ④ 闪烁修复（在 FactoryCanvas.tsx 中处理）
+// vs v10 主要变更：
+//   ① 阴极母线 y=505 → y=415 紧贴电解槽底部（工艺逻辑：母线从槽底引出，必须耦合显示）
+//   ② 槽控柜 y=425 → y=445（让位给阴极母线 + 给变压器留够空间）
+//   ③ 整流变压器 y=535 → y=540 略下移 + 高度优化避免文字与母线重叠
 //
 // 布局：
 //   y=  4~24   厂房屋顶
@@ -15,9 +14,9 @@ import type { Equipment, Pipeline } from '@/types';
 //   y= 42~82   天车横梁
 //   y= 96~104  氧化铝输送管道
 //   y=120~410  2 槽阵列 CELL-101/102 (每槽 580×290)
-//   y=425~480  2 台槽控柜 POT-CTRL-101/102 (每柜 240×55 居中)
-//   y=500~512  阴极母线
-//   y=535~620  控制层：整流变压器 + 班组任务台
+//   y=415~425  阴极母线（紧贴槽底！）
+//   y=445~500  2 台槽控柜 POT-CTRL-101/102
+//   y=540~625  控制层：整流变压器 + 班组任务台
 
 const TAU_FAST = 1;
 const TAU_TEMP = 30;
@@ -54,7 +53,7 @@ function potCtrl(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'pot-ctrl',
     // 槽控柜居中放在槽下方
-    x: x + 170, y: 425, width: 240, height: 55,
+    x: x + 170, y: 445, width: 240, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'plc_load',     name: 'PLC 负载',  value: 35, unit: '%', min: 0, max: 100, normalMin: 20, normalMax: 70, trend: [], tau: 3 },
@@ -100,7 +99,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 535, width: 280, height: 85,
+    x: 30, y: 540, width: 280, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -126,7 +125,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 340, y: 535, width: 580, height: 140,
+    x: 340, y: 540, width: 580, height: 140,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },

@@ -251,6 +251,78 @@ export const FactoryCanvas: React.FC = () => {
     const w = designSize.width;
     const h = designSize.height;
 
+    /**
+     * 通用工具：绘制顶部工艺流程横幅（6 节点 + 序号 + 标签 + 描述 + ▶ 箭头）
+     * @param steps        步骤数组（4-6 个），每个含 num/label/desc
+     * @param accentColor  主色（横幅边框 + 序号填色，建议跟场景主色一致）
+     */
+    const drawProcessBanner = (
+      steps: Array<{ num: string; label: string; desc: string }>,
+      accentColor: string,
+    ) => {
+      const bannerY = 40;
+      const bannerH = 36;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(20, bannerY, w - 40, bannerH);
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(20, bannerY, w - 40, bannerH);
+
+      const stepW = (w - 60) / steps.length;
+      steps.forEach((s, i) => {
+        const sx = 30 + stepW * i + stepW / 2;
+        ctx.fillStyle = accentColor;
+        ctx.font = 'bold 16px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.num, sx - 42, bannerY + bannerH / 2);
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(s.label, sx - 34, bannerY + bannerH / 2 - 7);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Inter, "Microsoft YaHei", sans-serif';
+        ctx.fillText(s.desc, sx - 34, bannerY + bannerH / 2 + 8);
+        if (i < steps.length - 1) {
+          ctx.fillStyle = accentColor;
+          ctx.font = 'bold 16px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▶', sx + stepW / 2 - 8, bannerY + bannerH / 2);
+        }
+      });
+    };
+
+    /**
+     * 通用工具：绘制设备节点编号小圆灯（落在设备左上角）
+     * @param equipNums    [设备 id, 编号] 数组
+     * @param accentColor  小圆灯背景色（建议跟场景主色一致）
+     */
+    const drawEquipmentNodeBadges = (
+      equipNums: Array<[string, string]>,
+      accentColor: string,
+    ) => {
+      equipNums.forEach(([eqId, num]) => {
+        const eq = equipmentsRef.current.find((e) => e.id === eqId);
+        if (!eq) return;
+        // 跳过画面外设备（坐标负数/超出画布）
+        if (eq.x < 0 || eq.y < 0 || eq.x > w || eq.y > h) return;
+        const ncx = eq.x - 12;
+        const ncy = eq.y + 10;
+        ctx.fillStyle = accentColor;
+        ctx.beginPath();
+        ctx.arc(ncx, ncy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num, ncx, ncy + 1);
+      });
+    };
+
     // 工区底色（比场外略亮，模拟地坪漆）
     ctx.fillStyle = '#111c30';
     ctx.fillRect(0, 0, w, h);
@@ -303,20 +375,43 @@ export const FactoryCanvas: React.FC = () => {
 
     // 焊装场景额外画安全通道 + 控制柜区底色分隔
     if (activeTemplate === 'welding') {
-      // 控制柜区域浅底色（紧凑型：y=580 起，仅 120px 高）
+      // 主焊装区底色（y=130~390）
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
+      ctx.fillRect(0, 130, w, 260);
+      // 下排机器人区（y=400~580）
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.04)';
+      ctx.fillRect(0, 400, w, 180);
+      // 控制柜区域浅底色（y=580 起）
       ctx.fillStyle = '#0a1629';
       ctx.fillRect(0, 580, w, h - 580);
 
-      // 🎯 版本水印
-      ctx.fillStyle = '#22d3ee';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('v8.2 welding', w - 30, h - 8);
+      // baseboard 分割线
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(15, 390); ctx.lineTo(w - 15, 390); ctx.stroke();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+      ctx.beginPath(); ctx.moveTo(15, 580); ctx.lineTo(w - 15, 580); ctx.stroke();
 
-      // 安全通道（黄虚线 y=395，再下移 30px 以彻底避开上方主输送线设备文字）
-      // 主输送线底 320 → 黄虚线 395：75px 净距
-      // 黄虚线 395 → 下排机器人 440：45px 净距
+      // 工艺横幅
+      drawProcessBanner([
+        { num: '①', label: '白车身上件', desc: '上件节拍 60 s/件' },
+        { num: '②', label: '输送进位', desc: '输送带 1.2 m/min' },
+        { num: '③', label: '定位夹紧', desc: '夹紧力 5000 N' },
+        { num: '④', label: '机器人点焊', desc: '180 A / 22 V' },
+        { num: '⑤', label: '焊缝检测', desc: '熔深 2.5 mm' },
+        { num: '⑥', label: '合格下件', desc: '下件 60 s/件' },
+      ], '#22d3ee');
+
+      drawEquipmentNodeBadges([
+        ['ST-101',   '①'],
+        ['CONV-101', '②'],
+        ['FIX-101',  '③'],
+        ['ROB-101',  '④'],
+        ['INST-101', '⑤'],
+        ['ST-102',   '⑥'],
+      ], '#0891b2');
+
+      // 安全通道（黄虚线 y=395）
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 1.5;
       ctx.setLineDash([10, 8]);
@@ -327,15 +422,25 @@ export const FactoryCanvas: React.FC = () => {
       ctx.setLineDash([]);
 
       // 工区标签
-      ctx.fillStyle = '#475569';
-      ctx.font = '11px Inter, sans-serif';
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText('▎ 物流/安全通道', 25, 400);
-      ctx.fillText('▎ 控制区', 25, 588);
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#bef0ff';
+      ctx.fillText('▎ 焊装主轴', 24, 26);
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('▎ 物流/安全通道', 24, 398);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 控制区', 24, 590);
+
+      // 🎯 版本水印
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v9 welding  (工艺横幅+节点编号+区域分色)', w - 30, h - 8);
     }
 
-    // CNC 场景：4 大功能分区底色 + 区域标签
+    // CNC 场景：4 大功能分区底色 + 区域标签 + 工艺横幅 + 节点编号
     if (activeTemplate === 'cnc') {
       // 区域 1：加工区（y=90~270）- 浅紫
       ctx.fillStyle = 'rgba(167, 139, 250, 0.06)';
@@ -362,37 +467,51 @@ export const FactoryCanvas: React.FC = () => {
       });
       ctx.setLineDash([]);
 
-      // 区域标签（左侧浅色文字）
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText('▎ 加工区', 25, 100);
-      ctx.fillText('▎ 物流主线', 25, 282);
-      ctx.fillText('▎ 辅助系统', 25, 412);
-      ctx.fillText('▎ 电气控制', 25, 562);
+      // 工艺横幅
+      drawProcessBanner([
+        { num: '①', label: '毛坯来料', desc: '毛坯库存 35 件' },
+        { num: '②', label: '装夹定位', desc: '夹紧 8000 N' },
+        { num: '③', label: '车铣加工', desc: '主轴 1800 rpm' },
+        { num: '④', label: '冷却排屑', desc: '冷却液 12 L/min' },
+        { num: '⑤', label: '在线测量', desc: '偏差 ±0.05 mm' },
+        { num: '⑥', label: '成品下料', desc: '合格成品入库' },
+      ], '#a78bfa');
 
-      // 物料流主方向箭头提示（在物流区右上角画一个大箭头说明）
-      ctx.strokeStyle = '#22d3ee';
-      ctx.fillStyle = '#22d3ee';
-      ctx.lineWidth = 2;
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('物料流向 →', w - 30, 286);
+      drawEquipmentNodeBadges([
+        ['ST-201',   '①'],
+        ['FIX-201',  '②'],
+        ['CNC-101',  '③'],
+        ['PMP-201',  '④'],
+        ['INST-201', '⑤'],
+        ['ST-202',   '⑥'],
+      ], '#7c3aed');
+
+      // 区域标签（居左，统一新样式）
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e0d4ff';
+      ctx.fillText('▎ 加工区', 24, 26);
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillText('▎ 物流主线', 24, 285);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('▎ 辅助系统', 24, 415);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 电气控制', 24, 565);
 
       // 🎯 版本水印
-      ctx.fillStyle = '#a78bfa';
-      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v2 cnc', w - 30, h - 8);
+      ctx.fillText('v3 cnc  (工艺横幅+节点编号+四区分色)', w - 30, h - 8);
     }
 
-    // 注塑场景：4 大功能分区底色 + 区域标签 (v3 布局)
+    // 注塑场景：4 大功能分区底色 + 区域标签 + 工艺横幅 + 节点编号
     if (activeTemplate === 'injection') {
-      // 区域 1：主机区（y=40~245）- 浅琥珀（呼应注塑机熔融塑料颜色）
+      // 区域 1：主机区（y=80~245）- 浅琥珀（呼应注塑机熔融塑料颜色，y=80 起避开横幅）
       ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
-      ctx.fillRect(0, 40, w, 205);
+      ctx.fillRect(0, 80, w, 165);
       // 区域 2：物流主线区（y=250~375）- 浅青
       ctx.fillStyle = 'rgba(34, 211, 238, 0.07)';
       ctx.fillRect(0, 250, w, 125);
@@ -403,7 +522,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
       ctx.fillRect(0, 560, w, 105);
 
-      // 区域分隔细虚线（在区间之间画明显分隔线）
+      // 区域分隔细虚线
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
@@ -415,28 +534,44 @@ export const FactoryCanvas: React.FC = () => {
       });
       ctx.setLineDash([]);
 
-      // 区域标签（左侧浅色文字）
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 12px Inter, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText('▎ 主机区', 15, 50);
-      ctx.fillText('▎ 物流主线', 15, 255);
-      ctx.fillText('▎ 辅助系统', 15, 385);
-      ctx.fillText('▎ 电气控制', 15, 565);
+      // 工艺横幅
+      drawProcessBanner([
+        { num: '①', label: '原料干燥', desc: '干燥 85°C 除水' },
+        { num: '②', label: '加热塑化', desc: '三段料筒 240°C' },
+        { num: '③', label: '注射合模', desc: '85 MPa / 锁模 1200 kN' },
+        { num: '④', label: '保压冷却', desc: '模温 55°C 保压 5s' },
+        { num: '⑤', label: '机械手取件', desc: '真空 -85 kPa' },
+        { num: '⑥', label: '在线检测', desc: '重量 ±0.3 g' },
+      ], '#f59e0b');
 
-      // 物料流主方向箭头提示
-      ctx.fillStyle = '#22d3ee';
-      ctx.font = 'bold 11px Inter, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('原料 → 干燥 → 注塑 → 模具 → 检测 → 下料', w - 30, 255);
+      drawEquipmentNodeBadges([
+        ['DRY-201',  '①'],
+        ['HEAT-301', '②'],
+        ['IMM-101',  '③'],
+        ['MOLD-201', '④'],
+        ['ROB-201',  '⑤'],
+        ['INST-201', '⑥'],
+      ], '#d97706');
+
+      // 区域标签（居左，统一新样式）
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('▎ 主机区', 24, 26);
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillText('▎ 物流主线', 24, 257);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('▎ 辅助系统', 24, 386);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 电气控制', 24, 565);
 
       // 🎯 版本水印
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 12px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v5 injection', w - 30, h - 8);
+      ctx.fillText('v6 injection  (工艺横幅+节点编号+四区分色)', w - 30, h - 8);
     }
 
     // 铝电解场景 v3：电解车间沉浸式专属视觉 - 厂房屋顶 + 5 区域底色 + 氛围灯光
@@ -808,6 +943,25 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'left';
       ctx.fillText(`系列电流 ${busCurrent} kA / 母线电压 ${secVoltage} V`, w - 254, 90);
 
+      // ---- 工艺横幅 + 节点编号灯 ----
+      drawProcessBanner([
+        { num: '①', label: '整流供电', desc: '直流母线 600 kA' },
+        { num: '②', label: '打壳下料', desc: '2.5 kg / 6 次每小时' },
+        { num: '③', label: '电解反应', desc: '槽温 955°C / 4.15 V' },
+        { num: '④', label: '阳极更换', desc: '天车 0.03 m/s' },
+        { num: '⑤', label: '烟气净化', desc: 'HF 2.1 mg/m³' },
+        { num: '⑥', label: '抬包出铝', desc: '铝水 920°C 抽吸' },
+      ], '#06b6d4');
+
+      drawEquipmentNodeBadges([
+        ['TRA-301',      '①'],
+        ['POT-CTRL-101', '②'],
+        ['CELL-101',     '③'],
+        ['CRANE-302',    '④'],
+        ['FGT-301',      '⑤'],
+        ['HMI-301',      '⑥'],
+      ], '#0891b2');
+
       // ---- (7) 物料流向 已删除（与阴极母线标签重叠，且信息冗余）----
 
       // ---- (8) 版本水印 ----
@@ -816,6 +970,65 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       ctx.fillText('v19 aluminum  (变压器铭牌移到 render 主函数，必显示)', w - 30, h - 8);
+    }
+
+    // ===== FCC 催化裂化 v1：工艺流程横幅 + 节点编号 + 区域分色 =====
+    if (activeTemplate === 'fcc') {
+      // 区域分色（FCC 油气主轴/烟气系统/分馏系统/控制层）
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.05)';
+      ctx.fillRect(0, 90, w, 280);      // 反应/再生主轴
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.05)';
+      ctx.fillRect(0, 380, w, 130);     // 分馏塔区
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
+      ctx.fillRect(0, 520, w, 140);     // 控制层
+
+      // baseboard 分割线
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(15, 370); ctx.lineTo(w - 15, 370); ctx.stroke();
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+      ctx.beginPath(); ctx.moveTo(15, 513); ctx.lineTo(w - 15, 513); ctx.stroke();
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(15, 665); ctx.lineTo(w - 15, 665); ctx.stroke();
+
+      // 工艺横幅
+      drawProcessBanner([
+        { num: '①', label: '原料进料', desc: '原料油泵 120 t/h' },
+        { num: '②', label: '预热换热', desc: '原料 180→280°C' },
+        { num: '③', label: '加热升温', desc: '加热炉 750°C' },
+        { num: '④', label: '提升管裂化', desc: '反应 485°C / 0.25 MPa' },
+        { num: '⑤', label: '催化剂再生', desc: '再生 690°C 烧焦' },
+        { num: '⑥', label: '产品分馏', desc: '塔顶 125°C' },
+      ], '#22c55e');
+
+      // 节点编号灯
+      drawEquipmentNodeBadges([
+        ['P-101',   '①'],
+        ['E-101',   '②'],
+        ['F-101',   '③'],
+        ['R-101',   '④'],
+        ['REG-101', '⑤'],
+        ['T-101',   '⑥'],
+      ], '#16a34a');
+
+      // 区域标签
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#bbf7d0';
+      ctx.fillText('▎ 反应再生主轴', 24, 26);
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('▎ 分馏系统', 24, 378);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 控制层', 24, 521);
+
+      // 版本水印
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v1 fcc  (工艺横幅+节点编号+三区分色)', w - 30, h - 8);
     }
 
     // ===== 阳极振压成型场景 v3：工艺流程横幅 + 工序节点编号 =====

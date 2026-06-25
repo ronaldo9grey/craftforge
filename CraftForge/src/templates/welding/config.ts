@@ -76,7 +76,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 1：上排机器人
   {
     id: 'ROB-101', name: '机器人1号', type: 'robot',
-    x: 540, y: 40, width: 110, height: 80,
+    x: 540, y: 110, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流',   value: 180, unit: 'A',     min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [], tau: TAU_CURRENT },
@@ -87,7 +87,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'ROB-102', name: '机器人2号', type: 'robot',
-    x: 680, y: 40, width: 110, height: 80,
+    x: 680, y: 110, width: 110, height: 80,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'weld_current', name: '焊接电流',   value: 175, unit: 'A',     min: 100, max: 300, normalMin: 160, normalMax: 200, trend: [], tau: TAU_CURRENT },

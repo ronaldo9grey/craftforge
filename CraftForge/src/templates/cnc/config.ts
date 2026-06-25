@@ -47,7 +47,7 @@ export const cncEquipments: Equipment[] = [
   // —— 行 2：物流主线（中心线 y=335，所有元素居中对齐） ——
   {
     id: 'ST-201', name: '来料区', type: 'station',
-    x: 50, y: 300, width: 90, height: 80,
+    x: 160, y: 300, width: 90, height: 80,
     status: 'normal', template: 'cnc',
     parameters: [
       { id: 'stock_count', name: '毛坯数量', value: 35, unit: '件', min: 0, max: 100, normalMin: 10, normalMax: 80, trend: [], tau: 5 },

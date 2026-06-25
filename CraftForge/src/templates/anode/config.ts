@@ -20,12 +20,12 @@ export const anodeEquipments: Equipment[] = [
 
   // ========== 行 1 工艺主轴（横向工艺流）==========
 
-  // ① 糊料保温缸（最左侧，竖立罐体）
+  // ① 糊料保温缸（最左侧，竖立罐体；高度从 210 → 185 让 "辅助系统" 标签有空间）
   {
     id: 'PASTE-101',
     name: '糊料保温缸',
     type: 'reactor',
-    x: 40, y: 150, width: 170, height: 210,
+    x: 40, y: 155, width: 170, height: 185,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'paste_temp',  name: '糊料温度', value: 150, unit: '°C',  min: 100, max: 200, normalMin: 145, normalMax: 155, trend: [], tau: 8 },
@@ -35,12 +35,12 @@ export const anodeEquipments: Equipment[] = [
     ],
   },
 
-  // ② 称量给料斗（在糊料缸和成型机之间，自上而下倒料）
+  // ② 称量给料斗（在糊料缸和成型机之间；按比例 190→168 同步缩小）
   {
     id: 'WGT-401',
     name: '称量给料斗',
     type: 'reactor',
-    x: 240, y: 160, width: 130, height: 190,
+    x: 240, y: 165, width: 130, height: 168,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'feed_weight', name: '单块加料量', value: 1080, unit: 'kg', min: 800, max: 1200, normalMin: 1070, normalMax: 1095, trend: [], tau: 2 },

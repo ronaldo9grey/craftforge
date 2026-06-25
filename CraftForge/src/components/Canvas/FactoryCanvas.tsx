@@ -945,7 +945,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v7 anode  (辅助区扩高 100→125 / 控制层下移 25px / 设备坐标同步)', w - 30, h - 8);
+      ctx.fillText('v8 anode  (糊料缸/给料斗按比例缩小 给辅助系统标签留呼吸位)', w - 30, h - 8);
     }
   };
 

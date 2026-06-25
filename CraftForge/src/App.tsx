@@ -17,8 +17,6 @@ import { cncCouplings } from '@/templates/cnc/dynamics';
 import { injectionCouplings } from '@/templates/injection/dynamics';
 import { aluminumCouplings } from '@/templates/aluminum/dynamics';
 import { anodeCouplings } from '@/templates/anode/dynamics';
-import { proactiveCoach } from '@/services/proactiveCoach';
-import { anodeProactiveRules } from '@/templates/anode/proactive';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -81,23 +79,12 @@ function App() {
       engineRef.current = engine;
     }
 
-    // ⭐ 切换 AI 师傅主动提醒规则集 — 不同场景不同规则
-    proactiveCoach.stop();
-    if (activeTemplate === 'anode') {
-      proactiveCoach.setRules(anodeProactiveRules);
-      proactiveCoach.start();
-    } else {
-      // 其它场景目前无规则，引擎不启动（后续场景补 proactive.ts 后启动）
-      proactiveCoach.setRules([]);
-    }
-
     // 组件卸载或 activeTemplate 变化时停止旧引擎
     return () => {
       if (engineRef.current) {
         engineRef.current.stop();
         engineRef.current = null;
       }
-      proactiveCoach.stop();
     };
   }, [activeTemplate]);
 

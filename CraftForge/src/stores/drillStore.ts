@@ -8,7 +8,6 @@ import { useAuthStore } from './authStore';
 import { drillApi } from '@/services/api';
 import { coachClosing, coachIntervene } from '@/services/aiCoach';
 import { soundService } from '@/services/soundService';
-import { notifyUserActed } from '@/services/proactiveCoach';
 
 // 演练点拨节流：coachIntervene 正在生成或语音未播完时，不再触发新一次
 // 用模块级标志位而非 zustand state，避免触发 UI 重渲
@@ -332,10 +331,7 @@ export const useDrillStore = create<DrillState>((set, get) => ({
   // 3) action 文本里至少包含一个 PARAM_TO_STEP_KEYWORDS[paramId] 的关键字
   // 满足以上即视作"做对了一步"，否则记一个错误操作。
   recordParameterAdjustment: (equipmentId, paramId, paramName, oldValue, newValue) => {
-    // 通知 proactiveCoach 学员有操作（用于"演练外/开局静默后"的活跃门限）
-    notifyUserActed();
     const { currentFault, isRunning } = get();
-    // 演练未开始时：依赖 proactiveCoach 引擎按规则触发师傅话术；直接 return
     if (!isRunning || !currentFault) return;
 
     // 找该故障里是否有同 (设备,参数) 的症状
@@ -446,8 +442,6 @@ export const useDrillStore = create<DrillState>((set, get) => ({
   },
 
   recordCustomAction: (action, equipmentId) => {
-    // 通知 proactiveCoach 学员有操作
-    notifyUserActed();
     const { currentFault } = get();
     let isCorrect = false;
     let matched: string | undefined;

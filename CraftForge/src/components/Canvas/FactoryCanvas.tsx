@@ -963,20 +963,14 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v19 aluminum  (变压器铭牌移到 render 主函数，必显示)', w - 30, h - 8);
     }
 
-    // ===== FCC 催化裂化 v4：工艺流程横幅 + 节点编号 + 两区分色 + 催化剂双循环动画 =====
+    // ===== FCC 催化裂化 v5：去除多余区域分割带 · 动画减速 =====
     if (activeTemplate === 'fcc') {
-      // FCC 设备下移后：V/PI y=170~250 / R/REG/T/F y=240~430 / E/P/K y=480~650
-      //   反应再生主轴（y=140~430）
-      //   辅助换热泵区（y=460~660）
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.05)';
-      ctx.fillRect(0, 140, w, 290);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.05)';
-      ctx.fillRect(0, 445, w, 215);
+      // 单一主轴区底色（取消之前的"辅助换热泵区"分割，因为它没有明确分割语义，
+      // 而下方黄线被误认为催化剂回路 — 改为只画一个反应再生主区底色就够了）
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.04)';
+      ctx.fillRect(0, 140, w, 530);
 
-      // baseboard 分割线
-      ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(15, 430); ctx.lineTo(w - 15, 430); ctx.stroke();
+      // 仅画地面线（画布底）
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(15, 670); ctx.lineTo(w - 15, 670); ctx.stroke();
@@ -1009,9 +1003,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineTo(regLeft + 30, wasteY);        // 横走
       ctx.lineTo(regLeft + 30, regTop);        // 下降到 REG 顶
       ctx.stroke();
-      // 待生剂流动小球（向右流）
+      // 待生剂流动小球（向右流，减速到 0.3 周期/秒）
       for (let i = 0; i < 4; i++) {
-        const phase = ((animT * 0.7 + i * 0.25) % 1);
+        const phase = ((animT * 0.3 + i * 0.25) % 1);
         const totalLen = (regLeft + 30) - (rRight - 30);
         const fx = (rRight - 30) + phase * totalLen;
         ctx.fillStyle = '#ca8a04';
@@ -1036,9 +1030,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineTo(rRight - 30, regenY);         // 横走（向左）
       ctx.lineTo(rRight - 30, rBot);           // 上升到 R 底
       ctx.stroke();
-      // 再生剂流动小球（向左流，热催化剂带辉光）
+      // 再生剂流动小球（向左流，减速到 0.4 周期/秒；保持比待生剂略快表达主流）
       for (let i = 0; i < 5; i++) {
-        const phase = ((animT * 0.9 + i * 0.2) % 1);
+        const phase = ((animT * 0.4 + i * 0.2) % 1);
         const totalLen = (regLeft + 30) - (rRight - 30);
         const fx = (regLeft + 30) - phase * totalLen;
         // 辉光（外圈）
@@ -1069,21 +1063,19 @@ export const FactoryCanvas: React.FC = () => {
         ['T-101',   '⑥'],
       ], '#16a34a');
 
-      // 区域标签
+      // 区域标签（只保留主轴标签）
       ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = '#bbf7d0';
       ctx.fillText('▎ 反应再生主轴', 24, 26);
-      ctx.fillStyle = '#fde68a';
-      ctx.fillText('▎ 辅助换热泵区', 24, 438);
 
       // 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v4 fcc  (催化剂双循环动画 R↔REG)', w - 30, h - 8);
+      ctx.fillText('v5 fcc  (去多余分割带 · 动画减速)', w - 30, h - 8);
     }
 
     // ===== 阳极振压成型场景 v3：工艺流程横幅 + 工序节点编号 =====

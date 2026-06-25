@@ -130,7 +130,10 @@ export const LoginPage: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              // 1) 注入 mock 用户绕过 LoginPage 网关
+              // ⚠️ 顺序至关重要：必须**先**把 page 设为 gallery，再注入 user。
+              //    否则 zustand 通知 AppRoot re-render 时 page 默认还是 'dashboard'，
+              //    StudentDashboard 会被瞬间挂载并触发 loadAll → 4 个 401。
+              usePageStore.getState().setPage('gallery');
               useAuthStore.setState({
                 user: {
                   id: 'guest',
@@ -146,9 +149,6 @@ export const LoginPage: React.FC = () => {
                 status: 'ready',
                 error: null,
               });
-              // 2) 直接进场景画廊，跳过 StudentDashboard（Dashboard 一加载就调
-              //    /api/drill-records/me/summary 等 4 个鉴权 API，游客无 token 会 401）
-              usePageStore.getState().setPage('gallery');
             }}
             className="w-full py-2 border border-dashed border-border hover:border-primary hover:text-primary text-text-secondary rounded-md text-xs flex items-center justify-center gap-2 transition-colors"
           >

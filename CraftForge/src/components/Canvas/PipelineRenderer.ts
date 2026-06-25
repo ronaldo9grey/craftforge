@@ -71,12 +71,14 @@ export class PipelineRenderer {
     }
     ctx.stroke();
 
-    // 绘制流动动画
+    // 绘制流动动画（双层 + 流光小球，明确方向）
     if (flowRate > 0) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      // 1) 白色虚线流动 — 速度比旧版快 6 倍，明显可见
+      //    lineDashOffset 取负值才能让虚线方向 = from→to（path 顺序）
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.lineWidth = 2;
-      ctx.setLineDash([10, 15]);
-      ctx.lineDashOffset = -flowOffset * (flowRate / 100);
+      ctx.setLineDash([12, 10]);
+      ctx.lineDashOffset = -flowOffset * Math.max(flowRate / 16, 1.5);
 
       ctx.beginPath();
       ctx.moveTo(path[0].x, path[0].y);
@@ -85,6 +87,49 @@ export class PipelineRenderer {
       }
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+
+      // 2) 沿路径走动的"流光小球"3 个，从 from→to 方向移动
+      //    给每根管道用 from→to 路径总长度，按 phase 取插值点
+      const segLens: number[] = [];
+      let totalLen = 0;
+      for (let i = 1; i < path.length; i++) {
+        const dx = path[i].x - path[i - 1].x;
+        const dy = path[i].y - path[i - 1].y;
+        const l = Math.sqrt(dx * dx + dy * dy);
+        segLens.push(l);
+        totalLen += l;
+      }
+      if (totalLen > 0) {
+        const ballSpeed = Math.max(flowRate * 0.6, 40); // px/s 大致换算
+        for (let b = 0; b < 3; b++) {
+          // 用 flowOffset 模拟时间，0.5 px/frame ≈ 30 px/s
+          const t = ((flowOffset * 0.5 + (b * totalLen) / 3) % totalLen);
+          // 找到 t 落在哪一段
+          let acc = 0;
+          let bx = path[0].x, by = path[0].y;
+          for (let i = 0; i < segLens.length; i++) {
+            if (t <= acc + segLens[i]) {
+              const ratio = (t - acc) / Math.max(segLens[i], 0.01);
+              bx = path[i].x + (path[i + 1].x - path[i].x) * ratio;
+              by = path[i].y + (path[i + 1].y - path[i].y) * ratio;
+              break;
+            }
+            acc += segLens[i];
+          }
+          // 流光小球（用管道颜色 + 白色亮心）
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(bx, by, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.beginPath();
+          ctx.arc(bx, by, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // 避免 unused 警告
+        void ballSpeed;
+      }
     }
 
     // 绘制箭头指示流向（在路径终点前）

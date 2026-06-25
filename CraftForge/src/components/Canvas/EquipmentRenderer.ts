@@ -184,28 +184,22 @@ export class EquipmentRenderer {
     // ⭐ exchanger 内部浮动铭牌（在 switch 之外画，确保 100% 执行 + z 顺序在设备形状之后）
     //   工艺逻辑：电解铝场景的整流变压器是个卧式圆柱体，圆柱本体只占 25%~75% 高度，
     //   外部 name+id 会占用周围空间与阴极母线/管道标签重叠。
-    //   将 name+id 浮动在圆柱体表面正中央，紧凑美观且不被任何外部元素遮挡。
+    //   将 name+id 浮动在圆柱体表面正中央，仅文字 + 文字描边（无边框 / 无背景）保持简洁。
     if (type === 'exchanger' && name && height >= 40) {
       const labelText = `${name}  ${id}`;
       ctx.save();
       ctx.font = 'bold 14px Inter, "Microsoft YaHei", sans-serif';
-      const textW = ctx.measureText(labelText).width;
-      const plateW = Math.min(width - 20, textW + 32);
-      const plateH = 22;
-      const plateX = x + (width - plateW) / 2;
-      const plateY = y + height / 2 - plateH / 2;
-      // 实底深色背景（不透明，绝不被圆柱体颜色透出干扰）
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(plateX, plateY, plateW, plateH);
-      // 金色边框
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(plateX, plateY, plateW, plateH);
-      // 金色文字
-      ctx.fillStyle = '#fde68a';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(labelText, x + width / 2, plateY + plateH / 2 + 1);
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      // 文字阴影描边（让金色文字在任何深/浅色圆柱体上都清晰可读）
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeText(labelText, cx, cy);
+      // 金色文字
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText(labelText, cx, cy);
       ctx.restore();
     }
 

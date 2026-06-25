@@ -1535,8 +1535,8 @@ export class EquipmentRenderer {
         //       ④ 振压脉冲（红色冲击波） ⑤ 模具内糊料填充进度 ⑥ 振动横纹
         const animT = animTime ?? Date.now() / 1000;
         // 真实节奏：单块阳极振压周期 ≈ 95~110 s
-        // 动画压缩到 12s/周期，更贴近实际节奏，避免每秒闪烁让人眼花
-        const cyclePeriod = 12;
+        // 动画压缩到 24s/周期，保留可观察节奏的同时彻底消除"压头闪烁感"
+        const cyclePeriod = 24;
         const phase = (animT % cyclePeriod) / cyclePeriod;          // 0~1
         // 时序：0-25% 下料 → 25-30% 下行 → 30-85% 振压保压 → 85-95% 上行 → 95-100% 停
         let pistonY = 0;        // 0 = 上止点, 1 = 下止点
@@ -1618,11 +1618,11 @@ export class EquipmentRenderer {
         ctx.textBaseline = 'middle';
         ctx.fillText(pressing ? '振压中' : '压头', cylX, pistonHeadY + headH / 2);
 
-        // ④ 振压冲击波（pressing 期间，柔和的脉冲，每 1.5s 一次而非 1/3 秒）
+        // ④ 振压冲击波（pressing 期间，柔和的脉冲，每 3s 一次更稳）
         if (pressing) {
-          const shockPhase = ((animT / 1.5) % 1);   // 1.5s 一次冲击
-          const shockR = 35 + shockPhase * 70;
-          ctx.strokeStyle = `rgba(248, 113, 113, ${(1 - shockPhase) * 0.45})`;
+          const shockPhase = ((animT / 3) % 1);   // 3s 一次冲击
+          const shockR = 35 + shockPhase * 80;
+          ctx.strokeStyle = `rgba(248, 113, 113, ${(1 - shockPhase) * 0.4})`;
           ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.arc(cylX, pistonHeadY + headH / 2, shockR, 0, Math.PI * 2);
@@ -1660,9 +1660,9 @@ export class EquipmentRenderer {
           ctx.lineDashOffset = 0;
         }
 
-        // ⑥ 模具底座振动横纹（pressing 时振动幅度大，否则只是 slight）
-        const vibAmp = pressing ? 2 : 0.3;
-        const vibOff = Math.sin(animT * 30) * vibAmp;
+        // ⑥ 模具底座振动横纹（频率/幅度都温和化避免视觉刺激）
+        const vibAmp = pressing ? 1.2 : 0.2;
+        const vibOff = Math.sin(animT * 8) * vibAmp;
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 1.2;
         ctx.beginPath();

@@ -849,10 +849,10 @@ export const FactoryCanvas: React.FC = () => {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(15, 645); ctx.lineTo(w - 15, 645); ctx.stroke();
 
-      // ---- (2) 顶部工艺流程横幅（y=90~120）----
+      // ---- (2) 顶部工艺流程横幅（y=40~80，充分利用画布上方空白区）----
       // 表达: 配料 → 糊料 → 称量 → 振压 → 冷却
-      const bannerY = 95;
-      const bannerH = 28;
+      const bannerY = 40;
+      const bannerH = 36;
       ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
       ctx.fillRect(20, bannerY, w - 40, bannerH);
       ctx.strokeStyle = '#f97316';
@@ -872,23 +872,23 @@ export const FactoryCanvas: React.FC = () => {
         const sx = 30 + stepW * i + stepW / 2;
         // 编号
         ctx.fillStyle = '#f97316';
-        ctx.font = 'bold 14px Inter, "Microsoft YaHei", sans-serif';
+        ctx.font = 'bold 16px Inter, "Microsoft YaHei", sans-serif';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
-        ctx.fillText(s.num, sx - 38, bannerY + bannerH / 2);
+        ctx.fillText(s.num, sx - 42, bannerY + bannerH / 2);
         // 标签
         ctx.fillStyle = '#fde68a';
-        ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(s.label, sx - 30, bannerY + bannerH / 2 - 5);
+        ctx.fillText(s.label, sx - 34, bannerY + bannerH / 2 - 7);
         // 说明
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px Inter, "Microsoft YaHei", sans-serif';
-        ctx.fillText(s.desc, sx - 30, bannerY + bannerH / 2 + 7);
+        ctx.font = '11px Inter, "Microsoft YaHei", sans-serif';
+        ctx.fillText(s.desc, sx - 34, bannerY + bannerH / 2 + 8);
         // 箭头分隔
         if (i < steps.length - 1) {
           ctx.fillStyle = '#f97316';
-          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.font = 'bold 16px Inter, sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('▶', sx + stepW / 2 - 8, bannerY + bannerH / 2);
         }
@@ -947,7 +947,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v3 anode  (工艺流程横幅+节点编号+真空泵+12s振压周期)', w - 30, h - 8);
+      ctx.fillText('v4 anode  (振压周期 24s+流程横幅上移到顶部空白区)', w - 30, h - 8);
     }
   };
 

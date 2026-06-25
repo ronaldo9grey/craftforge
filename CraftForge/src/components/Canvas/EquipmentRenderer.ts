@@ -1802,36 +1802,55 @@ export class EquipmentRenderer {
             { done: false, text: '清理打壳锤 *' },
           ];
         }
-        const taskListT = boardT + titleH + 4;
-        const taskListB = boardB - 4;
-        const rowH = (taskListB - taskListT) / tasks.length;
+        const taskListT = boardT + titleH + 6;
+        const taskListB = boardB - 6;
+        // 2 列布局：列数自适应。看板宽度 > 400 时启用 2 列；< 400 时退回单列
+        const boardW = boardR - boardL;
+        const cols = boardW > 400 ? 2 : 1;
+        const rowsPerCol = Math.ceil(tasks.length / cols);
+        const rowH = (taskListB - taskListT) / rowsPerCol;
+        const colW = (boardW - 16) / cols;     // 左右各 8px padding
         const rowFontSize = isLarge ? 12 : 9;
         const checkboxSize = isLarge ? 10 : 6;
 
         tasks.forEach((t, i) => {
-          const ry = taskListT + i * rowH + rowH / 2;
+          const col = Math.floor(i / rowsPerCol);
+          const row = i % rowsPerCol;
+          const cellX = boardL + 8 + col * colW;
+          const ry = taskListT + row * rowH + rowH / 2;
           // 复选框
           ctx.strokeStyle = '#06b6d4';
           ctx.lineWidth = 1;
-          ctx.strokeRect(boardL + 10, ry - checkboxSize / 2, checkboxSize, checkboxSize);
+          ctx.strokeRect(cellX, ry - checkboxSize / 2, checkboxSize, checkboxSize);
           if (t.done) {
             ctx.fillStyle = '#22c55e';
-            ctx.fillRect(boardL + 10 + 1, ry - checkboxSize / 2 + 1, checkboxSize - 2, checkboxSize - 2);
+            ctx.fillRect(cellX + 1, ry - checkboxSize / 2 + 1, checkboxSize - 2, checkboxSize - 2);
             // ✓ 印
             ctx.strokeStyle = '#0f172a';
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(boardL + 10 + checkboxSize * 0.2, ry);
-            ctx.lineTo(boardL + 10 + checkboxSize * 0.45, ry + checkboxSize * 0.3);
-            ctx.lineTo(boardL + 10 + checkboxSize * 0.8, ry - checkboxSize * 0.3);
+            ctx.moveTo(cellX + checkboxSize * 0.2, ry);
+            ctx.lineTo(cellX + checkboxSize * 0.45, ry + checkboxSize * 0.3);
+            ctx.lineTo(cellX + checkboxSize * 0.8, ry - checkboxSize * 0.3);
             ctx.stroke();
           }
           // 文本
           ctx.fillStyle = t.done ? '#64748b' : '#e5e7eb';
-          ctx.font = (t.done ? `${rowFontSize}px` : `bold ${rowFontSize}px`) + ' Inter, sans-serif';
+          ctx.font = (t.done ? `${rowFontSize}px` : `bold ${rowFontSize}px`) + ' Inter, "Microsoft YaHei", sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText(t.text, boardL + 10 + checkboxSize + 6, ry);
+          // 文本最大宽度 = 列宽 - 复选框 - 间距，超长截断加省略号
+          const textMaxW = colW - checkboxSize - 12;
+          let text = t.text;
+          // 简易省略号处理
+          const m = ctx.measureText(text);
+          if (m.width > textMaxW) {
+            while (text.length > 4 && ctx.measureText(text + '…').width > textMaxW) {
+              text = text.slice(0, -1);
+            }
+            text = text + '…';
+          }
+          ctx.fillText(text, cellX + checkboxSize + 6, ry);
         });
         break;
       }

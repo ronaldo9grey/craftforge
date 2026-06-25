@@ -183,7 +183,7 @@ export class EquipmentRenderer {
     }
     
     // 绘制设备形状（传入动画相位，驱动机器人/传送带动画）
-    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime, equipment.id, name);
+    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime, equipment.id, name, equipment.parameters);
 
     // ⭐ exchanger 内部浮动铭牌（在 switch 之外画，确保 100% 执行 + z 顺序在设备形状之后）
     //   工艺逻辑：电解铝场景的整流变压器是个卧式圆柱体，圆柱本体只占 25%~75% 高度，
@@ -272,7 +272,8 @@ export class EquipmentRenderer {
     strokeColor: string,
     animTime: number = 0,
     id: string = '',
-    name: string = ''
+    name: string = '',
+    parameters?: Array<{ id: string; value: number }>,
   ) {
     ctx.fillStyle = fillColor;
     ctx.strokeStyle = strokeColor;
@@ -309,6 +310,75 @@ export class EquipmentRenderer {
         ctx.moveTo(x + width * 0.7, y + 15);
         ctx.lineTo(x + width * 0.7, y + height - 15);
         ctx.stroke();
+
+        // 阳极糊料保温缸专属：内部搅拌器旋转动画 + 加热夹套
+        if (id === 'PASTE-101') {
+          const animTLocal = animTime ?? Date.now() / 1000;
+          const cx = x + width / 2;
+          const cy = y + height / 2;
+          // 加热夹套（外圈环带，暖橙色）
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.lineDashOffset = -animTLocal * 8;   // 慢速流动表示导热油循环
+          this.roundRect(ctx, x + 4, y + 4, width - 8, height - 8, 6);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+
+          // 中央立轴
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(cx, y + 18);
+          ctx.lineTo(cx, y + height - 18);
+          ctx.stroke();
+
+          // 旋转搅拌叶片（4 片，半径自适应）
+          const bladeR = Math.min(width * 0.32, 35);
+          const omega = animTLocal * 1.5;      // 约 14 rpm 视觉旋转
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2.5;
+          // 中部搅拌叶
+          for (let i = 0; i < 4; i++) {
+            const ang = omega + (i * Math.PI / 2);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + Math.cos(ang) * bladeR, cy + Math.sin(ang) * bladeR);
+            ctx.stroke();
+            // 叶片末端小圆点（增强可见度）
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(cx + Math.cos(ang) * bladeR, cy + Math.sin(ang) * bladeR, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // 顶部料位指示（料位百分比刻度，靠右侧）
+          const levelMarker = y + 22 + (height - 44) * 0.2;
+          ctx.strokeStyle = '#22d3ee';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x + width - 10, levelMarker);
+          ctx.lineTo(x + width - 4, levelMarker);
+          ctx.stroke();
+          ctx.fillStyle = '#67e8f9';
+          ctx.font = '8px Inter, sans-serif';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('75%', x + width - 12, levelMarker);
+
+          // 温度状态点（中下，跟随糊料温度色温变化：145~155 绿色 / 偏离红色）
+          const tempDotY = y + height - 28;
+          ctx.fillStyle = '#10b981';
+          ctx.beginPath();
+          ctx.arc(cx, tempDotY, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#a7f3d0';
+          ctx.font = 'bold 9px Inter, "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('150°C', cx, tempDotY + 12);
+        }
         break;
         
       case 'fractionator':
@@ -754,12 +824,65 @@ export class EquipmentRenderer {
         ctx.setLineDash([]);
         ctx.lineDashOffset = 0;
         // 物料块（一个小车身在传送带上随时间从左到右移动并循环）
-        const carPhase = ((animTime * 0.7) % (width - 30)) + 10;
-        ctx.fillStyle = '#cbd5e1';
-        ctx.strokeStyle = '#475569';
-        this.roundRect(ctx, x + carPhase, y + height / 2 - 4, 18, 8, 2);
-        ctx.fill();
-        ctx.stroke();
+        // 阳极生阳极冷却台专属：4 块红热阳极坯并排前进，色温随距离变深棕（冷却过程）
+        if (id === 'COOL-301') {
+          const blockCount = 4;
+          const blockW = 30;
+          const blockH = 16;
+          const spacing = (width - 30 - blockW) / blockCount;
+          const carryY = y + height / 2 - blockH / 2 + 1;
+          const slideOffset = (animTime * 0.4) % spacing;     // 慢速整体右移
+          for (let i = 0; i < blockCount; i++) {
+            const bx = x + 15 + i * spacing + slideOffset;
+            // 颜色：左侧最热（亮红橙）→ 右侧最凉（深棕），随位置插值
+            const ratio = (bx - x) / width;             // 0 = 左, 1 = 右
+            const r = Math.round(220 - ratio * 100);    // 220 → 120
+            const g = Math.round(80 - ratio * 60);      // 80 → 20
+            const b = Math.round(20 + ratio * 10);      // 20 → 30
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            this.roundRect(ctx, bx, carryY, blockW, blockH, 2);
+            ctx.fill();
+            ctx.stroke();
+            // 热辉光（左侧块更亮）
+            if (ratio < 0.5) {
+              const glow = ctx.createRadialGradient(bx + blockW/2, carryY + blockH/2, 0, bx + blockW/2, carryY + blockH/2, 16);
+              glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.5)`);
+              glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+              ctx.fillStyle = glow;
+              ctx.fillRect(bx - 6, carryY - 6, blockW + 12, blockH + 12);
+            }
+            // 阳极坯顶面小标识（黑色微细线，表示振压痕迹）
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(bx + 4, carryY + 3);
+            ctx.lineTo(bx + blockW - 4, carryY + 3);
+            ctx.stroke();
+          }
+          // 入口温度 → 出口温度的色带标识（左→右暗化）
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.7)';
+          ctx.fillRect(x + 10, y + 1, 4, 4);
+          ctx.fillStyle = '#f87171';
+          ctx.font = 'bold 9px Inter, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText('220°C', x + 16, y - 2);
+          // 右侧温度
+          ctx.fillStyle = 'rgba(120, 30, 0, 0.8)';
+          ctx.fillRect(x + width - 14, y + 1, 4, 4);
+          ctx.fillStyle = '#a3a3a3';
+          ctx.textAlign = 'right';
+          ctx.fillText('60°C', x + width - 18, y - 2);
+        } else {
+          const carPhase = ((animTime * 0.7) % (width - 30)) + 10;
+          ctx.fillStyle = '#cbd5e1';
+          ctx.strokeStyle = '#475569';
+          this.roundRect(ctx, x + carPhase, y + height / 2 - 4, 18, 8, 2);
+          ctx.fill();
+          ctx.stroke();
+        }
         break;
       }
 
@@ -1535,8 +1658,11 @@ export class EquipmentRenderer {
         //       ④ 振压脉冲（红色冲击波） ⑤ 模具内糊料填充进度 ⑥ 振动横纹
         const animT = animTime ?? Date.now() / 1000;
         // 真实节奏：单块阳极振压周期 ≈ 95~110 s
-        // 动画延长到 40s/周期，跟真实节奏几乎 1:1，节奏从容
-        const cyclePeriod = 40;
+        // ⭐ 与参数联动：cyclePeriod 按 press_time 参数缩放（10倍压缩，press_time=95s → 视觉 9.5s 循环×4 ≈ 40s 完整循环）
+        const ptParam = parameters?.find((p) => p.id === 'press_time');
+        const pressTime = ptParam?.value ?? 95;
+        // 视觉周期 = press_time × 0.42 倍数（让 95s 真实对应 40s 动画周期）
+        const cyclePeriod = Math.max(15, Math.min(80, pressTime * 0.42));
         const phase = (animT % cyclePeriod) / cyclePeriod;          // 0~1
         // 时序：0-25% 下料 → 25-30% 下行 → 30-85% 振压保压 → 85-95% 上行 → 95-100% 停
         let pistonY = 0;        // 0 = 上止点, 1 = 下止点
@@ -1597,14 +1723,24 @@ export class EquipmentRenderer {
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
         ctx.strokeRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
-        // 压头（pressing 时变红橙渐变，不要纯红刺眼）
+        // 压头（pressing 时变红橙渐变，颜色强度跟 press_force 联动）
         const headW = 140;
         const headH = 28;
         if (pressing) {
+          // 压力归一化：1250t=正常 → 弱亮红；1500t=极限 → 强血红
+          const pfParam = parameters?.find((p) => p.id === 'press_force');
+          const pressForce = pfParam?.value ?? 1280;
+          const pfRatio = Math.max(0, Math.min(1, (pressForce - 800) / 700));  // 800→0, 1500→1
+          // 中心红度：从 #b91c1c (常规) 到 #7f1d1d (强压)
+          const cR = Math.round(185 - pfRatio * 58);
+          const cG = Math.round(28  - pfRatio * 0);
+          const cB = Math.round(28  - pfRatio * 0);
+          const sideColor = `rgb(${Math.round(cR * 0.6)}, ${Math.round(cG * 0.5)}, ${Math.round(cB * 0.5)})`;
+          const centerColor = `rgb(${cR}, ${cG}, ${cB})`;
           const grad = ctx.createLinearGradient(cylX - headW/2, pistonHeadY, cylX + headW/2, pistonHeadY + headH);
-          grad.addColorStop(0, '#7f1d1d');
-          grad.addColorStop(0.5, '#b91c1c');
-          grad.addColorStop(1, '#7f1d1d');
+          grad.addColorStop(0, sideColor);
+          grad.addColorStop(0.5, centerColor);
+          grad.addColorStop(1, sideColor);
           ctx.fillStyle = grad;
         } else {
           ctx.fillStyle = '#1e293b';
@@ -1618,9 +1754,13 @@ export class EquipmentRenderer {
         ctx.textBaseline = 'middle';
         ctx.fillText(pressing ? '振压中' : '压头', cylX, pistonHeadY + headH / 2);
 
-        // ④ 振压冲击波（pressing 期间，每 5s 一次柔和扩散波）
+        // ④ 振压冲击波（pressing 期间，频率跟 vib_freq 参数联动）
         if (pressing) {
-          const shockPhase = ((animT / 5) % 1);   // 5s 一次冲击
+          const vfParam = parameters?.find((p) => p.id === 'vib_freq');
+          const vibFreq = vfParam?.value ?? 50;
+          // vib_freq=50 → 5s 一次; 频率越高冲击越快（约 250/freq 秒）
+          const shockInterval = Math.max(2, Math.min(10, 250 / vibFreq));
+          const shockPhase = ((animT / shockInterval) % 1);
           const shockR = 35 + shockPhase * 90;
           ctx.strokeStyle = `rgba(248, 113, 113, ${(1 - shockPhase) * 0.4})`;
           ctx.lineWidth = 2.5;

@@ -945,7 +945,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v8 anode  (糊料缸/给料斗按比例缩小 给辅助系统标签留呼吸位)', w - 30, h - 8);
+      ctx.fillText('v9 anode  (动力学引擎+搅拌器+冷却台滑动+振压参数联动)', w - 30, h - 8);
     }
   };
 

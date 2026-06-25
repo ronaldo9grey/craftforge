@@ -125,6 +125,31 @@ export const LoginPage: React.FC = () => {
             {loading ? '登录中...' : '登 录'}
           </button>
 
+          {/* 游客模式：跳过登录直接体验场景。不依赖后端，仅前端 mock 用户。 */}
+          <button
+            type="button"
+            onClick={() => {
+              useAuthStore.setState({
+                user: {
+                  id: 'guest',
+                  username: 'guest',
+                  display_name: '游客体验',
+                  student_no: null,
+                  role: 'student',
+                  class_id: null,
+                  must_change_pw: false,
+                  created_at: Date.now(),
+                  last_login_at: Date.now(),
+                },
+                status: 'ready',
+                error: null,
+              });
+            }}
+            className="w-full py-2 border border-dashed border-border hover:border-primary hover:text-primary text-text-secondary rounded-md text-xs flex items-center justify-center gap-2 transition-colors"
+          >
+            👤 游客模式（跳过登录直接体验场景）
+          </button>
+
           <div className="text-xs text-text-muted text-center">
             没有账号？请联系管理员 / 教师创建
           </div>

@@ -30,7 +30,7 @@ const TAU_MID = 5;
 function cell(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'cell-iso',
-    x, y: 120, width: 580, height: 290,
+    x, y: 160, width: 580, height: 290,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'cell_voltage',  name: '槽电压',     value: 4.15, unit: 'V',   min: 3.5, max: 60,  normalMin: 4.0, normalMax: 4.3, trend: [], tau: TAU_FAST },
@@ -54,7 +54,7 @@ function potCtrl(id: string, name: string, x: number): Equipment {
   return {
     id, name, type: 'pot-ctrl',
     // 槽控柜居中放在槽下方
-    x: x + 170, y: 445, width: 240, height: 55,
+    x: x + 170, y: 485, width: 240, height: 55,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'plc_load',     name: 'PLC 负载',  value: 35, unit: '%', min: 0, max: 100, normalMin: 20, normalMax: 70, trend: [], tau: 3 },
@@ -100,7 +100,7 @@ export const aluminumEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'TRA-301', name: '整流变压器', type: 'exchanger',
-    x: 30, y: 565, width: 280, height: 85,
+    x: 30, y: 605, width: 280, height: 85,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'primary_voltage',   name: '一次电压',     value: 35,   unit: 'kV', min: 0, max: 40, normalMin: 33, normalMax: 37, trend: [], tau: TAU_FAST },
@@ -126,7 +126,7 @@ export const aluminumEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '班组任务台', type: 'task-board',
-    x: 340, y: 555, width: 580, height: 125,
+    x: 340, y: 595, width: 580, height: 125,
     status: 'normal', template: 'aluminum',
     parameters: [
       { id: 'shift_no',          name: '当前班组',   value: 3, unit: '', min: 1, max: 4, normalMin: 1, normalMax: 4, trend: [], inertia: false },

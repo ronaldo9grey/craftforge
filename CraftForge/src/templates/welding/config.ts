@@ -27,7 +27,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-101', name: '输入输送带', type: 'conveyor',
-    x: 180, y: 250, width: 230, height: 50,
+    x: 160, y: 250, width: 200, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0,  normalMin: 1.0, normalMax: 1.5, trend: [], tau: TAU_SPEED },
@@ -36,7 +36,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'FIX-101', name: '定位夹具', type: 'fixture',
-    x: 450, y: 240, width: 80, height: 70,
+    x: 480, y: 240, width: 80, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'clamp_force',     name: '夹紧力',   value: 5000, unit: 'N',  min: 3000, max: 8000, normalMin: 4500, normalMax: 5500, trend: [], tau: TAU_FORCE },

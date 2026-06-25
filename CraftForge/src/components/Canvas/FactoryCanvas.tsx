@@ -506,23 +506,23 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v4 cnc  (3 区合并辅助/控制 · 来料区右移)', w - 30, h - 8);
     }
 
-    // 注塑场景：3 大功能分区（主机/物流/辅助合并控制）+ 横幅 + 节点编号
+    // 注塑场景：3 大功能分区 + 中间下移 40px 避开主机区
     if (activeTemplate === 'injection') {
-      // 区域 1：主机区（y=80~245）- 浅琥珀
+      // 区域 1：主机区（y=80~245，不动）
       ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
       ctx.fillRect(0, 80, w, 165);
-      // 区域 2：物流主线区（y=250~375）- 浅青
+      // 区域 2：物流主线区（y=290~410，下移 40px）
       ctx.fillStyle = 'rgba(34, 211, 238, 0.07)';
-      ctx.fillRect(0, 250, w, 125);
-      // 区域 3：辅助系统区（y=380~680，合并原电气控制层）- 浅蓝灰
+      ctx.fillRect(0, 290, w, 125);
+      // 区域 3：辅助系统区（y=435~680，下移 55px 含合并的电气控制）
       ctx.fillStyle = 'rgba(100, 116, 139, 0.12)';
-      ctx.fillRect(0, 380, w, 300);
+      ctx.fillRect(0, 435, w, 245);
 
-      // 区域分隔细虚线
+      // 区域分隔细虚线（下移）
       ctx.strokeStyle = '#475569';
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
-      [247, 377].forEach((yy) => {
+      [287, 432].forEach((yy) => {
         ctx.beginPath();
         ctx.moveTo(10, yy);
         ctx.lineTo(w - 10, yy);
@@ -556,16 +556,16 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#fde68a';
       ctx.fillText('▎ 主机区', 24, 26);
       ctx.fillStyle = '#67e8f9';
-      ctx.fillText('▎ 物流主线', 24, 257);
+      ctx.fillText('▎ 物流主线', 24, 297);
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillText('▎ 辅助系统', 24, 386);
+      ctx.fillText('▎ 辅助系统', 24, 442);
 
       // 🎯 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v7 injection  (3 区合并辅助/控制)', w - 30, h - 8);
+      ctx.fillText('v8 injection  (中间下移 40px · 料斗右移)', w - 30, h - 8);
     }
 
     // 铝电解场景 v3：电解车间沉浸式专属视觉 - 厂房屋顶 + 5 区域底色 + 氛围灯光
@@ -657,39 +657,36 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textAlign = 'right';
       ctx.fillText('→ 烟气净化（车间外）', w - 64, flueY - 12);
 
-      // ---- (2) 区域底色（v11 布局：阴极母线耦合到电解槽底部）----
-      // 行 1 电解车间核心区（y=85~435 含天车下方+2 槽+阴极母线）
+      // ---- (2) 区域底色（v12：除横幅外整体下移 40px，画布 760 高）----
+      // 行 1 电解车间核心区（y=125~475 含天车下方+2 槽+阴极母线）
       ctx.fillStyle = 'rgba(6, 182, 212, 0.06)';
-      ctx.fillRect(0, 85, w, 350);
-      // 阴极母线区（y=412~432 紧贴电解槽底，工艺逻辑：母线从槽底引出）
+      ctx.fillRect(0, 125, w, 350);
+      // 阴极母线区（y=452~472 紧贴电解槽底）
       ctx.fillStyle = 'rgba(250, 204, 21, 0.08)';
-      ctx.fillRect(0, 412, w, 20);
-      // 槽控柜区（y=440~510）
+      ctx.fillRect(0, 452, w, 20);
+      // 槽控柜区（y=480~550）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.06)';
-      ctx.fillRect(0, 440, w, 90);
-      // 控制层（y=550~685）
+      ctx.fillRect(0, 480, w, 90);
+      // 控制层（y=590~725）
       ctx.fillStyle = 'rgba(168, 85, 247, 0.12)';
-      ctx.fillRect(0, 550, w, 135);
+      ctx.fillRect(0, 590, w, 135);
 
-      // ---- (2.1) 区域间地面横线（baseboard，比虚线网格更明显）----
-      // 槽底↔阴极母线区
+      // ---- (2.1) 区域间地面横线 ----
       ctx.strokeStyle = 'rgba(250, 204, 21, 0.45)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(15, 411);
-      ctx.lineTo(w - 15, 411);
+      ctx.moveTo(15, 451);
+      ctx.lineTo(w - 15, 451);
       ctx.stroke();
-      // 阴极母线区↔槽控柜
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(15, 433);
-      ctx.lineTo(w - 15, 433);
+      ctx.moveTo(15, 473);
+      ctx.lineTo(w - 15, 473);
       ctx.stroke();
-      // 槽控柜↔控制层
       ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(15, 548);
-      ctx.lineTo(w - 15, 548);
+      ctx.moveTo(15, 588);
+      ctx.lineTo(w - 15, 588);
       ctx.stroke();
       // 控制层底（地面）
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
@@ -898,24 +895,24 @@ export const FactoryCanvas: React.FC = () => {
 
       // ---- (5) 区域标签（左侧带深色背景框）----
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 88, 180, 14);
+      ctx.fillRect(20, 128, 180, 14);
       ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('▎ 电解车间 (2 × 600 kA 槽)', 24, 91);
+      ctx.fillText('▎ 电解车间 (2 × 600 kA 槽)', 24, 131);
 
       // 槽控柜区域标签（位于槽控柜区上沿 y=440 之上）
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 437, 75, 14);
+      ctx.fillRect(20, 477, 75, 14);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 槽控柜', 24, 440);
+      ctx.fillText('▎ 槽控柜', 24, 480);
 
       // 控制层标签
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 553, 70, 14);
+      ctx.fillRect(20, 593, 70, 14);
       ctx.fillStyle = '#94a3b8';
-      ctx.fillText('▎ 控制层', 24, 556);
+      ctx.fillText('▎ 控制层', 24, 596);
 
       // ---- (6) 关键数据指标（顶部状态条）----
       // 顶部状态条：实时跟随 TRA-301（整流变压器）的母线电流 + 二次直流电压
@@ -966,23 +963,23 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v19 aluminum  (变压器铭牌移到 render 主函数，必显示)', w - 30, h - 8);
     }
 
-    // ===== FCC 催化裂化 v2：工艺流程横幅 + 节点编号 + 两区分色（无控制层）=====
+    // ===== FCC 催化裂化 v3：工艺流程横幅 + 节点编号 + 两区分色（设备整体下移 50px）=====
     if (activeTemplate === 'fcc') {
-      // FCC 设备 y=50~600，与横幅 40~76 冲突。两区设计：
-      //   反应再生主轴（y=100~370）：V/PI/T/R/REG/F
-      //   辅助换热泵区（y=410~600）：E/P/K
+      // FCC 设备下移后：V/PI y=190~250 / R/REG/T/F y=240~430 / E/P/K y=480~650
+      //   反应再生主轴（y=140~430）
+      //   辅助换热泵区（y=460~660）
       ctx.fillStyle = 'rgba(34, 197, 94, 0.05)';
-      ctx.fillRect(0, 90, w, 290);      // 反应/再生主轴 y=90~380
+      ctx.fillRect(0, 140, w, 290);
       ctx.fillStyle = 'rgba(245, 158, 11, 0.05)';
-      ctx.fillRect(0, 395, w, 215);     // 辅助换热泵 y=395~610
+      ctx.fillRect(0, 445, w, 215);
 
       // baseboard 分割线
       ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
       ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(15, 380); ctx.lineTo(w - 15, 380); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 430); ctx.lineTo(w - 15, 430); ctx.stroke();
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(15, 620); ctx.lineTo(w - 15, 620); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 670); ctx.lineTo(w - 15, 670); ctx.stroke();
 
       // 工艺横幅
       drawProcessBanner([
@@ -1011,14 +1008,14 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#bbf7d0';
       ctx.fillText('▎ 反应再生主轴', 24, 26);
       ctx.fillStyle = '#fde68a';
-      ctx.fillText('▎ 辅助换热泵区', 24, 388);
+      ctx.fillText('▎ 辅助换热泵区', 24, 438);
 
       // 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v2 fcc  (无控制层 · 两区+横幅+节点编号)', w - 30, h - 8);
+      ctx.fillText('v3 fcc  (设备整体下移 · 充分利用画布空间)', w - 30, h - 8);
     }
 
     // ===== 阳极振压成型场景 v3：工艺流程横幅 + 工序节点编号 =====

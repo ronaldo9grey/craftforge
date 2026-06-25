@@ -82,7 +82,7 @@ export const injectionEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'HOP-201', name: '原料料斗', type: 'station',
-    x: 30, y: 280, width: 70, height: 65,
+    x: 90, y: 320, width: 70, height: 65,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'hopper_level', name: '料位',     value: 65, unit: '%',  min: 0,  max: 100, normalMin: 30, normalMax: 90,  trend: [], tau: TAU_HOPPER },
@@ -91,7 +91,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'CONV-201', name: '上料输送带', type: 'conveyor',
-    x: 110, y: 290, width: 110, height: 40,
+    x: 170, y: 330, width: 110, height: 40,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 0.8, unit: 'm/min', min: 0, max: 2.0, normalMin: 0.5, normalMax: 1.2, trend: [], tau: TAU_SPEED },
@@ -100,7 +100,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'DRY-201', name: '物料干燥机', type: 'pump',
-    x: 235, y: 280, width: 95, height: 65,
+    x: 295, y: 320, width: 95, height: 65,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'dry_temp',     name: '干燥温度', value: 85,  unit: '°C',  min: 40,  max: 130, normalMin: 75, normalMax: 95, trend: [], tau: TAU_TEMP },
@@ -109,7 +109,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'MOLD-201', name: '注塑模具', type: 'reactor',
-    x: 535, y: 280, width: 120, height: 75,
+    x: 535, y: 320, width: 120, height: 75,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'mold_temp',   name: '模具温度', value: 55,    unit: '°C',  min: 20,  max: 130, normalMin: 45,  normalMax: 75,  trend: [], tau: TAU_MOLD },
@@ -119,7 +119,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'CONV-202', name: '成品输送带', type: 'conveyor',
-    x: 720, y: 290, width: 180, height: 40,
+    x: 720, y: 330, width: 180, height: 40,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 0.6, unit: 'm/min', min: 0, max: 2.0,  normalMin: 0.4, normalMax: 1.0, trend: [], tau: TAU_SPEED },
@@ -128,7 +128,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'INST-201', name: '在线检测仪', type: 'instrument',
-    x: 925, y: 280, width: 90, height: 65,
+    x: 925, y: 320, width: 90, height: 65,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'weight_dev',   name: '重量偏差',   value: 0.05, unit: 'g',  min: -2,  max: 2,   normalMin: -0.3, normalMax: 0.3,  trend: [], tau: TAU_QUALITY },
@@ -138,7 +138,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'ST-202', name: '成品下料区', type: 'station',
-    x: 1080, y: 280, width: 90, height: 65,
+    x: 1080, y: 320, width: 90, height: 65,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'finished_count', name: '成品数量', value: 320, unit: '件', min: 0, max: 9999, normalMin: 0,  normalMax: 9999, trend: [], tau: TAU_MID },
@@ -151,7 +151,7 @@ export const injectionEquipments: Equipment[] = [
   // ============================================================
   {
     id: 'HEAT-301', name: '加热筒控制', type: 'heater',
-    x: 50, y: 405, width: 200, height: 75,
+    x: 50, y: 460, width: 200, height: 75,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'zone1_temp', name: '喂料段温度', value: 200, unit: '°C', min: 100, max: 280, normalMin: 180, normalMax: 220, trend: [], tau: TAU_TEMP },
@@ -162,7 +162,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'CHILL-301', name: '冷水机', type: 'pump',
-    x: 290, y: 410, width: 130, height: 70,
+    x: 290, y: 465, width: 130, height: 70,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'chiller_flow',   name: '冷却水流量', value: 18,  unit: 'L/min', min: 0,  max: 40, normalMin: 14, normalMax: 24, trend: [], tau: TAU_FLOW },
@@ -172,7 +172,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'MTC-301', name: '模温机', type: 'exchanger',
-    x: 460, y: 405, width: 200, height: 75,
+    x: 460, y: 460, width: 200, height: 75,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'mtc_set_temp',   name: '设定温度', value: 60, unit: '°C',    min: 20, max: 120, normalMin: 45, normalMax: 80, trend: [], tau: 25 },
@@ -182,7 +182,7 @@ export const injectionEquipments: Equipment[] = [
   },
   {
     id: 'HMI-301', name: '操作面板', type: 'instrument',
-    x: 1060, y: 410, width: 120, height: 70,
+    x: 1060, y: 465, width: 120, height: 70,
     status: 'normal', template: 'injection',
     parameters: [
       { id: 'program_no',     name: '当前程序号', value: 207, unit: '',  min: 0,  max: 9999, normalMin: 0,  normalMax: 9999, trend: [], inertia: false },

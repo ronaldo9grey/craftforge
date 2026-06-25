@@ -87,7 +87,7 @@ export const anodeEquipments: Equipment[] = [
     id: 'CFG-701',
     name: '配料控制柜',
     type: 'pot-ctrl',
-    x: 40, y: 390, width: 170, height: 60,
+    x: 40, y: 405, width: 170, height: 60,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'coke_ratio', name: '石油焦粒度配比', value: 30, unit: 'wt%', min: 15, max: 50, normalMin: 28, normalMax: 32, trend: [], tau: 30 },
@@ -100,7 +100,7 @@ export const anodeEquipments: Equipment[] = [
     id: 'MHT-501',
     name: '模具加热站',
     type: 'heater',
-    x: 400, y: 390, width: 175, height: 80,
+    x: 400, y: 405, width: 175, height: 80,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'heat_power',    name: '加热功率',     value: 65,  unit: 'kW', min: 0,  max: 150, normalMin: 50,  normalMax: 80,  trend: [], tau: 5 },
@@ -113,7 +113,7 @@ export const anodeEquipments: Equipment[] = [
     id: 'VAC-601',
     name: '真空泵机组',
     type: 'pump',
-    x: 605, y: 390, width: 175, height: 80,
+    x: 605, y: 405, width: 175, height: 80,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'vac_pressure', name: '绝对压力', value: 4.5, unit: 'kPa',  min: 0.5, max: 100, normalMin: 1.0, normalMax: 5.0, trend: [], tau: 5 },
@@ -121,13 +121,13 @@ export const anodeEquipments: Equipment[] = [
     ],
   },
 
-  // ========== 行 3 控制层 ==========
+  // ========== 行 3 控制层（下移 25px 充分利用画布底部空间） ==========
 
   {
     id: 'HMI-801',
     name: '糊料温控监控屏',
     type: 'exchanger',
-    x: 40, y: 500, width: 320, height: 110,
+    x: 40, y: 525, width: 320, height: 115,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'temp_band',  name: '糊料温度带宽', value: 145, unit: '°C', min: 100, max: 200, normalMin: 142, normalMax: 158, trend: [], tau: 1 },
@@ -139,7 +139,7 @@ export const anodeEquipments: Equipment[] = [
     id: 'HMI-802',
     name: '班组任务台',
     type: 'task-board',
-    x: 400, y: 500, width: 840, height: 110,
+    x: 400, y: 525, width: 840, height: 115,
     status: 'normal', template: 'anode',
     parameters: [
       { id: 'shift_target', name: '当班指标',   value: 60,   unit: '块', min: 0, max: 100, normalMin: 55, normalMax: 65, trend: [], tau: 1 },

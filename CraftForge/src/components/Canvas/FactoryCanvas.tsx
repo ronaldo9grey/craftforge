@@ -828,26 +828,26 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = aGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // ---- (1) 区域底色：核心工艺主轴 + 辅助设备区 + 控制层 ----
+      // ---- (1) 区域底色：核心工艺主轴 + 辅助设备区（加高 100→125 充分呼吸）+ 控制层 ----
       // 行 1 主工艺主轴 (y=140~370)
       ctx.fillStyle = 'rgba(249, 115, 22, 0.05)';
       ctx.fillRect(0, 140, w, 230);
-      // 行 2 辅助设备区 (y=380~480)
+      // 行 2 辅助设备区 (y=380~505 高度从 100→125 充分扩大空间)
       ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
-      ctx.fillRect(0, 380, w, 100);
-      // 控制层 (y=490~625)
+      ctx.fillRect(0, 380, w, 125);
+      // 控制层 (y=515~660 下移 25px)
       ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
-      ctx.fillRect(0, 490, w, 135);
+      ctx.fillRect(0, 515, w, 145);
 
       // baseboard 分割线
       ctx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(15, 374); ctx.lineTo(w - 15, 374); ctx.stroke();
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 484); ctx.lineTo(w - 15, 484); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 509); ctx.lineTo(w - 15, 509); ctx.stroke();
       ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(15, 645); ctx.lineTo(w - 15, 645); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 665); ctx.lineTo(w - 15, 665); ctx.stroke();
 
       // ---- (2) 顶部工艺流程横幅（y=40~80，充分利用画布上方空白区）----
       // 表达: 配料 → 糊料 → 称量 → 振压 → 冷却
@@ -936,16 +936,16 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#67e8f9';
       ctx.fillText('▎ 辅助系统', 24, 365);
 
-      // 控制层标签 — 放在分割线 y=484 上方空白带（y=475）
+      // 控制层标签 — 放在分割线 y=509 上方空白带（y=500，新位置）
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制层', 24, 475);
+      ctx.fillText('▎ 控制层', 24, 500);
 
       // ---- (5) 版本水印 ----
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v6 anode  (区域标签居左+无背景+工艺主轴移到流程横幅上方)', w - 30, h - 8);
+      ctx.fillText('v7 anode  (辅助区扩高 100→125 / 控制层下移 25px / 设备坐标同步)', w - 30, h - 8);
     }
   };
 

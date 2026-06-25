@@ -123,7 +123,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 4：产线控制柜
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 580, width: 120, height: 70,
+    x: 580, y: 605, width: 120, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压',   value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },
@@ -144,10 +144,7 @@ export const weldingPipelines: Pipeline[] = [
   { id: 'WP-102', from: 'ROB-102', to: 'FIX-101', fromPoint: 'bottom', toPoint: 'top',    medium: '点焊', flowRate: 0.6, color: '#f97316' },
   { id: 'WP-103', from: 'ROB-103', to: 'FIX-101', fromPoint: 'top',    toPoint: 'bottom', medium: '点焊', flowRate: 0.6, color: '#f97316' },
   { id: 'WP-201', from: 'WG-101', to: 'ROB-103', fromPoint: 'top', toPoint: 'bottom', medium: '保护气', flowRate: 0.5, color: '#84cc16' },
-  { id: 'WP-301', from: 'CTRL-101', to: 'ROB-101', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'WP-302', from: 'CTRL-101', to: 'ROB-102', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'WP-303', from: 'CTRL-101', to: 'ROB-103', fromPoint: 'top', toPoint: 'top',    medium: '控制', flowRate: 0.4, color: '#a855f7' },
-  { id: 'WP-304', from: 'CTRL-101', to: 'FIX-101', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
+  { id: 'WP-301', from: 'CTRL-101', to: 'FIX-101', fromPoint: 'top', toPoint: 'bottom', medium: '控制', flowRate: 0.4, color: '#a855f7' },
 ];
 
 export const weldingConfig = {

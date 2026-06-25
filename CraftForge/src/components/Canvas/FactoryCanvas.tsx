@@ -386,24 +386,24 @@ export const FactoryCanvas: React.FC = () => {
     // 右下
     ctx.beginPath(); ctx.moveTo(w - corner, h); ctx.lineTo(w, h); ctx.lineTo(w, h - corner); ctx.stroke();
 
-    // 焊装场景 v10：压缩控制层 + 机器人点焊弧光标志动画
+    // 焊装场景 v12：控制区下移避开标签压线 + 控制管道精简到 1 条
     if (activeTemplate === 'welding') {
       // 主焊装区底色（y=130~390）
       ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
       ctx.fillRect(0, 130, w, 260);
-      // 下排机器人区（y=400~555）
+      // 下排机器人区（y=400~575）
       ctx.fillStyle = 'rgba(251, 191, 36, 0.04)';
-      ctx.fillRect(0, 400, w, 155);
-      // 控制柜区域浅底色（y=560 起 高 100 - 紧贴 CTRL 设备）
+      ctx.fillRect(0, 400, w, 175);
+      // 控制柜区域浅底色（y=595 起 高 85 - 让 CTRL name 标签 y=583 完全在分割线之上）
       ctx.fillStyle = '#0a1629';
-      ctx.fillRect(0, 560, w, 100);
+      ctx.fillRect(0, 595, w, 85);
 
-      // baseboard 分割线（控制区上沿下移到 555）
+      // baseboard 分割线（下移到 y=590，让 CTRL name 标签 y=583 不再压线）
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(15, 390); ctx.lineTo(w - 15, 390); ctx.stroke();
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 555); ctx.lineTo(w - 15, 555); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 590); ctx.lineTo(w - 15, 590); ctx.stroke();
 
       // 工艺横幅
       drawProcessBanner([
@@ -508,14 +508,14 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#fde68a';
       ctx.fillText('▎ 物流/安全通道', 24, 398);
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制区', 24, 568);
+      ctx.fillText('▎ 控制区', 24, 603);
 
       // 🎯 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v11 welding  (弧光收缩到机器人臂端 不再遮挡周围文字)', w - 30, h - 8);
+      ctx.fillText('v12 welding  (控制管道 4→1 + 控制区下移 25px)', w - 30, h - 8);
     }
 
     // CNC 场景：3 大功能分区（加工区 / 物流主线 / 辅助系统）+ 横幅 + 节点编号（无单独控制层）

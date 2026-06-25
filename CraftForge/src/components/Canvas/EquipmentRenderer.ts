@@ -379,6 +379,148 @@ export class EquipmentRenderer {
           ctx.textBaseline = 'middle';
           ctx.fillText('150°C', cx, tempDotY + 12);
         }
+
+        // ============ 焙烧炉室专属渲染（BAKE-K1/K2/K3/K4）============
+        // 4 个并排炉膛 + 火焰动画 + 炉门 + 顶部排烟口 + 实时温度色温
+        if (id === 'BAKE-K1' || id === 'BAKE-K2' || id === 'BAKE-K3' || id === 'BAKE-K4') {
+          const animTLocal = animTime ?? Date.now() / 1000;
+          // 读取炉室温度（用于色温和火焰强度）
+          const rtParam = parameters?.find((p) => p.id === 'room_temp');
+          const roomTemp = rtParam?.value ?? 1000;
+          // 归一化 300~1200°C → 0~1
+          const tempNorm = Math.max(0, Math.min(1, (roomTemp - 300) / 900));
+
+          // 重新覆盖底色：根据温度展示色温（低=暗红，高=亮橙）
+          const baseR = Math.round(40 + tempNorm * 180);   // 40 → 220
+          const baseG = Math.round(15 + tempNorm * 60);    // 15 → 75
+          const baseB = Math.round(10 + tempNorm * 10);    // 10 → 20
+          ctx.fillStyle = `rgb(${baseR}, ${baseG}, ${baseB})`;
+          ctx.strokeStyle = '#7c2d12';
+          ctx.lineWidth = 2;
+          this.roundRect(ctx, x, y, width, height, 6);
+          ctx.fill();
+          ctx.stroke();
+
+          // 顶部排烟管口（梯形小烟道）
+          const stackW = 24;
+          const stackH = 14;
+          const stackX = x + width / 2 - stackW / 2;
+          ctx.fillStyle = '#1f2937';
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(stackX - 4, y);
+          ctx.lineTo(stackX + 4, y - stackH);
+          ctx.lineTo(stackX + stackW - 4, y - stackH);
+          ctx.lineTo(stackX + stackW + 4, y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          // 烟雾飘出（白灰色小圆，随时间上升）
+          for (let s = 0; s < 3; s++) {
+            const sPhase = ((animTLocal * 0.6 + s * 0.33) % 1);
+            const sy = y - stackH - 4 - sPhase * 20;
+            const sx = stackX + stackW / 2 + Math.sin(animTLocal * 1.5 + s) * 4;
+            ctx.fillStyle = `rgba(200, 200, 200, ${(1 - sPhase) * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 3 + sPhase * 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // 4 个炉膛（左右两两并排，上下两层共 4 个）
+          const innerL = x + 12;
+          const innerT = y + 18;
+          const innerW = width - 24;
+          const innerH = height - 36;
+          const chamberW = (innerW - 6) / 2;
+          const chamberH = (innerH - 6) / 2;
+          for (let row = 0; row < 2; row++) {
+            for (let col = 0; col < 2; col++) {
+              const cxL = innerL + col * (chamberW + 6);
+              const cyT = innerT + row * (chamberH + 6);
+
+              // 炉膛背景（深色）
+              ctx.fillStyle = '#0a0a0a';
+              ctx.strokeStyle = '#7c2d12';
+              ctx.lineWidth = 1;
+              this.roundRect(ctx, cxL, cyT, chamberW, chamberH, 3);
+              ctx.fill();
+              ctx.stroke();
+
+              // 火焰动画：基于温度强度 + 时间正弦
+              const flameIntensity = tempNorm;
+              if (flameIntensity > 0.15) {
+                const flameBaseY = cyT + chamberH - 3;
+                const flameCount = 5;
+                for (let f = 0; f < flameCount; f++) {
+                  const fx = cxL + (chamberW / (flameCount + 1)) * (f + 1);
+                  const flameWave = Math.sin(animTLocal * 6 + f + row * 2 + col * 3);
+                  const fHeight = (chamberH - 8) * flameIntensity * (0.7 + flameWave * 0.3);
+                  // 火焰渐变（底亮橙 → 顶暗红）
+                  const flameGrad = ctx.createLinearGradient(fx, flameBaseY, fx, flameBaseY - fHeight);
+                  flameGrad.addColorStop(0, `rgba(255, 200, 50, ${flameIntensity * 0.95})`);
+                  flameGrad.addColorStop(0.5, `rgba(255, 120, 30, ${flameIntensity * 0.85})`);
+                  flameGrad.addColorStop(1, `rgba(180, 30, 0, 0)`);
+                  ctx.fillStyle = flameGrad;
+                  // 火焰形状（葫芦形）
+                  ctx.beginPath();
+                  ctx.moveTo(fx - 4, flameBaseY);
+                  ctx.quadraticCurveTo(fx - 5, flameBaseY - fHeight * 0.4, fx - 1, flameBaseY - fHeight * 0.8);
+                  ctx.quadraticCurveTo(fx, flameBaseY - fHeight, fx + 1, flameBaseY - fHeight * 0.8);
+                  ctx.quadraticCurveTo(fx + 5, flameBaseY - fHeight * 0.4, fx + 4, flameBaseY);
+                  ctx.closePath();
+                  ctx.fill();
+                }
+                // 炉膛内部辉光（径向）
+                const glow = ctx.createRadialGradient(
+                  cxL + chamberW / 2, cyT + chamberH / 2, 0,
+                  cxL + chamberW / 2, cyT + chamberH / 2, chamberW / 1.5,
+                );
+                glow.addColorStop(0, `rgba(255, 120, 30, ${flameIntensity * 0.4})`);
+                glow.addColorStop(1, `rgba(255, 120, 30, 0)`);
+                ctx.fillStyle = glow;
+                ctx.fillRect(cxL, cyT, chamberW, chamberH);
+              }
+
+              // 炉膛中央暗影中的阳极坯（黑色矩形剪影）
+              if (flameIntensity > 0.1) {
+                const blockW = chamberW * 0.4;
+                const blockH = chamberH * 0.3;
+                ctx.fillStyle = `rgba(20, 5, 0, 0.7)`;
+                ctx.fillRect(
+                  cxL + chamberW / 2 - blockW / 2,
+                  cyT + chamberH / 2 - blockH / 2,
+                  blockW, blockH,
+                );
+              }
+            }
+          }
+
+          // 中央分隔十字线（厚耐火砖）
+          ctx.strokeStyle = '#7c2d12';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(innerL, innerT + chamberH + 3);
+          ctx.lineTo(innerL + innerW, innerT + chamberH + 3);
+          ctx.moveTo(innerL + chamberW + 3, innerT);
+          ctx.lineTo(innerL + chamberW + 3, innerT + innerH);
+          ctx.stroke();
+
+          // 顶部温度大字（实时温度）
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 14px Inter, "Microsoft YaHei", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`${Math.round(roomTemp)}°C`, x + width / 2, y + 4);
+
+          // 底部已焙烧天数小字
+          const daysParam = parameters?.find((p) => p.id === 'days_in');
+          const days = daysParam?.value ?? 0;
+          ctx.fillStyle = '#fde68a';
+          ctx.font = '10px Inter, "Microsoft YaHei", sans-serif';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(`第 ${days} 天`, x + width / 2, y + height - 4);
+        }
         break;
         
       case 'fractionator':
@@ -1601,10 +1743,13 @@ export class EquipmentRenderer {
         ctx.fillText('▎ 班组生产任务', boardL + 8, boardT + titleH / 2);
         // 班次（右侧）— 按场景区分
         ctx.textAlign = 'right';
-        // 通过 id 判断场景：HMI-802 在阳极场景中表达"阳极车间"；电解铝场景 HMI-301 表达"电解铝"
+        // 通过 id 判断场景
         const isAnodeBoard = id === 'HMI-802';
+        const isBakingBoard = id === 'HMI-903';
         const shiftLabel = isAnodeBoard
           ? '中班 / 振压线 / 已完成 35·60'
+          : isBakingBoard
+          ? '中班 / 焙烧线 / 已出炉 32·80'
           : '3 班 / 系列 5 / 已完成 3·8';
         ctx.fillText(shiftLabel, boardR - 8, boardT + titleH / 2);
 
@@ -1625,6 +1770,21 @@ export class EquipmentRenderer {
             { done: true,  text: '模具预热 135°C' },
             { done: false, text: '振压本班 25 块' },
             { done: false, text: '密度抽检 2 块' },
+          ];
+        } else if (isBakingBoard) {
+          // 阳极焙烧炉车间任务清单
+          tasks = isLarge ? [
+            { done: true,  text: '3号炉室恒温 1100°C   已完成' },
+            { done: true,  text: '左右火道温差 ≤ 20°C  已完成' },
+            { done: true,  text: '抽烟负压 -350 Pa     已完成' },
+            { done: false, text: '本班出炉 48 块（待完成）' },
+            { done: false, text: '电阻率抽检 3 块（待执行）' },
+            { done: false, text: '焦床料位补到 80%（待执行）' },
+          ] : [
+            { done: true,  text: '3号炉室 1100°C' },
+            { done: true,  text: '火道温差 ≤ 20°C' },
+            { done: false, text: '出炉 48 块' },
+            { done: false, text: '电阻率抽检' },
           ];
         } else {
           // 电解铝车间任务清单（默认/兜底）

@@ -947,6 +947,138 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'bottom';
       ctx.fillText('v9 anode  (动力学引擎+搅拌器+冷却台滑动+振压参数联动)', w - 30, h - 8);
     }
+
+    // ===== 阳极焙烧炉车间 v1：工艺流程横幅 + 区域标签 =====
+    if (activeTemplate === 'baking') {
+      // ---- (0) 厂房深色底（炽热红橙工厂感）----
+      const bGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bGrad.addColorStop(0, '#1a0a05');       // 顶部偏红橙（炉膛余热）
+      bGrad.addColorStop(0.5, '#0c0805');
+      bGrad.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = bGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // ---- (1) 区域底色 ----
+      // 行 1 焙烧炉室阵列 (y=130~325)
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.06)';
+      ctx.fillRect(0, 120, w, 215);
+      // 行 2 抽烟净化系统 (y=340~445)
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
+      ctx.fillRect(0, 340, w, 105);
+      // 行 3 辅助供给 (y=450~525)
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.06)';
+      ctx.fillRect(0, 450, w, 80);
+      // 控制层 (y=535~660)
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
+      ctx.fillRect(0, 535, w, 125);
+
+      // baseboard 分割线
+      ctx.strokeStyle = 'rgba(220, 38, 38, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(15, 335); ctx.lineTo(w - 15, 335); ctx.stroke();
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+      ctx.beginPath(); ctx.moveTo(15, 449); ctx.lineTo(w - 15, 449); ctx.stroke();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+      ctx.beginPath(); ctx.moveTo(15, 532); ctx.lineTo(w - 15, 532); ctx.stroke();
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(15, 665); ctx.lineTo(w - 15, 665); ctx.stroke();
+
+      // ---- (2) 顶部工艺流程横幅（y=40~76）----
+      // 表达: 装炉 → 升温 → 恒温 → 降温 → 出炉
+      const bannerY = 40;
+      const bannerH = 36;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(20, bannerY, w - 40, bannerH);
+      ctx.strokeStyle = '#dc2626';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(20, bannerY, w - 40, bannerH);
+
+      const steps = [
+        { num: '①', label: '装炉填焦', desc: '焦床 100mm' },
+        { num: '②', label: '升温段', desc: '500→900°C / 8天' },
+        { num: '③', label: '恒温段', desc: '1100°C / 3天' },
+        { num: '④', label: '降温段', desc: '900→200°C / 7天' },
+        { num: '⑤', label: '出炉装运', desc: '电阻率 55 μΩ·m' },
+      ];
+      const stepW = (w - 60) / steps.length;
+      steps.forEach((s, i) => {
+        const sx = 30 + stepW * i + stepW / 2;
+        ctx.fillStyle = '#dc2626';
+        ctx.font = 'bold 16px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.num, sx - 42, bannerY + bannerH / 2);
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(s.label, sx - 34, bannerY + bannerH / 2 - 7);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '11px Inter, "Microsoft YaHei", sans-serif';
+        ctx.fillText(s.desc, sx - 34, bannerY + bannerH / 2 + 8);
+        if (i < steps.length - 1) {
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 16px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▶', sx + stepW / 2 - 8, bannerY + bannerH / 2);
+        }
+      });
+
+      // ---- (3) 设备节点编号：对应 4 个炉室 + 出炉位 ----
+      const equipNums: Array<[string, string]> = [
+        ['BAKE-K1', '②'],
+        ['BAKE-K2', '②'],
+        ['BAKE-K3', '③'],
+        ['BAKE-K4', '④'],
+        ['OUT-K5',  '⑤'],
+      ];
+      equipNums.forEach(([eqId, num]) => {
+        const eq = equipmentsRef.current.find((e) => e.id === eqId);
+        if (!eq) return;
+        const ncx = eq.x - 12;
+        const ncy = eq.y + 10;
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(ncx, ncy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num, ncx, ncy + 1);
+      });
+
+      // ---- (4) 区域标签（居左 + 无背景 + 工艺主轴放流程横幅上方）----
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      // 焙烧主轴标签（横幅上方）
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('▎ 焙烧主轴', 24, 26);
+
+      // 抽烟净化系统标签
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillText('▎ 抽烟净化', 24, 343);
+
+      // 辅助供给标签
+      ctx.fillStyle = '#fde68a';
+      ctx.fillText('▎ 辅助供给', 24, 457);
+
+      // 控制层标签
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 控制层', 24, 540);
+
+      // ---- (5) 版本水印 ----
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v1 baking  (焙烧炉室+火焰动画+工艺横幅+区域分色)', w - 30, h - 8);
+    }
   };
 
   return (

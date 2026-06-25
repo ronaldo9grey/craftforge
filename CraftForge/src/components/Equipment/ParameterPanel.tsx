@@ -7,6 +7,7 @@ import { useDivergenceStore } from '@/stores/divergenceStore';
 import { fccManuals } from '@/templates/fcc/manuals';
 import { injectionManuals } from '@/templates/injection/manuals';
 import { aluminumManuals } from '@/templates/aluminum/manuals';
+import { anodeManuals } from '@/templates/anode/manuals';
 import { getActionsForEquipment } from '@/templates/equipmentActions';
 import { useToastStore } from '@/components/Toast';
 
@@ -90,6 +91,7 @@ export const ParameterPanel: React.FC = () => {
     equipment.template === 'fcc'       ? fccManuals[equipment.id]
     : equipment.template === 'injection' ? injectionManuals[equipment.id]
     : equipment.template === 'aluminum'  ? aluminumManuals[equipment.id]
+    : equipment.template === 'anode'     ? anodeManuals[equipment.id]
     : undefined;
   // 当前设备的历史记录（最近 20 条，倒序）
   const history = (operationHistory[equipment.id] ?? []).slice(-20).reverse();

@@ -2,12 +2,28 @@ import type { Pipeline } from '@/types';
 
 export class PipelineRenderer {
   static render(ctx: CanvasRenderingContext2D, pipelines: Pipeline[], flowOffset: number) {
+    // 两遍渲染解决 z 序问题：
+    //   第一遍：仅画管道线条 + 流动动画（不画 medium 标签）
+    //   第二遍：画所有 medium 标签 — 这样标签框一定盖在所有线之上，不被后画的线穿过
     pipelines.forEach((pipeline) => {
-      this.drawPipeline(ctx, pipeline, flowOffset);
+      this.drawPipeline(ctx, pipeline, flowOffset, /* drawLabelToo */ false);
+    });
+    pipelines.forEach((pipeline) => {
+      this.drawPipelineLabelOnly(ctx, pipeline);
     });
   }
 
-  private static drawPipeline(ctx: CanvasRenderingContext2D, pipeline: Pipeline, flowOffset: number) {
+  /** 只画该管道的 medium 标签（用于二遍 z 序覆盖） */
+  private static drawPipelineLabelOnly(ctx: CanvasRenderingContext2D, pipeline: Pipeline) {
+    const { from, to, fromPoint, toPoint, color, medium } = pipeline;
+    const fromPos = this.getConnectionPoint(from, fromPoint);
+    const toPos = this.getConnectionPoint(to, toPoint);
+    if (!fromPos || !toPos) return;
+    const path = this.calculatePath(fromPos, toPos, fromPoint, toPoint);
+    this.drawLabel(ctx, path, medium, color);
+  }
+
+  private static drawPipeline(ctx: CanvasRenderingContext2D, pipeline: Pipeline, flowOffset: number, drawLabelToo: boolean = true) {
     const { from, to, fromPoint, toPoint, color, flowRate, medium } = pipeline;
 
     // 获取设备位置（与config.ts中的坐标对应）
@@ -51,8 +67,10 @@ export class PipelineRenderer {
     // 绘制箭头指示流向（在路径终点前）
     this.drawArrow(ctx, path, color);
 
-    // 绘制介质标签（在管道上方，避免与线条重叠）
-    this.drawLabel(ctx, path, medium, color);
+    // 绘制介质标签（仅在主调用 render 时跳过，由二遍 drawPipelineLabelOnly 统一画在最上层）
+    if (drawLabelToo) {
+      this.drawLabel(ctx, path, medium, color);
+    }
   }
 
   private static calculatePath(

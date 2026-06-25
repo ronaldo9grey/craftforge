@@ -224,23 +224,30 @@ export class EquipmentRenderer {
       // 名称显示在设备上方 - 加大与设备图形的间距，避免被塞阀阀杆/加热炉烟囱/分馏塔顶塔盘等顶部装饰物覆盖
       // 阀门顶部有阀杆+手轮（占 24px 高），标签需再上移
       const nameOffset = type === 'valve' ? 38 : 22;
-      // 标签带半透明深色背景框，避免被周围管道/设备遮挡
+      // 标签带不透明深色背景框（rgba 0.95），强制盖住任何下层管道/虚线/baseboard 等
       const nameY = y - nameOffset;
       ctx.font = 'bold 12px Inter, sans-serif';
       const nameW = ctx.measureText(name).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
       ctx.fillRect(x + width / 2 - nameW / 2 - 4, nameY - 8, nameW + 8, 16);
+      // 边框细线增强可读
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(x + width / 2 - nameW / 2 - 4, nameY - 8, nameW + 8, 16);
       ctx.fillStyle = '#f1f5f9';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(name, x + width / 2, nameY);
 
-      // 设备ID显示在设备下方 - 同样带背景框
+      // 设备ID显示在设备下方 - 同样带不透明背景框 + 边框
       const idY = y + height + 22;
       ctx.font = '10px Roboto Mono, monospace';
       const idW = ctx.measureText(id).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
       ctx.fillRect(x + width / 2 - idW / 2 - 4, idY - 7, idW + 8, 14);
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(x + width / 2 - idW / 2 - 4, idY - 7, idW + 8, 14);
       ctx.fillStyle = '#94a3b8';
       ctx.fillText(id, x + width / 2, idY);
     }

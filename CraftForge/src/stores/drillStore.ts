@@ -109,6 +109,20 @@ const PARAM_TO_STEP_KEYWORDS: Record<string, string[]> = {
   coke_ratio:     ['石油焦', '粒度', '配比'],
   fine_ratio:     ['细粒', '配比'],
   cool_speed:     ['冷却', '传送速度'],
+
+  // 阳极焙烧炉场景
+  room_temp:      ['炉室温度', '炉室', '温度'],
+  flue_temp_l:    ['左火道', '左火', '火道'],
+  flue_temp_r:    ['右火道', '右火', '火道'],
+  gas_flow:       ['燃料气', '燃料', '流量'],
+  gas_pressure:   ['燃料气压力', '气压', '压力'],
+  fan_speed:      ['抽烟机', '转速', '抽烟'],
+  fan_current:    ['电机电流', '电流'],
+  suction_flow:   ['抽气流量', '抽气', '抽烟'],
+  flue_pressure:  ['烟道负压', '负压', '烟道'],
+  inlet_dust:     ['含尘', '净化'],
+  coke_level:     ['焦床料位', '焦床', '焦炭'],
+  coke_thickness: ['焦床厚度', '焦床'],
 };
 
 export const useDrillStore = create<DrillState>((set, get) => ({

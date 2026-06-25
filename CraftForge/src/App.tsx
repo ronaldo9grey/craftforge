@@ -17,6 +17,7 @@ import { cncCouplings } from '@/templates/cnc/dynamics';
 import { injectionCouplings } from '@/templates/injection/dynamics';
 import { aluminumCouplings } from '@/templates/aluminum/dynamics';
 import { anodeCouplings } from '@/templates/anode/dynamics';
+import { bakingCouplings } from '@/templates/baking/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -74,6 +75,12 @@ function App() {
     } else if (activeTemplate === 'anode') {
       // 阳极振压成型车间：糊料温度/模具温度/真空度/振压参数 → 密度 → 合格率
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, anodeCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'baking') {
+      // 阳极焙烧炉车间：燃料气→炉室温度→火道温度梯度→电阻率→合格率
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, bakingCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

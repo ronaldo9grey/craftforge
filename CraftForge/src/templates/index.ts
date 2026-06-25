@@ -43,6 +43,12 @@ import { anodeFaults } from './anode/faults';
 import { anodeMeta } from './anode/meta';
 import { anodeCoach } from './anode/coach';
 
+// —— 阳极焙烧炉（阳极生产二工序）——
+import { bakingEquipments, bakingPipelines } from './baking/config';
+import { bakingFaults } from './baking/faults';
+import { bakingMeta } from './baking/meta';
+import { bakingCoach } from './baking/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -88,6 +94,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: anodeEquipments,
     pipelines: anodePipelines,
     faults: anodeFaults,
+  },
+  baking: {
+    meta: bakingMeta,
+    coach: bakingCoach,
+    equipments: bakingEquipments,
+    pipelines: bakingPipelines,
+    faults: bakingFaults,
   },
 };
 

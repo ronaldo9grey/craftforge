@@ -8,6 +8,7 @@ import { fccManuals } from '@/templates/fcc/manuals';
 import { injectionManuals } from '@/templates/injection/manuals';
 import { aluminumManuals } from '@/templates/aluminum/manuals';
 import { anodeManuals } from '@/templates/anode/manuals';
+import { bakingManuals } from '@/templates/baking/manuals';
 import { getActionsForEquipment } from '@/templates/equipmentActions';
 import { useToastStore } from '@/components/Toast';
 
@@ -92,6 +93,7 @@ export const ParameterPanel: React.FC = () => {
     : equipment.template === 'injection' ? injectionManuals[equipment.id]
     : equipment.template === 'aluminum'  ? aluminumManuals[equipment.id]
     : equipment.template === 'anode'     ? anodeManuals[equipment.id]
+    : equipment.template === 'baking'    ? bakingManuals[equipment.id]
     : undefined;
   // 当前设备的历史记录（最近 20 条，倒序）
   const history = (operationHistory[equipment.id] ?? []).slice(-20).reverse();

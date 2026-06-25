@@ -26,7 +26,12 @@ export class PipelineRenderer {
 
   /** 只画管道 medium 标签（用于在设备之后画，确保 z 序最高） */
   static renderLabels(ctx: CanvasRenderingContext2D, pipelines: Pipeline[]) {
+    // 去重：相同 medium 的管道只画一次标签
+    // 避免类似"点焊"出现 3 次、"控制"出现 4 次的视觉混乱
+    const drawn = new Set<string>();
     pipelines.forEach((pipeline) => {
+      if (drawn.has(pipeline.medium)) return;
+      drawn.add(pipeline.medium);
       this.drawPipelineLabelOnly(ctx, pipeline);
     });
   }

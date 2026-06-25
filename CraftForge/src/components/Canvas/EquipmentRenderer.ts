@@ -180,7 +180,35 @@ export class EquipmentRenderer {
     
     // 绘制设备形状（传入动画相位，驱动机器人/传送带动画）
     this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime, equipment.id);
-    
+
+    // ⭐ exchanger 内部浮动铭牌（在 switch 之外画，确保 100% 执行 + z 顺序在设备形状之后）
+    //   工艺逻辑：电解铝场景的整流变压器是个卧式圆柱体，圆柱本体只占 25%~75% 高度，
+    //   外部 name+id 会占用周围空间与阴极母线/管道标签重叠。
+    //   将 name+id 浮动在圆柱体表面正中央，紧凑美观且不被任何外部元素遮挡。
+    if (type === 'exchanger' && name && height >= 40) {
+      const labelText = `${name}  ${id}`;
+      ctx.save();
+      ctx.font = 'bold 14px Inter, "Microsoft YaHei", sans-serif';
+      const textW = ctx.measureText(labelText).width;
+      const plateW = Math.min(width - 20, textW + 32);
+      const plateH = 22;
+      const plateX = x + (width - plateW) / 2;
+      const plateY = y + height / 2 - plateH / 2;
+      // 实底深色背景（不透明，绝不被圆柱体颜色透出干扰）
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(plateX, plateY, plateW, plateH);
+      // 金色边框
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(plateX, plateY, plateW, plateH);
+      // 金色文字
+      ctx.fillStyle = '#fde68a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, x + width / 2, plateY + plateH / 2 + 1);
+      ctx.restore();
+    }
+
     // 绘制设备标签
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -388,36 +416,8 @@ export class EquipmentRenderer {
           ctx.lineTo(x + width - 10, tubeY);
           ctx.stroke();
         }
-
-        // 浮动内部铭牌：直接画在圆柱体表面（z 顺序最上层），不被任何元素遮挡
-        // 仅当设备名/ID 有意义时画（即 name 不是占位 + height 足够大 ≥ 60）
-        // 避免影响 FCC/CNC 等其他场景：这里使用与外部一致的字号字色风格，但放在内部空间
-        if (height >= 60 && name) {
-          const labelText = `${name}  ${id}`;
-          ctx.save();
-          ctx.font = 'bold 13px Inter, sans-serif';
-          const textW = ctx.measureText(labelText).width;
-          const plateW = Math.min(width - 30, textW + 28);
-          const plateH = 20;
-          // 居中位于圆柱体本体（y + height/2）
-          const plateX = x + (width - plateW) / 2;
-          const plateY = y + height / 2 - plateH / 2;
-          // 暗色实底（不要半透明，确保不被圆柱体颜色干扰）
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(plateX, plateY, plateW, plateH);
-          // 金色边框
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 1.2;
-          ctx.strokeRect(plateX, plateY, plateW, plateH);
-          // 文字（白热）
-          ctx.fillStyle = '#fbbf24';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(labelText, x + width / 2, plateY + plateH / 2 + 1);
-          ctx.restore();
-        }
         break;
-        
+
       case 'pump':
         // 泵 - 离心泵样式
         ctx.beginPath();

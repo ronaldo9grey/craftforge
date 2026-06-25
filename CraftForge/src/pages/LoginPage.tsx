@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageStore } from '@/stores/pageStore';
 import { authApi, ApiError } from '@/services/api';
 import { Factory, LogIn, KeyRound, UserPlus } from 'lucide-react';
 
@@ -125,10 +126,11 @@ export const LoginPage: React.FC = () => {
             {loading ? '登录中...' : '登 录'}
           </button>
 
-          {/* 游客模式：跳过登录直接体验场景。不依赖后端，仅前端 mock 用户。 */}
+          {/* 游客模式：跳过登录直接进场景画廊。不依赖后端、不调任何 API。 */}
           <button
             type="button"
             onClick={() => {
+              // 1) 注入 mock 用户绕过 LoginPage 网关
               useAuthStore.setState({
                 user: {
                   id: 'guest',
@@ -144,6 +146,9 @@ export const LoginPage: React.FC = () => {
                 status: 'ready',
                 error: null,
               });
+              // 2) 直接进场景画廊，跳过 StudentDashboard（Dashboard 一加载就调
+              //    /api/drill-records/me/summary 等 4 个鉴权 API，游客无 token 会 401）
+              usePageStore.getState().setPage('gallery');
             }}
             className="w-full py-2 border border-dashed border-border hover:border-primary hover:text-primary text-text-secondary rounded-md text-xs flex items-center justify-center gap-2 transition-colors"
           >

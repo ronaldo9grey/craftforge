@@ -34,9 +34,16 @@ export const AppRoot: React.FC = () => {
     void bootstrap();
   }, [bootstrap]);
 
-  // 登录后默认进 Dashboard
+  // 登录后默认进 Dashboard；但游客模式登录时已经主动指定了 gallery，要尊重
   useEffect(() => {
-    if (user) setPage('dashboard');
+    if (user) {
+      if (user.id === 'guest') {
+        // 游客 → 直接进场景画廊，避开 StudentDashboard 的鉴权 API
+        setPage('gallery');
+      } else {
+        setPage('dashboard');
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -61,6 +68,8 @@ export const AppRoot: React.FC = () => {
     if (page === 'history-detail') return <HistoryDetailPage />;
     if (page === 'mistakes') return <MistakeBookPage />;
     if (page === 'leaderboard') return <LeaderboardPage />;
+    // 游客模式：无 token，禁止渲染需鉴权的 Dashboard，强制走画廊
+    if (user.id === 'guest') return <SceneGalleryPage />;
     if (user.role === 'student') return <StudentDashboard />;
     return <TeacherDashboard />;
   };

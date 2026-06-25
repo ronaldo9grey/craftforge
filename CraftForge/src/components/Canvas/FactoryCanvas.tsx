@@ -963,9 +963,9 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillText('v19 aluminum  (变压器铭牌移到 render 主函数，必显示)', w - 30, h - 8);
     }
 
-    // ===== FCC 催化裂化 v3：工艺流程横幅 + 节点编号 + 两区分色（设备整体下移 50px）=====
+    // ===== FCC 催化裂化 v4：工艺流程横幅 + 节点编号 + 两区分色 + 催化剂双循环动画 =====
     if (activeTemplate === 'fcc') {
-      // FCC 设备下移后：V/PI y=190~250 / R/REG/T/F y=240~430 / E/P/K y=480~650
+      // FCC 设备下移后：V/PI y=170~250 / R/REG/T/F y=240~430 / E/P/K y=480~650
       //   反应再生主轴（y=140~430）
       //   辅助换热泵区（y=460~660）
       ctx.fillStyle = 'rgba(34, 197, 94, 0.05)';
@@ -991,6 +991,74 @@ export const FactoryCanvas: React.FC = () => {
         { num: '⑥', label: '产品分馏', desc: '塔顶 125°C' },
       ], '#22c55e');
 
+      // ---- 催化剂双循环管路动画 — FCC 标志性工艺 ----
+      // R-101 (x=620~720, y=260~400) ↔ REG-101 (x=820~920, y=260~400)
+      // 待生剂：R 顶 → REG 顶（暗黄，下行管线）
+      // 再生剂：REG 底 → R 底（亮黄，上行管线，热催化剂）
+      const animT = Date.now() / 1000;
+      const rRight = 720, rTop = 260, rBot = 400;
+      const regLeft = 820, regTop = 260, regBot = 400;
+
+      // 上方"待生剂"管路（R→REG，从反应器顶部出去，绕到再生器顶部入）
+      const wasteY = rTop - 18;  // y=242，紧贴反应器顶
+      ctx.strokeStyle = '#a16207';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(rRight - 30, rTop);          // R 顶部出口
+      ctx.lineTo(rRight - 30, wasteY);         // 上升
+      ctx.lineTo(regLeft + 30, wasteY);        // 横走
+      ctx.lineTo(regLeft + 30, regTop);        // 下降到 REG 顶
+      ctx.stroke();
+      // 待生剂流动小球（向右流）
+      for (let i = 0; i < 4; i++) {
+        const phase = ((animT * 0.7 + i * 0.25) % 1);
+        const totalLen = (regLeft + 30) - (rRight - 30);
+        const fx = (rRight - 30) + phase * totalLen;
+        ctx.fillStyle = '#ca8a04';
+        ctx.beginPath();
+        ctx.arc(fx, wasteY, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 标签
+      ctx.fillStyle = '#a16207';
+      ctx.font = 'bold 10px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('待生剂 →', (rRight - 30 + regLeft + 30) / 2, wasteY - 4);
+
+      // 下方"再生剂"管路（REG→R，从再生器底部出，绕到反应器底入）
+      const regenY = rBot + 18;  // y=418，紧贴反应器底
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(regLeft + 30, regBot);        // REG 底部出口
+      ctx.lineTo(regLeft + 30, regenY);        // 下降
+      ctx.lineTo(rRight - 30, regenY);         // 横走（向左）
+      ctx.lineTo(rRight - 30, rBot);           // 上升到 R 底
+      ctx.stroke();
+      // 再生剂流动小球（向左流，热催化剂带辉光）
+      for (let i = 0; i < 5; i++) {
+        const phase = ((animT * 0.9 + i * 0.2) % 1);
+        const totalLen = (regLeft + 30) - (rRight - 30);
+        const fx = (regLeft + 30) - phase * totalLen;
+        // 辉光（外圈）
+        ctx.fillStyle = 'rgba(252, 211, 77, 0.4)';
+        ctx.beginPath();
+        ctx.arc(fx, regenY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // 内核（橙红色：热）
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(fx, regenY, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // 标签
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 10px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('← 再生剂 (690°C)', (rRight - 30 + regLeft + 30) / 2, regenY + 4);
+
       // 节点编号灯
       drawEquipmentNodeBadges([
         ['P-101',   '①'],
@@ -1015,7 +1083,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v3 fcc  (设备整体下移 · 充分利用画布空间)', w - 30, h - 8);
+      ctx.fillText('v4 fcc  (催化剂双循环动画 R↔REG)', w - 30, h - 8);
     }
 
     // ===== 阳极振压成型场景 v3：工艺流程横幅 + 工序节点编号 =====

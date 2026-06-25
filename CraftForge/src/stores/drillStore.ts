@@ -209,10 +209,10 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         soundService.playShutdown();
       }
 
-      // 任务 9：演练结束后，把记录同步上报到后端（仅当用户已登录）
+      // 任务 9：演练结束后，把记录同步上报到后端（仅当用户已登录，且非游客）
       // 失败降级：本地仍保留 history，控制台输出错误即可
       const authedUser = useAuthStore.getState().user;
-      if (authedUser) {
+      if (authedUser && authedUser.id !== 'guest') {
         const sceneId = useUIStore.getState().activeTemplate ?? 'fcc';
         const startMs = startTime ?? record.startTime;
         const endMs = record.endTime;
@@ -266,6 +266,16 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       // 因 sendMessage 自动生成随机 id，我们用 streamMessage 必须知道 id - 这里直接拿最末一条
       const lastMsg = useAIStore.getState().messages.slice(-1)[0];
       const targetId = lastMsg?.id ?? placeholderId;
+
+      // 游客模式：直接使用 breakdown.coachComment 兜底，不调后端避免 401 触发 forceLogout
+      const isGuest = authedUser?.id === 'guest';
+      if (isGuest) {
+        const fallback = breakdown.coachComment || '本次演练已结束。';
+        ai.streamMessage(targetId, fallback);
+        ai.flushStream(targetId);
+        ai.requestSpeak(fallback);
+        return;
+      }
 
       coachClosing(breakdown)
         .then((text) => {

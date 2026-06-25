@@ -48,8 +48,9 @@ export async function apiFetch<T = any>(path: string, opts: RequestOptions = {})
     'Content-Type': 'application/json',
     ...headers,
   };
+  let token: string | null = null;
   if (auth) {
-    const token = tokenStorage.get();
+    token = tokenStorage.get();
     if (token) reqHeaders['Authorization'] = `Bearer ${token}`;
   }
   const resp = await fetch(`${API_BASE}${path}`, {
@@ -59,9 +60,14 @@ export async function apiFetch<T = any>(path: string, opts: RequestOptions = {})
   });
 
   // 401 处理：清除 token + 通知全局
+  // ⚠️ 游客模式（无 token）调任何鉴权 API 都会得到 401，但**不应触发 forceLogout**
+  //    游客的 user.id === 'guest'，没有真实 token。若被 forceLogout 会被踢回登录页。
   if (resp.status === 401 && auth) {
-    tokenStorage.clear();
-    if (on401Handler) on401Handler();
+    // 仅当当前持有 token（即真实登录用户）时才走 forceLogout 流程
+    if (token) {
+      tokenStorage.clear();
+      if (on401Handler) on401Handler();
+    }
   }
 
   let respBody: any = null;

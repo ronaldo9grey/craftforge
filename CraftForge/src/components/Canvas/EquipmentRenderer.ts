@@ -183,7 +183,7 @@ export class EquipmentRenderer {
     }
     
     // 绘制设备形状（传入动画相位，驱动机器人/传送带动画）
-    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime, equipment.id);
+    this.drawEquipmentShape(ctx, type, x, y, width, height, fillColor, strokeColor, animTime, equipment.id, name);
 
     // ⭐ exchanger 内部浮动铭牌（在 switch 之外画，确保 100% 执行 + z 顺序在设备形状之后）
     //   工艺逻辑：电解铝场景的整流变压器是个卧式圆柱体，圆柱本体只占 25%~75% 高度，
@@ -271,7 +271,8 @@ export class EquipmentRenderer {
     fillColor: string,
     strokeColor: string,
     animTime: number = 0,
-    id: string = ''
+    id: string = '',
+    name: string = ''
   ) {
     ctx.fillStyle = fillColor;
     ctx.strokeStyle = strokeColor;
@@ -416,47 +417,112 @@ export class EquipmentRenderer {
         }
         break;
 
-      case 'pump':
-        // 泵 - 离心泵样式
-        ctx.beginPath();
-        ctx.arc(x + width / 2, y + height / 2, width / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // 泵体细节
-        ctx.beginPath();
-        ctx.arc(x + width / 2, y + height / 2, width / 2 - 8, 0, Math.PI * 2);
-        ctx.strokeStyle = this.lightenColor(fillColor, 20);
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // 进口
-        ctx.fillStyle = this.darkenColor(fillColor, 20);
-        ctx.fillRect(x - 8, y + height / 2 - 6, 12, 12);
-        ctx.strokeRect(x - 8, y + height / 2 - 6, 12, 12);
-        
-        // 出口
-        ctx.fillRect(x + width - 4, y + height / 2 - 6, 12, 12);
-        ctx.strokeRect(x + width - 4, y + height / 2 - 6, 12, 12);
-        
-        // 旋转箭头动画
-        const pumpTime = Date.now() / 500;
-        ctx.save();
-        ctx.translate(x + width / 2, y + height / 2);
-        ctx.rotate(pumpTime);
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, width / 4, 0, Math.PI * 1.5);
-        ctx.stroke();
-        // 箭头
-        ctx.beginPath();
-        ctx.moveTo(width / 4, -5);
-        ctx.lineTo(width / 4 + 5, 0);
-        ctx.lineTo(width / 4, 5);
-        ctx.fill();
-        ctx.restore();
+      case 'pump': {
+        // 泵 - 卧式离心泵样式（罐体 + 电机 + 真空表）
+        // 自适应：当 width > 2*height 时画"卧式罐+电机"；否则画传统圆形泵
+        if (width >= 2 * height) {
+          // 卧式真空泵 / 工业泵布局
+          const pumpH = height - 16;
+          const motorW = pumpH * 1.1;       // 电机方块（左）
+          const tankW = width - motorW - 30; // 罐体（右，圆柱端面）
+          const cy = y + height / 2;
+          // 电机方块
+          ctx.fillStyle = fillColor;
+          ctx.fillRect(x + 6, y + 8, motorW, pumpH);
+          ctx.strokeRect(x + 6, y + 8, motorW, pumpH);
+          // 电机散热筋
+          ctx.strokeStyle = this.darkenColor(fillColor, 20);
+          ctx.lineWidth = 1;
+          for (let i = 1; i < 5; i++) {
+            const fx = x + 6 + (motorW / 5) * i;
+            ctx.beginPath();
+            ctx.moveTo(fx, y + 12);
+            ctx.lineTo(fx, y + 8 + pumpH - 4);
+            ctx.stroke();
+          }
+          // 联轴节（电机 → 罐体）
+          ctx.fillStyle = this.darkenColor(fillColor, 30);
+          ctx.fillRect(x + 6 + motorW, cy - 4, 12, 8);
+          // 罐体（卧式圆柱体）
+          const tankX = x + 6 + motorW + 12;
+          const tankR = pumpH / 2;
+          ctx.fillStyle = this.lightenColor(fillColor, 5);
+          ctx.fillRect(tankX + tankR, cy - tankR, tankW - tankR * 2, tankR * 2);
+          ctx.strokeRect(tankX + tankR, cy - tankR, tankW - tankR * 2, tankR * 2);
+          // 罐体左端面
+          ctx.beginPath();
+          ctx.ellipse(tankX + tankR, cy, tankR, tankR, 0, 0, Math.PI * 2);
+          ctx.fillStyle = this.darkenColor(fillColor, 15);
+          ctx.fill();
+          ctx.stroke();
+          // 罐体右端面
+          ctx.beginPath();
+          ctx.ellipse(tankX + tankW - tankR, cy, tankR, tankR, 0, 0, Math.PI * 2);
+          ctx.fillStyle = this.darkenColor(fillColor, 15);
+          ctx.fill();
+          ctx.stroke();
+          // 顶部真空表（小圆表盘）
+          const gaugeX = tankX + tankW / 2;
+          const gaugeY = y + 6;
+          ctx.beginPath();
+          ctx.arc(gaugeX, gaugeY, 6, 0, Math.PI * 2);
+          ctx.fillStyle = '#0f172a';
+          ctx.fill();
+          ctx.strokeStyle = '#94a3b8';
+          ctx.stroke();
+          // 表针动画（按真空波动小幅左右）
+          const gAng = Math.PI * 1.2 + Math.sin(Date.now() / 800) * 0.3;
+          ctx.strokeStyle = '#22d3ee';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(gaugeX, gaugeY);
+          ctx.lineTo(gaugeX + Math.cos(gAng) * 5, gaugeY + Math.sin(gAng) * 5);
+          ctx.stroke();
+          // 电机轴顶部转子（旋转动画）
+          const rotorTime = Date.now() / 200;
+          ctx.save();
+          ctx.translate(x + 6 + motorW / 2, cy);
+          ctx.rotate(rotorTime);
+          ctx.strokeStyle = this.lightenColor(fillColor, 35);
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(-pumpH / 3, 0);
+          ctx.lineTo(pumpH / 3, 0);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, -pumpH / 3);
+          ctx.lineTo(0, pumpH / 3);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          // 传统圆形离心泵
+          ctx.beginPath();
+          ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2 - 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2 - 12, 0, Math.PI * 2);
+          ctx.strokeStyle = this.lightenColor(fillColor, 20);
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          const pumpTime = Date.now() / 500;
+          ctx.save();
+          ctx.translate(x + width / 2, y + height / 2);
+          ctx.rotate(pumpTime);
+          ctx.strokeStyle = '#f1f5f9';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.min(width, height) / 4, 0, Math.PI * 1.5);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(Math.min(width, height) / 4, -5);
+          ctx.lineTo(Math.min(width, height) / 4 + 5, 0);
+          ctx.lineTo(Math.min(width, height) / 4, 5);
+          ctx.fill();
+          ctx.restore();
+        }
         break;
+      }
         
       case 'compressor':
         // 压缩机 - 蜗壳式
@@ -1359,17 +1425,19 @@ export class EquipmentRenderer {
         }
         ctx.stroke();
 
-        // 屏幕文字 (POT CTRL)
+        // 屏幕文字：显示设备真实 name（"槽控柜" / "配料控制柜" 等动态）
         ctx.fillStyle = '#06b6d4';
-        ctx.font = 'bold 9px Inter, sans-serif';
+        ctx.font = 'bold 9px Inter, "Microsoft YaHei", sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('槽控柜', screenL + 3, screenT + 2);
-        // 槽号 (中文化：#101)
+        ctx.fillText(name || '控制柜', screenL + 3, screenT + 2);
+        // 设备 ID 末尾编号（POT-CTRL-101 → #101 / CFG-701 → #701）
         ctx.fillStyle = '#fbbf24';
         ctx.font = 'bold 11px Inter, sans-serif';
         ctx.textAlign = 'right';
-        const cellNum = id.replace('POT-CTRL-', '#');
+        // 设备 ID 末尾编号：取 ID 中最后一段数字（POT-CTRL-101 → #101 / CFG-701 → #701）
+        const numMatch = id.match(/(\d+)\s*$/);
+        const cellNum = numMatch ? `#${numMatch[1]}` : id;
         ctx.fillText(cellNum, screenR - 3, screenT + 1);
 
         // 左右两侧把手（小竖线）
@@ -1466,19 +1534,26 @@ export class EquipmentRenderer {
         // 构造：① 顶部龙门梁（带液压油缸）② 活塞动画（上下行程）③ 模具底座
         //       ④ 振压脉冲（红色冲击波） ⑤ 模具内糊料填充进度 ⑥ 振动横纹
         const animT = animTime ?? Date.now() / 1000;
-        // 振压周期（按 press_time=95s 折算成 4s 动画一周期，便于人眼观察）
-        const cyclePeriod = 4;
+        // 真实节奏：单块阳极振压周期 ≈ 95~110 s
+        // 动画压缩到 12s/周期，更贴近实际节奏，避免每秒闪烁让人眼花
+        const cyclePeriod = 12;
         const phase = (animT % cyclePeriod) / cyclePeriod;          // 0~1
-        // 活塞行程：上 → 下（前 30% 下行）→ 振压保压（30~70%）→ 上行（70~95%）→ 停（95~100%）
-        let pistonY = 0;       // 0 = 上止点, 1 = 下止点
+        // 时序：0-25% 下料 → 25-30% 下行 → 30-85% 振压保压 → 85-95% 上行 → 95-100% 停
+        let pistonY = 0;        // 0 = 上止点, 1 = 下止点
         let pressing = false;
-        if (phase < 0.3) {
-          pistonY = phase / 0.3;
-        } else if (phase < 0.7) {
+        if (phase < 0.25) {
+          // 下料阶段：活塞在最上方
+          pistonY = 0;
+        } else if (phase < 0.30) {
+          // 下行 5% 时间
+          pistonY = (phase - 0.25) / 0.05;
+        } else if (phase < 0.85) {
+          // 振压保压（占 55% 时间，符合 90~110 s 占周期主体）
           pistonY = 1;
           pressing = true;
         } else if (phase < 0.95) {
-          pistonY = 1 - (phase - 0.7) / 0.25;
+          // 上行 10% 时间
+          pistonY = 1 - (phase - 0.85) / 0.10;
         } else {
           pistonY = 0;
         }
@@ -1522,10 +1597,18 @@ export class EquipmentRenderer {
         ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
         ctx.strokeRect(cylX - 14, pistonTopY, 28, pistonHeadY - pistonTopY);
-        // 压头（带模具压块）
+        // 压头（pressing 时变红橙渐变，不要纯红刺眼）
         const headW = 140;
         const headH = 28;
-        ctx.fillStyle = pressing ? '#dc2626' : '#1e293b';
+        if (pressing) {
+          const grad = ctx.createLinearGradient(cylX - headW/2, pistonHeadY, cylX + headW/2, pistonHeadY + headH);
+          grad.addColorStop(0, '#7f1d1d');
+          grad.addColorStop(0.5, '#b91c1c');
+          grad.addColorStop(1, '#7f1d1d');
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = '#1e293b';
+        }
         ctx.fillRect(cylX - headW / 2, pistonHeadY, headW, headH);
         ctx.strokeRect(cylX - headW / 2, pistonHeadY, headW, headH);
         // 压头标识
@@ -1535,12 +1618,12 @@ export class EquipmentRenderer {
         ctx.textBaseline = 'middle';
         ctx.fillText(pressing ? '振压中' : '压头', cylX, pistonHeadY + headH / 2);
 
-        // ④ 振压冲击波（pressing 期间，从压头四周往外扩散）
+        // ④ 振压冲击波（pressing 期间，柔和的脉冲，每 1.5s 一次而非 1/3 秒）
         if (pressing) {
-          const shockPhase = ((animT * 3) % 1);   // 一秒 3 次冲击
-          const shockR = 30 + shockPhase * 60;
-          ctx.strokeStyle = `rgba(220, 38, 38, ${(1 - shockPhase) * 0.6})`;
-          ctx.lineWidth = 3;
+          const shockPhase = ((animT / 1.5) % 1);   // 1.5s 一次冲击
+          const shockR = 35 + shockPhase * 70;
+          ctx.strokeStyle = `rgba(248, 113, 113, ${(1 - shockPhase) * 0.45})`;
+          ctx.lineWidth = 2.5;
           ctx.beginPath();
           ctx.arc(cylX, pistonHeadY + headH / 2, shockR, 0, Math.PI * 2);
           ctx.stroke();

@@ -817,6 +817,138 @@ export const FactoryCanvas: React.FC = () => {
       ctx.textBaseline = 'bottom';
       ctx.fillText('v19 aluminum  (变压器铭牌移到 render 主函数，必显示)', w - 30, h - 8);
     }
+
+    // ===== 阳极振压成型场景 v3：工艺流程横幅 + 工序节点编号 =====
+    if (activeTemplate === 'anode') {
+      // ---- (0) 厂房深色底（同 aluminum 风格）----
+      const aGrad = ctx.createLinearGradient(0, 0, 0, h);
+      aGrad.addColorStop(0, '#1a0f08');     // 顶部偏橙红（暖工厂感）
+      aGrad.addColorStop(0.5, '#0c0a06');
+      aGrad.addColorStop(1, '#0a0a0a');
+      ctx.fillStyle = aGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // ---- (1) 区域底色：核心工艺主轴 + 辅助设备区 + 控制层 ----
+      // 行 1 主工艺主轴 (y=140~370)
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.05)';
+      ctx.fillRect(0, 140, w, 230);
+      // 行 2 辅助设备区 (y=380~480)
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
+      ctx.fillRect(0, 380, w, 100);
+      // 控制层 (y=490~625)
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.08)';
+      ctx.fillRect(0, 490, w, 135);
+
+      // baseboard 分割线
+      ctx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(15, 374); ctx.lineTo(w - 15, 374); ctx.stroke();
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+      ctx.beginPath(); ctx.moveTo(15, 484); ctx.lineTo(w - 15, 484); ctx.stroke();
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(15, 645); ctx.lineTo(w - 15, 645); ctx.stroke();
+
+      // ---- (2) 顶部工艺流程横幅（y=90~120）----
+      // 表达: 配料 → 糊料 → 称量 → 振压 → 冷却
+      const bannerY = 95;
+      const bannerH = 28;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(20, bannerY, w - 40, bannerH);
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(20, bannerY, w - 40, bannerH);
+
+      // 工艺节点：5 个步骤
+      const steps = [
+        { num: '①', label: '配料', desc: '石油焦+沥青' },
+        { num: '②', label: '糊料保温', desc: '150°C 混捏' },
+        { num: '③', label: '称量加料', desc: '1080 kg/块' },
+        { num: '④', label: '振压成型', desc: '1280t × 95s' },
+        { num: '⑤', label: '生坯冷却', desc: '→ 焙烧炉' },
+      ];
+      const stepW = (w - 60) / steps.length;
+      steps.forEach((s, i) => {
+        const sx = 30 + stepW * i + stepW / 2;
+        // 编号
+        ctx.fillStyle = '#f97316';
+        ctx.font = 'bold 14px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.num, sx - 38, bannerY + bannerH / 2);
+        // 标签
+        ctx.fillStyle = '#fde68a';
+        ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(s.label, sx - 30, bannerY + bannerH / 2 - 5);
+        // 说明
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter, "Microsoft YaHei", sans-serif';
+        ctx.fillText(s.desc, sx - 30, bannerY + bannerH / 2 + 7);
+        // 箭头分隔
+        if (i < steps.length - 1) {
+          ctx.fillStyle = '#f97316';
+          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('▶', sx + stepW / 2 - 8, bannerY + bannerH / 2);
+        }
+      });
+
+      // ---- (3) 设备节点编号：把 ① ② ③ ④ ⑤ 画在对应设备的左上角 ----
+      const equipNums: Array<[string, string]> = [
+        ['CFG-701',   '①'],
+        ['PASTE-101', '②'],
+        ['WGT-401',   '③'],
+        ['FORM-201',  '④'],
+        ['COOL-301',  '⑤'],
+      ];
+      equipNums.forEach(([eqId, num]) => {
+        const eq = equipmentsRef.current.find((e) => e.id === eqId);
+        if (!eq) return;
+        const ncx = eq.x - 14;
+        const ncy = eq.y + 8;
+        // 圆背景
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(ncx, ncy, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // 编号
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Inter, "Microsoft YaHei", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(num, ncx, ncy + 1);
+      });
+
+      // ---- (4) 区域标签 ----
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(20, 143, 130, 14);
+      ctx.fillStyle = '#fde68a';
+      ctx.font = 'bold 11px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('▎ 工艺主轴', 24, 146);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(20, 383, 130, 14);
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillText('▎ 辅助系统', 24, 386);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(20, 493, 130, 14);
+      ctx.fillStyle = '#c4b5fd';
+      ctx.fillText('▎ 控制层', 24, 496);
+
+      // ---- (5) 版本水印 ----
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('v3 anode  (工艺流程横幅+节点编号+真空泵+12s振压周期)', w - 30, h - 8);
+    }
   };
 
   return (

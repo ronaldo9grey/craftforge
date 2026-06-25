@@ -190,7 +190,8 @@ export class EquipmentRenderer {
     //   - task-board：顶部标题条已显示"班组生产任务"
     //   - pot-ctrl：内部已画"POT-CTRL-101"
     //   - crane-iso：横梁极扁，外部 name 会糊在管道/抬包上
-    const SELF_LABELED = ['cell-iso', 'task-board', 'pot-ctrl', 'crane-iso'];
+    //   - exchanger：圆柱体上方 25% 空白带画了浮动内部铭牌
+    const SELF_LABELED = ['cell-iso', 'task-board', 'pot-ctrl', 'crane-iso', 'exchanger'];
     const skipExternalLabel = SELF_LABELED.includes(type);
 
     if (!skipExternalLabel) {
@@ -358,7 +359,7 @@ export class EquipmentRenderer {
         break;
         
       case 'exchanger':
-        // 换热器 - 卧式圆柱体
+        // 换热器 - 卧式圆柱体（注意：圆柱体只占 25%~75% 高度，顶部 25% 和底部 25% 是空白）
         this.roundRect(ctx, x, y + height * 0.25, width, height * 0.5, height * 0.25);
         ctx.fill();
         ctx.stroke();
@@ -386,6 +387,24 @@ export class EquipmentRenderer {
           ctx.moveTo(x + 10, tubeY);
           ctx.lineTo(x + width - 10, tubeY);
           ctx.stroke();
+        }
+
+        // 浮动内部铭牌：利用圆柱体上方 0~25% 空白带显示 name + id
+        // 仅当设备名/ID 有意义时画（即 name 不是占位 + height 足够大 ≥ 60）
+        // 避免影响 FCC/CNC 等其他场景：这里使用与外部一致的字号字色风格，但放在内部空间
+        if (height >= 60 && name) {
+          const plateY = y + 8;
+          // 半透明深底
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          const plateW = Math.min(width - 20, ctx.measureText(name).width + 60);
+          const plateX = x + (width - plateW) / 2;
+          ctx.fillRect(plateX, plateY, plateW, 14);
+          // 文字
+          ctx.fillStyle = '#f1f5f9';
+          ctx.font = 'bold 11px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${name}  ${id}`, x + width / 2, plateY + 7);
         }
         break;
         

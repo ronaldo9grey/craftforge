@@ -815,7 +815,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = 'bold 12px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v17 aluminum  (变压器进一步下移避免文字重叠)', w - 30, h - 8);
+      ctx.fillText('v18 aluminum  (变压器内部浮动铭牌)', w - 30, h - 8);
     }
   };
 

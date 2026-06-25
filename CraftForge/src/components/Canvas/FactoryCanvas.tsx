@@ -407,67 +407,65 @@ export const FactoryCanvas: React.FC = () => {
       ], '#22d3ee');
 
       // ---- 标志性动画：机器人点焊弧光 + 火花飞溅 ----
-      // ROB-101/102 (x=540~650, x=680~790; y=110~190) → FIX-101 (x=480~560, y=240~310)
-      // ROB-103 (x=540~650; y=440~520) ← 在 FIX-101 下方
+      // 让弧光从机器人臂端朝下方"虚拟焊点"短距离闪烁，不再连接到 FIX 中心
+      // 这样不会跨越 50~165px 距离遮挡其他设备/管道/文字标签
       const animTW = Date.now() / 1000;
-      const fixCx = 480 + 80 / 2;     // FIX-101 中心 520
-      const fixCy = 240 + 70 / 2;     // 中心 275
-      // 上方两台机器人头部坐标（机械臂末端，估算在设备底中部）
-      const robots: Array<[number, number]> = [
-        [540 + 110 / 2, 110 + 80],   // ROB-101 头：x=595, y=190
-        [680 + 110 / 2, 110 + 80],   // ROB-102 头：x=735, y=190
-        [540 + 110 / 2, 440],         // ROB-103 头（从下方上焊）：x=595, y=440
+      // 每台机器人有自己的"虚拟焊点"，紧贴在机器人臂端下方/上方 20-30px
+      const weldingArcs: Array<{ rx: number; ry: number; fx: number; fy: number }> = [
+        // ROB-101：朝右下方 30px 处焊接（不跨越到 FIX）
+        { rx: 540 + 110 / 2, ry: 110 + 80, fx: 540 + 110 / 2 + 20, fy: 110 + 80 + 30 },
+        // ROB-102：朝左下方 30px
+        { rx: 680 + 110 / 2, ry: 110 + 80, fx: 680 + 110 / 2 - 20, fy: 110 + 80 + 30 },
+        // ROB-103：朝上方 30px（这台在 FIX 下方，从下往上焊）
+        { rx: 540 + 110 / 2, ry: 440,       fx: 540 + 110 / 2 + 15, fy: 440 - 30 },
       ];
 
-      robots.forEach(([rx, ry], idx) => {
-        // 错相位闪烁：每个机器人每 0.6s 完整闪一次，节奏交错
+      weldingArcs.forEach(({ rx, ry, fx, fy }, idx) => {
         const cycle = 0.8;
         const localT = (animTW + idx * 0.27) % cycle;
-        const arcOn = localT < 0.35; // 前 0.35s 弧亮，后 0.45s 弧灭
+        const arcOn = localT < 0.35;
         if (!arcOn) return;
+        const intensity = Math.sin((localT / 0.35) * Math.PI);
 
-        const intensity = Math.sin((localT / 0.35) * Math.PI); // 0~1 抛物线
-
-        // 1) 焊弧主光柱（白色/亮蓝色）— 从机器人末端到夹具
-        const grad = ctx.createLinearGradient(rx, ry, fixCx, fixCy);
+        // 1) 短焊弧光柱：从机器人臂端到 ~30px 外的虚拟焊点
+        const grad = ctx.createLinearGradient(rx, ry, fx, fy);
         grad.addColorStop(0, `rgba(186, 230, 253, ${0.4 * intensity})`);
-        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * intensity})`);
-        grad.addColorStop(1, `rgba(56, 189, 248, ${0.8 * intensity})`);
+        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.95 * intensity})`);
+        grad.addColorStop(1, `rgba(56, 189, 248, ${0.85 * intensity})`);
         ctx.strokeStyle = grad;
         ctx.lineWidth = 3 * intensity;
         ctx.beginPath();
         ctx.moveTo(rx, ry);
-        ctx.lineTo(fixCx, fixCy);
+        ctx.lineTo(fx, fy);
         ctx.stroke();
 
-        // 2) 焊点辉光（在 FIX 中心）
-        const glowR = 10 + 8 * intensity;
-        const radialGrad = ctx.createRadialGradient(fixCx, fixCy, 0, fixCx, fixCy, glowR);
+        // 2) 焊点辉光（在每台机器人各自的虚拟焊点）
+        const glowR = 8 + 6 * intensity;
+        const radialGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, glowR);
         radialGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * intensity})`);
         radialGrad.addColorStop(0.4, `rgba(186, 230, 253, ${0.7 * intensity})`);
         radialGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
         ctx.fillStyle = radialGrad;
         ctx.beginPath();
-        ctx.arc(fixCx, fixCy, glowR, 0, Math.PI * 2);
+        ctx.arc(fx, fy, glowR, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3) 火花飞溅（5 个朝随机方向射出）
-        const sparkCount = 5;
+        // 3) 火花飞溅（4 道短火花，长度 ≤ 10px，不会喷出 30px 范围）
+        const sparkCount = 4;
         for (let s = 0; s < sparkCount; s++) {
           const sparkAngle = (s / sparkCount) * Math.PI * 2 + idx * 0.7 + animTW * 2;
-          const sparkLen = 8 + 12 * intensity;
-          const sx = fixCx + Math.cos(sparkAngle) * sparkLen;
-          const sy = fixCy + Math.sin(sparkAngle) * sparkLen;
+          const sparkLen = 5 + 6 * intensity;
+          const sx = fx + Math.cos(sparkAngle) * sparkLen;
+          const sy = fy + Math.sin(sparkAngle) * sparkLen;
           ctx.strokeStyle = `rgba(252, 211, 77, ${0.8 * intensity})`;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.moveTo(fixCx, fixCy);
+          ctx.moveTo(fx, fy);
           ctx.lineTo(sx, sy);
           ctx.stroke();
-          // 火花头部小亮点
           ctx.fillStyle = `rgba(254, 240, 138, ${intensity})`;
           ctx.beginPath();
-          ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 1.3, 0, Math.PI * 2);
           ctx.fill();
         }
       });
@@ -508,7 +506,7 @@ export const FactoryCanvas: React.FC = () => {
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v10 welding  (点焊弧光 + 火花飞溅 + 控制层压缩)', w - 30, h - 8);
+      ctx.fillText('v11 welding  (弧光收缩到机器人臂端 不再遮挡周围文字)', w - 30, h - 8);
     }
 
     // CNC 场景：3 大功能分区（加工区 / 物流主线 / 辅助系统）+ 横幅 + 节点编号（无单独控制层）

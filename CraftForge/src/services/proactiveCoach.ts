@@ -12,7 +12,6 @@
 
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useAIStore } from '@/stores/aiStore';
-import { useDrillStore } from '@/stores/drillStore';
 
 export interface ProactiveRule {
   id: string;
@@ -51,14 +50,10 @@ class ProactiveCoachEngine {
 
   /** 把 equipments 数组转换成 { 设备前缀: { 参数 id: 值 } } 扁平 map
    *  例：FORM-201 → key='FORM'，{ press_time: 95, ... }
-   *      PASTE-101 → key='PASTE'
-   *      HMI-802 → key='HMI'（多个 HMI 时取最后一个，规则尽量避开）
    */
-  private buildEqMap(): Record<string, Record<string, number>> {
+  private buildEqMapFrom(equipments: ReturnType<typeof useEquipmentStore.getState>['equipments']): Record<string, Record<string, number>> {
     const map: Record<string, Record<string, number>> = {};
-    const equipments = useEquipmentStore.getState().equipments;
     equipments.forEach((eq) => {
-      // 取 id 的第一段（FORM-201 → FORM）
       const prefix = eq.id.split('-')[0];
       if (!map[prefix]) map[prefix] = {};
       eq.parameters.forEach((p) => {
@@ -82,11 +77,12 @@ class ProactiveCoachEngine {
     if (this.rules.length === 0) return;
     // 启动后 5 秒静默期
     if (Date.now() - this.engineStartTime < this.STARTUP_QUIET_MS) return;
-    // 不在演练中也不弹（避免场景预览时刷屏）
-    const drillRunning = useDrillStore.getState().isRunning;
-    if (!drillRunning) return;
+    // 必须有设备数据（场景已加载）才生效；演练是否运行不再作硬门限，
+    // 学员探索式调参也希望师傅吱声
+    const equipments = useEquipmentStore.getState().equipments;
+    if (equipments.length === 0) return;
 
-    const eqMap = this.buildEqMap();
+    const eqMap = this.buildEqMapFrom(equipments);
     const now = Date.now();
     for (const rule of this.rules) {
       const lastT = this.lastFired.get(rule.id) ?? 0;

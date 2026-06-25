@@ -82,6 +82,7 @@ interface DrillState {
 // 把"参数 id"映射到对应的"建议步骤关键字"，用于自动判定调参动作命中了哪个步骤
 // 每个故障的 correct steps action 文本里若包含其中任一关键字，则视为对应。
 const PARAM_TO_STEP_KEYWORDS: Record<string, string[]> = {
+  // FCC 场景
   reactor_temp: ['反应温度', '急冷油', '反应器'],
   regenerator_temp: ['再生温度', '再生器'],
   air_flow: ['风量', '主风', '过滤器'],
@@ -91,6 +92,23 @@ const PARAM_TO_STEP_KEYWORDS: Record<string, string[]> = {
   catalyst_circulation: ['催化剂循环', '滑阀'],
   valve_opening: ['滑阀', '塞阀'],
   pump_flow: ['流量'],
+
+  // 阳极振压成型场景
+  paste_temp:     ['糊料温度', '糊料', '保温', '升温'],
+  pitch_ratio:    ['沥青', '配比'],
+  mixer_speed:    ['搅拌'],
+  mold_temp:      ['模具温度', '模具'],
+  mold_pre_temp:  ['模具预热', '预热', '加热'],
+  heat_power:     ['加热功率', '加热站', '功率'],
+  press_force:    ['振压压力', '压力', '振压'],
+  press_time:     ['振压时间', '时间', '振压'],
+  vib_freq:       ['振动频率', '频率', '振动'],
+  vac_pressure:   ['真空', '绝压', '抽气'],
+  vac_flow:       ['抽气流量', '真空', '抽气'],
+  feed_weight:    ['加料量', '称量'],
+  coke_ratio:     ['石油焦', '粒度', '配比'],
+  fine_ratio:     ['细粒', '配比'],
+  cool_speed:     ['冷却', '传送速度'],
 };
 
 export const useDrillStore = create<DrillState>((set, get) => ({
@@ -314,6 +332,7 @@ export const useDrillStore = create<DrillState>((set, get) => ({
   // 满足以上即视作"做对了一步"，否则记一个错误操作。
   recordParameterAdjustment: (equipmentId, paramId, paramName, oldValue, newValue) => {
     const { currentFault, isRunning } = get();
+    // 演练未开始时：依赖 proactiveCoach 引擎按规则触发师傅话术；直接 return
     if (!isRunning || !currentFault) return;
 
     // 找该故障里是否有同 (设备,参数) 的症状

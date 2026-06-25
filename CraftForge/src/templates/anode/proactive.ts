@@ -9,7 +9,7 @@
 import type { ProactiveRule } from '@/services/proactiveCoach';
 
 export const anodeProactiveRules: ProactiveRule[] = [
-  // === 糊料温度链 ===
+  // === 糊料温度链（含轻区间提示）===
   {
     id: 'an-paste-temp-low',
     severity: 'warning',
@@ -19,6 +19,26 @@ export const anodeProactiveRules: ProactiveRule[] = [
       return v < 140;
     },
     message: '小伙子，糊料凉了！才 {PASTE.paste_temp}°C，再不升温要开裂的。',
+  },
+  {
+    id: 'an-paste-temp-edge-low',
+    severity: 'info',
+    cooldownSec: 120,
+    check: (eq) => {
+      const v = eq.PASTE?.['paste_temp'] ?? 150;
+      return v >= 140 && v < 145;
+    },
+    message: '糊料温度 {PASTE.paste_temp}°C 偏低了，建议提到 148~152 之间。',
+  },
+  {
+    id: 'an-paste-temp-edge-high',
+    severity: 'info',
+    cooldownSec: 120,
+    check: (eq) => {
+      const v = eq.PASTE?.['paste_temp'] ?? 150;
+      return v > 155 && v <= 165;
+    },
+    message: '糊料温度 {PASTE.paste_temp}°C 偏高了，注意别超 160。',
   },
   {
     id: 'an-paste-temp-high',

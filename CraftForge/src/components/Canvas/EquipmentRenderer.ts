@@ -1535,8 +1535,8 @@ export class EquipmentRenderer {
         //       ④ 振压脉冲（红色冲击波） ⑤ 模具内糊料填充进度 ⑥ 振动横纹
         const animT = animTime ?? Date.now() / 1000;
         // 真实节奏：单块阳极振压周期 ≈ 95~110 s
-        // 动画压缩到 24s/周期，保留可观察节奏的同时彻底消除"压头闪烁感"
-        const cyclePeriod = 24;
+        // 动画延长到 40s/周期，跟真实节奏几乎 1:1，节奏从容
+        const cyclePeriod = 40;
         const phase = (animT % cyclePeriod) / cyclePeriod;          // 0~1
         // 时序：0-25% 下料 → 25-30% 下行 → 30-85% 振压保压 → 85-95% 上行 → 95-100% 停
         let pistonY = 0;        // 0 = 上止点, 1 = 下止点
@@ -1618,10 +1618,10 @@ export class EquipmentRenderer {
         ctx.textBaseline = 'middle';
         ctx.fillText(pressing ? '振压中' : '压头', cylX, pistonHeadY + headH / 2);
 
-        // ④ 振压冲击波（pressing 期间，柔和的脉冲，每 3s 一次更稳）
+        // ④ 振压冲击波（pressing 期间，每 5s 一次柔和扩散波）
         if (pressing) {
-          const shockPhase = ((animT / 3) % 1);   // 3s 一次冲击
-          const shockR = 35 + shockPhase * 80;
+          const shockPhase = ((animT / 5) % 1);   // 5s 一次冲击
+          const shockR = 35 + shockPhase * 90;
           ctx.strokeStyle = `rgba(248, 113, 113, ${(1 - shockPhase) * 0.4})`;
           ctx.lineWidth = 2.5;
           ctx.beginPath();

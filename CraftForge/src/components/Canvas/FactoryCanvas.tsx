@@ -923,31 +923,52 @@ export const FactoryCanvas: React.FC = () => {
         ctx.fillText(num, ncx, ncy + 1);
       });
 
-      // ---- (4) 区域标签 ----
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 143, 130, 14);
+      // ---- (4) 区域标签（紧贴画布右边缘，竖向小条状）----
+      // 把标签放到画布最右侧约 x=1180~1268 的窄区域，y 紧贴每个区域上沿
+      // 由于 COOL-301 横向占 x=810~1240、HMI-802 占 x=400~1240，标签 y 需找空白处：
+      //  - 工艺主轴：y=130 上方有 50px 空白（流程横幅之下 y=76 → y=130 之间）→ 放 y=88
+      //  - 辅助系统：分割线 y=374 之下 → 设备 y=390 之间 → 放 y=378（避开 VAC 右侧 x>780）
+      //  - 控制层：分割线 y=484 之下 → 设备 y=500 之间 → 放 y=488
+      ctx.font = 'bold 12px Inter, "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const lbW = 100;
+      const lbH = 20;
+      const lbX = w / 2 - lbW / 2;   // 画布水平居中
+
+      // 工艺主轴标签 — 放在流程横幅下方、设备上方 y=88（中央，避开所有设备）
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(lbX, 86, lbW, lbH);
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lbX, 86, lbW, lbH);
       ctx.fillStyle = '#fde68a';
-      ctx.font = 'bold 11px Inter, "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText('▎ 工艺主轴', 24, 146);
+      ctx.fillText('▎ 工艺主轴', lbX + lbW / 2, 86 + lbH / 2);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 383, 130, 14);
+      // 辅助系统标签 — 放在分割线 y=374 之上、设备 y=360 之间的空白处（设备 y=140~360 是工艺主轴，下面 360~390 是空白）
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(lbX, 365, lbW, lbH);
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lbX, 365, lbW, lbH);
       ctx.fillStyle = '#67e8f9';
-      ctx.fillText('▎ 辅助系统', 24, 386);
+      ctx.fillText('▎ 辅助系统', lbX + lbW / 2, 365 + lbH / 2);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
-      ctx.fillRect(20, 493, 130, 14);
+      // 控制层标签 — 放在辅助系统 y=470 之下、控制层 y=500 之上的空白处
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(lbX, 475, lbW, lbH);
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(lbX, 475, lbW, lbH);
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制层', 24, 496);
+      ctx.fillText('▎ 控制层', lbX + lbW / 2, 475 + lbH / 2);
 
       // ---- (5) 版本水印 ----
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v4 anode  (振压周期 24s+流程横幅上移到顶部空白区)', w - 30, h - 8);
+      ctx.fillText('v5 anode  (振压周期 40s + 区域标签居中放空白处不再被遮)', w - 30, h - 8);
     }
   };
 

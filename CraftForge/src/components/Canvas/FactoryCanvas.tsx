@@ -377,24 +377,24 @@ export const FactoryCanvas: React.FC = () => {
     // 右下
     ctx.beginPath(); ctx.moveTo(w - corner, h); ctx.lineTo(w, h); ctx.lineTo(w, h - corner); ctx.stroke();
 
-    // 焊装场景额外画安全通道 + 控制柜区底色分隔
+    // 焊装场景 v10：压缩控制层 + 机器人点焊弧光标志动画
     if (activeTemplate === 'welding') {
       // 主焊装区底色（y=130~390）
       ctx.fillStyle = 'rgba(34, 211, 238, 0.05)';
       ctx.fillRect(0, 130, w, 260);
-      // 下排机器人区（y=400~580）
+      // 下排机器人区（y=400~555）
       ctx.fillStyle = 'rgba(251, 191, 36, 0.04)';
-      ctx.fillRect(0, 400, w, 180);
-      // 控制柜区域浅底色（y=580 起）
+      ctx.fillRect(0, 400, w, 155);
+      // 控制柜区域浅底色（y=560 起 高 100 - 紧贴 CTRL 设备）
       ctx.fillStyle = '#0a1629';
-      ctx.fillRect(0, 580, w, h - 580);
+      ctx.fillRect(0, 560, w, 100);
 
-      // baseboard 分割线
+      // baseboard 分割线（控制区上沿下移到 555）
       ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
       ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(15, 390); ctx.lineTo(w - 15, 390); ctx.stroke();
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-      ctx.beginPath(); ctx.moveTo(15, 580); ctx.lineTo(w - 15, 580); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(15, 555); ctx.lineTo(w - 15, 555); ctx.stroke();
 
       // 工艺横幅
       drawProcessBanner([
@@ -406,6 +406,73 @@ export const FactoryCanvas: React.FC = () => {
         { num: '⑥', label: '合格下件', desc: '下件 60 s/件' },
       ], '#22d3ee');
 
+      // ---- 标志性动画：机器人点焊弧光 + 火花飞溅 ----
+      // ROB-101/102 (x=540~650, x=680~790; y=110~190) → FIX-101 (x=480~560, y=240~310)
+      // ROB-103 (x=540~650; y=440~520) ← 在 FIX-101 下方
+      const animTW = Date.now() / 1000;
+      const fixCx = 480 + 80 / 2;     // FIX-101 中心 520
+      const fixCy = 240 + 70 / 2;     // 中心 275
+      // 上方两台机器人头部坐标（机械臂末端，估算在设备底中部）
+      const robots: Array<[number, number]> = [
+        [540 + 110 / 2, 110 + 80],   // ROB-101 头：x=595, y=190
+        [680 + 110 / 2, 110 + 80],   // ROB-102 头：x=735, y=190
+        [540 + 110 / 2, 440],         // ROB-103 头（从下方上焊）：x=595, y=440
+      ];
+
+      robots.forEach(([rx, ry], idx) => {
+        // 错相位闪烁：每个机器人每 0.6s 完整闪一次，节奏交错
+        const cycle = 0.8;
+        const localT = (animTW + idx * 0.27) % cycle;
+        const arcOn = localT < 0.35; // 前 0.35s 弧亮，后 0.45s 弧灭
+        if (!arcOn) return;
+
+        const intensity = Math.sin((localT / 0.35) * Math.PI); // 0~1 抛物线
+
+        // 1) 焊弧主光柱（白色/亮蓝色）— 从机器人末端到夹具
+        const grad = ctx.createLinearGradient(rx, ry, fixCx, fixCy);
+        grad.addColorStop(0, `rgba(186, 230, 253, ${0.4 * intensity})`);
+        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * intensity})`);
+        grad.addColorStop(1, `rgba(56, 189, 248, ${0.8 * intensity})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 3 * intensity;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(fixCx, fixCy);
+        ctx.stroke();
+
+        // 2) 焊点辉光（在 FIX 中心）
+        const glowR = 10 + 8 * intensity;
+        const radialGrad = ctx.createRadialGradient(fixCx, fixCy, 0, fixCx, fixCy, glowR);
+        radialGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * intensity})`);
+        radialGrad.addColorStop(0.4, `rgba(186, 230, 253, ${0.7 * intensity})`);
+        radialGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        ctx.fillStyle = radialGrad;
+        ctx.beginPath();
+        ctx.arc(fixCx, fixCy, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3) 火花飞溅（5 个朝随机方向射出）
+        const sparkCount = 5;
+        for (let s = 0; s < sparkCount; s++) {
+          const sparkAngle = (s / sparkCount) * Math.PI * 2 + idx * 0.7 + animTW * 2;
+          const sparkLen = 8 + 12 * intensity;
+          const sx = fixCx + Math.cos(sparkAngle) * sparkLen;
+          const sy = fixCy + Math.sin(sparkAngle) * sparkLen;
+          ctx.strokeStyle = `rgba(252, 211, 77, ${0.8 * intensity})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(fixCx, fixCy);
+          ctx.lineTo(sx, sy);
+          ctx.stroke();
+          // 火花头部小亮点
+          ctx.fillStyle = `rgba(254, 240, 138, ${intensity})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 节点编号灯（最后画在弧光之上）
       drawEquipmentNodeBadges([
         ['ST-101',   '①'],
         ['CONV-101', '②'],
@@ -434,14 +501,14 @@ export const FactoryCanvas: React.FC = () => {
       ctx.fillStyle = '#fde68a';
       ctx.fillText('▎ 物流/安全通道', 24, 398);
       ctx.fillStyle = '#c4b5fd';
-      ctx.fillText('▎ 控制区', 24, 590);
+      ctx.fillText('▎ 控制区', 24, 568);
 
       // 🎯 版本水印
       ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
       ctx.font = '10px Inter, sans-serif';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText('v9 welding  (工艺横幅+节点编号+区域分色)', w - 30, h - 8);
+      ctx.fillText('v10 welding  (点焊弧光 + 火花飞溅 + 控制层压缩)', w - 30, h - 8);
     }
 
     // CNC 场景：3 大功能分区（加工区 / 物流主线 / 辅助系统）+ 横幅 + 节点编号（无单独控制层）

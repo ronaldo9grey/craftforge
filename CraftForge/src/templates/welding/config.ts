@@ -18,7 +18,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 2：主输送线（左 → 右）
   {
     id: 'ST-101', name: '上件工位', type: 'station',
-    x: 60, y: 230, width: 80, height: 90,
+    x: 30, y: 230, width: 80, height: 90,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'feed_rate',    name: '上件节拍', value: 60, unit: 's/件', min: 30, max: 120, normalMin: 50, normalMax: 70, trend: [], tau: TAU_SLOW },
@@ -27,7 +27,7 @@ export const weldingEquipments: Equipment[] = [
   },
   {
     id: 'CONV-101', name: '输入输送带', type: 'conveyor',
-    x: 160, y: 250, width: 200, height: 50,
+    x: 150, y: 250, width: 220, height: 50,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'conveyor_speed', name: '输送速度', value: 1.2, unit: 'm/min', min: 0.5, max: 2.0,  normalMin: 1.0, normalMax: 1.5, trend: [], tau: TAU_SPEED },
@@ -123,7 +123,7 @@ export const weldingEquipments: Equipment[] = [
   // 行 4：产线控制柜
   {
     id: 'CTRL-101', name: '产线控制柜', type: 'control_box',
-    x: 580, y: 610, width: 120, height: 70,
+    x: 580, y: 580, width: 120, height: 70,
     status: 'normal', template: 'welding',
     parameters: [
       { id: 'main_voltage', name: '主电压',   value: 380, unit: 'V', min: 360, max: 400, normalMin: 375, normalMax: 385, trend: [], tau: 0.3 },

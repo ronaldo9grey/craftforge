@@ -18,6 +18,7 @@ import { injectionCouplings } from '@/templates/injection/dynamics';
 import { aluminumCouplings } from '@/templates/aluminum/dynamics';
 import { anodeCouplings } from '@/templates/anode/dynamics';
 import { bakingCouplings } from '@/templates/baking/dynamics';
+import { tbmCouplings } from '@/templates/tbm/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -81,6 +82,12 @@ function App() {
     } else if (activeTemplate === 'baking') {
       // 阳极焙烧炉车间：燃料气→炉室温度→火道温度梯度→电阻率→合格率
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, bakingCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'tbm') {
+      // 盾构机 3D 场景：刀盘转速→扭矩/螺旋转速/温度，推进速度→磨损/仓压/沉降/推力 等 12 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, tbmCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

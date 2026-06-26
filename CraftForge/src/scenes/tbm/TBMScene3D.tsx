@@ -694,29 +694,34 @@ const EQUIP_NAMES: Record<string, string> = {
 };
 
 function FaultHighlight({ affectedEquipments, shieldZ }: { affectedEquipments: string[]; shieldZ: number }) {
-  const ref = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const matRefs = useRef<THREE.MeshStandardMaterial[]>([]);
   useFrame((state) => {
-    // 闪烁动画：0.3 ~ 0.9 正弦波动
+    // 闪烁动画：emissiveIntensity + opacity + scale 三重脉动，确保肉眼可见
     const t = state.clock.elapsedTime;
-    const pulse = 0.6 + 0.3 * Math.sin(t * 4);
-    if (ref.current) {
-      ref.current.children.forEach((child) => {
-        const mesh = child as THREE.Mesh;
-        if (mesh.material && (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
-          (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse;
-        }
-      });
+    const wave = Math.sin(t * 5);
+    const emissivePulse = 0.4 + 0.5 * wave;
+    const opacityPulse = 0.12 + 0.3 * Math.abs(wave);
+    matRefs.current.forEach((mat) => {
+      if (mat) {
+        mat.emissiveIntensity = emissivePulse;
+        mat.opacity = opacityPulse;
+      }
+    });
+    // 整体缩放脉动
+    if (groupRef.current) {
+      const s = 1 + 0.08 * wave;
+      groupRef.current.scale.setScalar(s);
     }
   });
 
   return (
-    <group ref={ref}>
-      {affectedEquipments.map((eqId) => {
+    <group ref={groupRef}>
+      {affectedEquipments.map((eqId, idx) => {
         const pos = EQUIP_3D_POS[eqId];
         if (!pos) return null;
         const name = EQUIP_NAMES[eqId] || eqId;
         const isMonitor = eqId === 'TBM-MON-101';
-        // 监测点在地表，其他设备在地下（跟随盾构机 shieldZ）
         const actualPos: [number, number, number] = isMonitor
           ? [pos[0], pos[1], pos[2]]
           : [pos[0], pos[1] - 14, pos[2] + shieldZ];
@@ -726,6 +731,7 @@ function FaultHighlight({ affectedEquipments, shieldZ }: { affectedEquipments: s
             <mesh>
               <sphereGeometry args={[4.5, 16, 16]} />
               <meshStandardMaterial
+                ref={(m) => { if (m) matRefs.current[idx] = m; }}
                 color="#ef4444"
                 emissive="#ef4444"
                 emissiveIntensity={0.6}
@@ -753,6 +759,91 @@ function FaultHighlight({ affectedEquipments, shieldZ }: { affectedEquipments: s
               </div>
             </Html>
           </group>
+        );
+      })}
+    </group>
+  );
+}
+
+// ============= 可点击设备区域（3D 交互核心） =============
+// 为每个设备创建半透明点击球体，点击后选中设备并弹出参数面板
+function ClickableZones({ shieldZ }: { shieldZ: number }) {
+  const selectEquipment = useUIStore((s) => s.selectEquipment);
+  const selectedEquipmentId = useUIStore((s) => s.selectedEquipmentId);
+
+  // 设备点击区域大小（根据设备体积差异化）
+  const RADII: Record<string, number> = {
+    'TBM-CHE-101': 4.2,  // 刀盘
+    'TBM-SHL-101': 4.5,  // 盾体（最大）
+    'TBM-CHB-101': 3.5,  // 泥水仓
+    'TBM-SCR-101': 3.5,  // 螺旋输送机
+    'TBM-ERE-101': 3.0,  // 管片拼装机
+    'TBM-DRV-101': 3.5,  // 主驱动
+    'TBM-INJ-101': 3.0,  // 同步注浆
+    'TBM-SEAL-101': 3.0, // 盾尾密封
+    'TBM-NAV-101': 3.0,  // 导向系统
+    'TBM-BCK-101': 4.0,  // 后配套台车
+    'TBM-MON-101': 4.0,  // 地表监测
+  };
+
+  return (
+    <group>
+      {Object.entries(EQUIP_3D_POS).map(([eqId, pos]) => {
+        const isMonitor = eqId === 'TBM-MON-101';
+        const actualPos: [number, number, number] = isMonitor
+          ? [pos[0], pos[1], pos[2]]
+          : [pos[0], pos[1] - 14, pos[2] + shieldZ];
+        const isSelected = selectedEquipmentId === eqId;
+        const name = EQUIP_NAMES[eqId] || eqId;
+        const radius = RADII[eqId] ?? 3.5;
+
+        return (
+          <mesh
+            key={eqId}
+            position={actualPos}
+            onClick={(e) => {
+              e.stopPropagation();
+              selectEquipment(eqId);
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => {
+              document.body.style.cursor = 'default';
+            }}
+          >
+            <sphereGeometry args={[radius, 12, 12]} />
+            <meshStandardMaterial
+              color={isSelected ? '#22c55e' : '#3b82f6'}
+              emissive={isSelected ? '#22c55e' : '#000000'}
+              emissiveIntensity={isSelected ? 0.3 : 0}
+              transparent
+              opacity={isSelected ? 0.15 : 0.02}
+              depthWrite={false}
+            />
+            {isSelected && (
+              <Edges color="#22c55e" />
+            )}
+            {isSelected && (
+              <Html position={[0, radius + 1.5, 0]}>
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.9)',
+                  color: '#fff',
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  border: '1px solid #86efac',
+                }}>
+                  ✓ {name} · 已选中
+                </div>
+              </Html>
+            )}
+          </mesh>
         );
       })}
     </group>
@@ -817,6 +908,9 @@ function SceneContent() {
         <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
         <BackupCars z={shieldZ} />
 
+        {/* 可点击设备区域：点击选中设备 → 弹出参数面板 */}
+        <ClickableZones shieldZ={shieldZ} />
+
         {/* 演练中：故障设备红色闪烁高亮 */}
         {isDrillRunning && currentFault && (
           <FaultHighlight affectedEquipments={currentFault.affectedEquipments} shieldZ={shieldZ} />
@@ -835,6 +929,8 @@ export function TBMScene3D() {
           /* 相机：侧前俯视角度，同时看清刀盘正面 + 盾体侧面 + 台车 */
           camera={{ position: [18, -3, 22], fov: 50, near: 0.1, far: 200 }}
           gl={{ antialias: true, alpha: false }}
+          /* 点击空白区域取消选中 → 关闭参数面板 */
+          onPointerMissed={() => useUIStore.getState().selectEquipment(null)}
         >
           <color attach="background" args={['#0a1426']} />
           <fog attach="fog" args={['#0a1426', 50, 140]} />
@@ -861,7 +957,7 @@ export function TBMScene3D() {
           position: 'absolute', bottom: 12, right: 12, color: '#fbbf24',
           background: 'rgba(15,23,42,0.7)', padding: '4px 8px', borderRadius: 4, fontSize: 10,
         }}>
-          v3.0 tbm-3d (描边轮廓 · 侧前俯视 · 放大1.2x)
+          v3.3 tbm-3d (描边+点击交互+故障闪烁+动力学)
         </div>
       </div>
     </Scene3DErrorBoundary>

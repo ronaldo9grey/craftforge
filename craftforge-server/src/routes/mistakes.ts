@@ -80,6 +80,7 @@ export function syncMistakeOnDrill(input: {
 
 // =============================================================
 // GET /api/mistakes  我的错题本
+// 每条错题附带详细错误信息（从 drill_records 关联提取）
 // =============================================================
 router.get('/', requireAuth, (req: Request, res: Response) => {
   const userId = req.authUser!.id;
@@ -100,7 +101,84 @@ router.get('/', requireAuth, (req: Request, res: Response) => {
   const stats: Record<string, number> = { open: 0, mastered: 0 };
   counts.forEach((c) => (stats[c.status] = c.c));
 
-  res.json({ mistakes: rows, stats });
+  // 为每条错题关联详细的演练记录
+  const enrichedMistakes = rows.map((m) => {
+    // 查该用户该故障的所有演练记录（按时间倒序）
+    const drillRecords = db.prepare(
+      `SELECT id, score, grade, duration_sec, difficulty, score_breakdown, operations, created_at
+       FROM drill_records
+       WHERE user_id = ? AND scene_id = ? AND fault_id = ?
+       ORDER BY created_at DESC`
+    ).all(userId, m.scene_id, m.fault_id) as any[];
+
+    // 提取最近一次的详细信息
+    const latest = drillRecords[0];
+    let latestBreakdown: any = null;
+    let errorOperations: any[] = [];
+    let coachComment = '';
+
+    if (latest) {
+      try { latestBreakdown = latest.score_breakdown ? JSON.parse(latest.score_breakdown) : null; } catch { /* ignore */ }
+      coachComment = latestBreakdown?.coachComment || '';
+
+      try {
+        const ops = latest.operations ? JSON.parse(latest.operations) : [];
+        errorOperations = ops.filter((op: any) => op.isCorrect === false);
+      } catch { /* ignore */ }
+    }
+
+    // 历史成绩轨迹
+    const scoreHistory = drillRecords.map((r) => ({
+      score: r.score,
+      grade: r.grade,
+      created_at: r.created_at,
+      duration_sec: r.duration_sec,
+    }));
+
+    // 维度得分（最近一次）
+    const dimensions = latestBreakdown?.dimensions || [];
+
+    // 强项和短板
+    const highlights = latestBreakdown?.highlights || [];
+    const improvements = latestBreakdown?.improvements || [];
+
+    // 统计错误操作模式
+    const errorPatterns = new Map<string, number>();
+    for (const r of drillRecords) {
+      try {
+        const ops = r.operations ? JSON.parse(r.operations) : [];
+        for (const op of ops) {
+          if (op.isCorrect === false) {
+            const key = op.action || op.parameterChange?.param || '未知操作';
+            errorPatterns.set(key, (errorPatterns.get(key) || 0) + 1);
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    const topErrorPatterns = Array.from(errorPatterns.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([action, count]) => ({ action, count }));
+
+    return {
+      ...m,
+      // 详细信息
+      latest_record_id: latest?.id || null,
+      latest_difficulty: latest?.difficulty || null,
+      latest_duration: latest?.duration_sec || 0,
+      latest_created_at: latest?.created_at || m.last_fail_at,
+      coach_comment: coachComment,
+      error_operations: errorOperations.slice(0, 8),
+      dimensions,
+      highlights,
+      improvements,
+      score_history: scoreHistory,
+      top_error_patterns: topErrorPatterns,
+      total_attempts: drillRecords.length,
+    };
+  });
+
+  res.json({ mistakes: enrichedMistakes, stats });
 });
 
 // =============================================================

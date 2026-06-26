@@ -289,18 +289,25 @@ export const teacherApi = {
 // 错题本 API
 // =============================================================
 export interface Mistake {
-  id: string;
-  user_id: string;
-  scene_id: string;
-  fault_id: string;
-  fault_name: string;
-  fail_count: number;
-  last_fail_at: number;
-  last_score: number;
-  last_grade: string;
-  status: 'open' | 'mastered';
-  mastered_at: number | null;
+  id: string; user_id: string; scene_id: string;
+  fault_id: string; fault_name: string;
+  fail_count: number; last_fail_at: number;
+  last_score: number; last_grade: string;
+  status: 'open' | 'mastered'; mastered_at: number | null;
   created_at: number;
+  // 详细信息（后端关联查询）
+  latest_record_id?: string;
+  latest_difficulty?: string | null;
+  latest_duration?: number;
+  latest_created_at?: number;
+  coach_comment?: string;
+  error_operations?: Array<{ action?: string; isCorrect: boolean; timestamp?: number; parameterChange?: { param: string; from: number; to: number } }>;
+  dimensions?: Array<{ key: string; label: string; score: number; max: number; explain: string; suggestion?: string }>;
+  highlights?: string[];
+  improvements?: string[];
+  score_history?: Array<{ score: number; grade: string; created_at: number; duration_sec: number }>;
+  top_error_patterns?: Array<{ action: string; count: number }>;
+  total_attempts?: number;
 }
 
 export const mistakeApi = {

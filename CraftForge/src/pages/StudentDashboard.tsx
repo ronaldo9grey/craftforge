@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { drillApi, achievementApi, classApi, type Achievement, type ClassRow } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History, BookOpen, Award, BarChart3 } from 'lucide-react';
+import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History, BookOpen, Award, BarChart3, LogOut } from 'lucide-react';
 
 interface Summary {
   total: number;
@@ -134,6 +134,13 @@ export const StudentDashboard: React.FC = () => {
             >
               <Play className="w-4 h-4" />
               开始演练
+            </button>
+            <button
+              onClick={() => void useAuthStore.getState().logout()}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-red-900/30 border border-border hover:border-red-500/40 text-text-secondary hover:text-red-400 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              退出
             </button>
           </div>
         </div>

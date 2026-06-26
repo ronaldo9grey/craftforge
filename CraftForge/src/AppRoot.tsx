@@ -11,6 +11,7 @@ import { SceneGalleryPage } from '@/pages/SceneGalleryPage';
 import { MistakeBookPage } from '@/pages/MistakeBookPage';
 import { LeaderboardPage } from '@/pages/LeaderboardPage';
 import { LearningAnalyticsPage } from '@/pages/LearningAnalyticsPage';
+import { TeacherAnalyticsPage } from '@/pages/TeacherAnalyticsPage';
 import { ToastHost } from '@/components/Toast';
 import { ConfirmHost } from '@/components/ConfirmDialog';
 import App from './App';
@@ -70,7 +71,7 @@ export const AppRoot: React.FC = () => {
     if (page === 'history-detail') return <HistoryDetailPage />;
     if (page === 'mistakes') return <MistakeBookPage />;
     if (page === 'leaderboard') return <LeaderboardPage />;
-    if (page === 'analytics') return <LearningAnalyticsPage />;
+    if (page === 'analytics') return user.role === 'teacher' ? <TeacherAnalyticsPage /> : <LearningAnalyticsPage />;
     // 游客模式：无 token，禁止渲染需鉴权的 Dashboard，强制走画廊
     if (user.id === 'guest') return <SceneGalleryPage />;
     if (user.role === 'student') return <StudentDashboard />;

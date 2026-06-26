@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { teacherApi, classApi, type ClassDashboard, type PublicUser } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award } from 'lucide-react';
+import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award, BarChart3, LogOut } from 'lucide-react';
 import { confirmDialog } from '@/components/ConfirmDialog';
 
 const SCENE_LABEL: Record<string, string> = {
@@ -134,6 +134,13 @@ export const TeacherDashboard: React.FC = () => {
               排行榜
             </button>
             <button
+              onClick={() => setPage('analytics')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-cyan-400/40 text-cyan-400 rounded-lg flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              学习分析
+            </button>
+            <button
               onClick={() => setShowCreate(true)}
               className="px-3 py-2 text-sm bg-primary hover:bg-primary/90 text-white rounded-lg flex items-center gap-1.5"
             >
@@ -146,6 +153,13 @@ export const TeacherDashboard: React.FC = () => {
             >
               <Play className="w-4 h-4" />
               进入工作台
+            </button>
+            <button
+              onClick={() => void useAuthStore.getState().logout()}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-red-900/30 border border-border hover:border-red-500/40 text-text-secondary hover:text-red-400 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              退出
             </button>
           </div>
         </div>

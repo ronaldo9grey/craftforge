@@ -14,6 +14,7 @@ import { OrbitControls, Html, Edges } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useDrillStore } from '@/stores/drillStore';
 
 // ============= 错误边界 =============
 class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -133,20 +134,15 @@ function GroundSurface({ settlement }: { settlement: number }) {
     { x: 6, z: -10, w: 5, h: 6, d: 5 },
   ];
   const monitorZs = [-22, -10, 2, 14, 24];
+  const isAlert = Math.abs(settlement) > 10;
   return (
     <group>
+      {/* 地表路面 */}
       <mesh position={[0, 0.01, -10]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[36, 50]} />
         <meshStandardMaterial color="#1e293b" roughness={0.95} />
       </mesh>
-      {/* 地面沉降裂缝标记 */}
-      {[-25, -18, -11, -4, 3, 10, 17, 24].map((z, i) => (
-        <mesh key={i} position={[0, 0.02, z - 10]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.4, 4]} />
-          <meshBasicMaterial color="#fbbf24" />
-        </mesh>
-      ))}
-      {/* 地表建筑物 */}
+      {/* 地表建筑物（带标签） */}
       {buildings.map((b, i) => (
         <mesh key={i} position={[b.x, b.h / 2, b.z - 10]}>
           <boxGeometry args={[b.w, b.h, b.d]} />
@@ -154,21 +150,37 @@ function GroundSurface({ settlement }: { settlement: number }) {
           <Edges color={COLORS.edgeWhite} />
         </mesh>
       ))}
-      {/* 沉降监测点 */}
+      <Html position={[-4, 7, -18]}>
+        <div style={labelStyle('#94a3b8')}>地表建筑群</div>
+      </Html>
+
+      {/* 沉降监测点（立杆+传感器盒，更直观） */}
       {monitorZs.map((z, i) => {
-        const isAlert = Math.abs(settlement) > 10;
         const color = isAlert ? '#ef4444' : '#22c55e';
         return (
-          <group key={i} position={[12, 0.5, z - 10]}>
-            <mesh>
-              <coneGeometry args={[0.5, 1.2, 4]} />
-              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
+          <group key={i} position={[10, 0, z - 10]}>
+            {/* 立杆 */}
+            <mesh position={[0, 1.0, 0]}>
+              <cylinderGeometry args={[0.08, 0.08, 2.0, 6]} />
+              <meshStandardMaterial color="#64748b" metalness={0.6} roughness={0.4} />
             </mesh>
-            <Html position={[0, 1.5, 0]}>
+            {/* 传感器盒 */}
+            <mesh position={[0, 2.1, 0]}>
+              <boxGeometry args={[0.6, 0.4, 0.4]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={isAlert ? 0.6 : 0.2} />
+              <Edges color={COLORS.edgeWhite} />
+            </mesh>
+            {/* 底座 */}
+            <mesh position={[0, 0.1, 0]}>
+              <boxGeometry args={[0.8, 0.2, 0.8]} />
+              <meshStandardMaterial color="#334155" roughness={0.7} />
+            </mesh>
+            <Html position={[0, 2.8, 0]}>
               <div style={{
                 background: isAlert ? '#7f1d1d' : '#14532d',
                 color: '#fff', padding: '2px 6px', borderRadius: 3, fontSize: 10,
                 whiteSpace: 'nowrap', transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                border: `1px solid ${color}`,
               }}>
                 M{i + 1}: {settlement.toFixed(1)}mm
               </div>
@@ -176,6 +188,9 @@ function GroundSurface({ settlement }: { settlement: number }) {
           </group>
         );
       })}
+      <Html position={[10, 3.5, -10]}>
+        <div style={labelStyle('#22c55e')}>沉降监测点 ×5</div>
+      </Html>
     </group>
   );
 }
@@ -514,10 +529,107 @@ function Erector({ z }: { z: number }) {
   );
 }
 
+// ============= 故障设备高亮（红色闪烁球体） =============
+// 设备ID → 3D空间位置映射（相对于盾构机 shieldZ）
+const EQUIP_3D_POS: Record<string, [number, number, number]> = {
+  'TBM-CHE-101': [0, 0, 3.8],      // 刀盘
+  'TBM-DRV-101': [0, 0, 2.5],      // 主驱动（前盾内）
+  'TBM-SHL-101': [0, 0, -2],       // 盾体（中盾）
+  'TBM-CHB-101': [0, 0, 1.5],      // 泥水仓（前盾内）
+  'TBM-SCR-101': [2.5, -2, -1],    // 螺旋输送机
+  'TBM-ERE-101': [0, 0, -3],       // 管片拼装机
+  'TBM-INJ-101': [0, 0, -5.5],     // 同步注浆（尾盾）
+  'TBM-SEAL-101': [0, 0, -7],      // 盾尾密封（尾盾末端）
+  'TBM-NAV-101': [0, 1, -2],       // 导向系统（盾体上方）
+  'TBM-BCK-101': [0, 0, -15],      // 后配套台车
+  'TBM-MON-101': [10, 2, 5],       // 地表沉降监测（地表）
+};
+const EQUIP_NAMES: Record<string, string> = {
+  'TBM-CHE-101': '刀盘',
+  'TBM-DRV-101': '主驱动',
+  'TBM-SHL-101': '盾体',
+  'TBM-CHB-101': '泥水仓',
+  'TBM-SCR-101': '螺旋输送机',
+  'TBM-ERE-101': '管片拼装机',
+  'TBM-INJ-101': '同步注浆',
+  'TBM-SEAL-101': '盾尾密封',
+  'TBM-NAV-101': '导向系统',
+  'TBM-BCK-101': '后配套台车',
+  'TBM-MON-101': '地表监测',
+};
+
+function FaultHighlight({ affectedEquipments, shieldZ }: { affectedEquipments: string[]; shieldZ: number }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    // 闪烁动画：0.3 ~ 0.9 正弦波动
+    const t = state.clock.elapsedTime;
+    const pulse = 0.6 + 0.3 * Math.sin(t * 4);
+    if (ref.current) {
+      ref.current.children.forEach((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.material && (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity !== undefined) {
+          (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse;
+        }
+      });
+    }
+  });
+
+  return (
+    <group ref={ref}>
+      {affectedEquipments.map((eqId) => {
+        const pos = EQUIP_3D_POS[eqId];
+        if (!pos) return null;
+        const name = EQUIP_NAMES[eqId] || eqId;
+        const isMonitor = eqId === 'TBM-MON-101';
+        // 监测点在地表，其他设备在地下（跟随盾构机 shieldZ）
+        const actualPos: [number, number, number] = isMonitor
+          ? [pos[0], pos[1], pos[2]]
+          : [pos[0], pos[1] - 14, pos[2] + shieldZ];
+        return (
+          <group key={eqId} position={actualPos}>
+            {/* 红色半透明闪烁球体 */}
+            <mesh>
+              <sphereGeometry args={[4.5, 16, 16]} />
+              <meshStandardMaterial
+                color="#ef4444"
+                emissive="#ef4444"
+                emissiveIntensity={0.6}
+                transparent
+                opacity={0.25}
+                depthWrite={false}
+              />
+            </mesh>
+            {/* 故障标签 */}
+            <Html position={[0, 5, 0]}>
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.9)',
+                color: '#fff',
+                padding: '4px 10px',
+                borderRadius: 4,
+                fontSize: 12,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                border: '1px solid #fca5a5',
+                boxShadow: '0 0 12px rgba(239,68,68,0.6)',
+              }}>
+                ⚠ {name} · 故障
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 // ============= 场景内容 =============
 function SceneContent() {
   const equipments = useEquipmentStore((s) => s.equipments);
   const activeTpl = useUIStore((s) => s.activeTemplate);
+  const isDrillRunning = useDrillStore((s) => s.isRunning);
+  const currentFault = useDrillStore((s) => s.currentFault);
 
   const cutterEq = equipments.find((e) => e.id === 'TBM-CHE-101');
   const shieldEq = equipments.find((e) => e.id === 'TBM-SHL-101');
@@ -569,6 +681,11 @@ function SceneContent() {
         <Erector z={shieldZ} />
         <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
         <BackupCars z={shieldZ} />
+
+        {/* 演练中：故障设备红色闪烁高亮 */}
+        {isDrillRunning && currentFault && (
+          <FaultHighlight affectedEquipments={currentFault.affectedEquipments} shieldZ={shieldZ} />
+        )}
       </group>
     </>
   );

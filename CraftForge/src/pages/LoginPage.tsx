@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
 import { authApi, ApiError } from '@/services/api';
@@ -19,27 +19,9 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // bootstrap 引导：尝试探测是否还需要首次创建教师
-  const [showBootstrap, setShowBootstrap] = useState(false);
+  // bootstrap 引导：手动展开（不再自动探测，避免 403 报错污染控制台）
   const [bsForm, setBsForm] = useState({ username: '', password: '', display_name: '' });
   const [bsBusy, setBsBusy] = useState(false);
-
-  // 探测是否需要 bootstrap：尝试 OPTIONS/HEAD 无意义，干脆首次进入时尝试 bootstrap 接口（仅当全表只有 admin 时返回 200，否则 403）
-  useEffect(() => {
-    // 通过故意打错请求 + 看错误来判断（不会真创建用户）
-    // 简化：直接发一个空 body 的 POST，期望 400 (有 bootstrap) 或 403 (已关闭)
-    fetch('/api/auth/bootstrap-teacher', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    })
-      .then((r) => {
-        // 400 = 校验失败，意味着接口开着 → 显示 bootstrap 入口
-        // 403 = 已关闭
-        if (r.status === 400) setShowBootstrap(true);
-      })
-      .catch(() => { /* 网络挂了不影响登录 */ });
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,14 +142,13 @@ export const LoginPage: React.FC = () => {
           </div>
         </form>
 
-        {/* 首次开荒入口 */}
-        {showBootstrap && (
-          <div className="px-6 pb-6">
-            <details className="border border-warning/40 rounded-md bg-warning/5">
-              <summary className="px-3 py-2 cursor-pointer text-xs text-warning flex items-center gap-2">
-                <UserPlus className="w-3.5 h-3.5" />
-                首次部署？点这里创建第一个教师账号
-              </summary>
+        {/* 首次开荒入口（手动展开，不自动探测） */}
+        <div className="px-6 pb-6">
+          <details className="border border-warning/40 rounded-md bg-warning/5">
+            <summary className="px-3 py-2 cursor-pointer text-xs text-warning flex items-center gap-2">
+              <UserPlus className="w-3.5 h-3.5" />
+              首次部署？点这里创建第一个教师账号
+            </summary>
               <form onSubmit={handleBootstrap} className="p-3 space-y-2 border-t border-warning/40">
                 <input
                   type="text"
@@ -203,7 +184,6 @@ export const LoginPage: React.FC = () => {
               </form>
             </details>
           </div>
-        )}
 
         {/* 底部：默认 admin 提示 */}
         <div className="px-6 pb-4 text-[11px] text-text-muted text-center border-t border-border pt-3">

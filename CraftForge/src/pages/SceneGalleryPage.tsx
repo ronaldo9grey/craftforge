@@ -18,6 +18,7 @@ import { ArrowLeft, Play, Sparkles, Cog, AlertTriangle, User2, ChevronRight, X }
 export const SceneGalleryPage: React.FC = () => {
   const setPage = usePageStore((s) => s.setPage);
   const user = useAuthStore((s) => s.user);
+  const forceLogout = useAuthStore((s) => s.forceLogout);
   const [pickedSceneId, setPickedSceneId] = useState<string | null>(null);
 
   const setActiveTemplate = useUIStore((s) => s.setActiveTemplate);
@@ -70,9 +71,16 @@ export const SceneGalleryPage: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setPage('dashboard')}
+              onClick={() => {
+                // 游客无后端 session，直接 forceLogout 退回登录页；真实用户回 Dashboard
+                if (user?.id === 'guest') {
+                  forceLogout();
+                } else {
+                  setPage('dashboard');
+                }
+              }}
               className="p-2 text-text-muted hover:text-text-primary"
-              title="返回 Dashboard"
+              title={user?.id === 'guest' ? '退出游客模式' : '返回 Dashboard'}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>

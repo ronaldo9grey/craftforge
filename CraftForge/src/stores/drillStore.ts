@@ -123,6 +123,25 @@ const PARAM_TO_STEP_KEYWORDS: Record<string, string[]> = {
   inlet_dust:     ['含尘', '净化'],
   coke_level:     ['焦床料位', '焦床', '焦炭'],
   coke_thickness: ['焦床厚度', '焦床'],
+
+  // TBM 盾构机场景
+  rpm:            ['刀盘转速', '转速', '降低刀盘'],
+  torque:         ['刀盘扭矩', '扭矩'],
+  wear:           ['刀具磨损', '磨损', '换刀'],
+  temp:           ['刀具温度', '温度'],
+  speed:          ['推进速度', '推进', '降低推进'],
+  thrust:         ['总推力', '推力', '油缸'],
+  roll:           ['滚动角', '纠偏', '千斤顶'],
+  pressure:       ['仓压', '泥浆', '泥水仓压', '保压'],
+  density:        ['泥浆密度', '密度'],
+  screw_rpm:      ['螺旋转速', '螺旋'],
+  inject_volume:  ['注浆量', '注浆', '同步注浆'],
+  inject_pressure:['注浆压力', '注浆'],
+  seal_pressure:  ['密封压力', '盾尾密封', '密封'],
+  x_deviation:    ['水平偏差', 'X', '姿态'],
+  y_deviation:    ['垂直偏差', 'Y', '姿态'],
+  precision:      ['拼装精度', '拼装'],
+  vibration:      ['振动', '主驱动'],
 };
 
 export const useDrillStore = create<DrillState>((set, get) => ({

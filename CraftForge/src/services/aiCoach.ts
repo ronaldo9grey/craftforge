@@ -85,6 +85,12 @@ export function buildContext(): string {
   const tplName =
     ui.activeTemplate === 'fcc' ? '催化裂化（FCC）'
       : ui.activeTemplate === 'welding' ? '汽车焊装'
+      : ui.activeTemplate === 'cnc' ? '数控加工'
+      : ui.activeTemplate === 'injection' ? '注塑成型'
+      : ui.activeTemplate === 'aluminum' ? '电解铝车间'
+      : ui.activeTemplate === 'anode' ? '阳极振压成型'
+      : ui.activeTemplate === 'baking' ? '阳极焙烧炉'
+      : ui.activeTemplate === 'tbm' ? '盾构机隧道掘进（TBM）'
       : ui.activeTemplate === 'mixed' ? '混合产线'
       : '未选择';
   lines.push(`## 当前模板\n${tplName}`);

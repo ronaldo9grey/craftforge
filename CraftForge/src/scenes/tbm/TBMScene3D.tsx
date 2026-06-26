@@ -84,44 +84,80 @@ function labelStyle(color: string): React.CSSProperties {
   };
 }
 
-// ============= 地层（极度透明，仅做背景暗示） =============
+// ============= 地层（分层鲜明，带分界线+纹理感） =============
 function SoilLayers() {
+  // 分层参数：[中心Y, 厚度, 颜色, 透明度, 标签名, 标签色]
+  const layers = [
+    { y: -1.5,  h: 3,  color: '#92704f', opacity: 0.22, name: '杂填土', depth: '0 ~ -3m',  labelColor: '#c4956a' },
+    { y: -7.5,  h: 9,  color: '#c4956a', opacity: 0.20, name: '砂质粉土', depth: '-3 ~ -12m', labelColor: '#d4a76a' },
+    { y: -15,   h: 6,  color: '#4a7a95', opacity: 0.22, name: '含水砂层', depth: '-12 ~ -18m', labelColor: '#5b9bd5' },
+    { y: -24,   h: 12, color: '#5a6470', opacity: 0.25, name: '风化岩', depth: '-18 ~ -30m', labelColor: '#94a3b8' },
+  ];
+
   return (
     <group>
-      {/* 杂填土 */}
-      <mesh position={[0, -1.5, -10]}>
-        <boxGeometry args={[36, 3, 50]} />
-        <meshStandardMaterial color={COLORS.soil1} roughness={0.95} transparent opacity={0.1} />
-      </mesh>
-      {/* 砂质粉土 */}
-      <mesh position={[0, -7.5, -10]}>
-        <boxGeometry args={[36, 9, 50]} />
-        <meshStandardMaterial color={COLORS.soil2} roughness={0.95} transparent opacity={0.08} />
-      </mesh>
-      {/* 含水砂层 */}
-      <mesh position={[0, -15, -10]}>
-        <boxGeometry args={[36, 6, 50]} />
-        <meshStandardMaterial color={COLORS.soil3} roughness={0.9} transparent opacity={0.09} />
-      </mesh>
-      {/* 风化岩 */}
-      <mesh position={[0, -24, -10]}>
-        <boxGeometry args={[36, 12, 50]} />
-        <meshStandardMaterial color={COLORS.soil4} roughness={0.95} transparent opacity={0.1} />
+      {layers.map((layer, i) => (
+        <group key={i}>
+          {/* 地层主体（半透明） */}
+          <mesh position={[0, layer.y, -10]}>
+            <boxGeometry args={[36, layer.h, 50]} />
+            <meshStandardMaterial
+              color={layer.color}
+              roughness={0.95}
+              transparent
+              opacity={layer.opacity}
+              depthWrite={false}
+            />
+          </mesh>
+          {/* 地层分界线（亮色平面，标记分层） */}
+          {i < layers.length - 1 && (
+            <mesh position={[0, layer.y - layer.h / 2, -10]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[36, 50]} />
+              <meshBasicMaterial
+                color={i === 1 ? '#3b82f6' : '#fbbf24'}
+                transparent
+                opacity={0.15}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+              />
+            </mesh>
+          )}
+          {/* 层内纹理：横向虚线条纹（模拟地层沉积） */}
+          {Array.from({ length: Math.floor(layer.h / 2) }, (_, j) => {
+            const stripeY = layer.y - layer.h / 2 + 1 + j * 2;
+            return (
+              <mesh key={j} position={[-8, stripeY, -34]}>
+                <boxGeometry args={[20, 0.03, 0.5]} />
+                <meshBasicMaterial color={layer.color} transparent opacity={0.3} depthWrite={false} />
+              </mesh>
+            );
+          })}
+        </group>
+      ))}
+
+      {/* 含水砂层特殊标记：水滴图标 + 蓝色发光 */}
+      <mesh position={[0, -15, -34]}>
+        <sphereGeometry args={[0.4, 8, 8]} />
+        <meshStandardMaterial color="#3b82f6" emissive="#3b82f6" emissiveIntensity={0.4} transparent opacity={0.6} />
       </mesh>
 
-      {/* 地层标签（放在远处边缘） */}
-      <Html position={[15, -1.5, -30]}>
-        <div style={labelStyle('#c4956a')}>杂填土 0~-3m</div>
-      </Html>
-      <Html position={[15, -7.5, -30]}>
-        <div style={labelStyle('#c4956a')}>砂质粉土 -3~-12m</div>
-      </Html>
-      <Html position={[15, -15, -30]}>
-        <div style={labelStyle('#4a7a95')}>含水砂层 -12~-18m 💧</div>
-      </Html>
-      <Html position={[15, -24, -30]}>
-        <div style={labelStyle('#7a8290')}>风化岩 -18~-30m</div>
-      </Html>
+      {/* 地层标签（带颜色色块+名称+深度，分层清晰） */}
+      {layers.map((layer, i) => (
+        <Html key={i} position={[16, layer.y, -30]}>
+          <div style={{
+            ...labelStyle(layer.labelColor),
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 8px',
+          }}>
+            <span style={{
+              display: 'inline-block', width: 10, height: 10,
+              borderRadius: 2, background: layer.color,
+              border: `1px solid ${layer.labelColor}`,
+            }} />
+            {layer.name} {layer.depth}
+          </div>
+        </Html>
+      ))}
     </group>
   );
 }

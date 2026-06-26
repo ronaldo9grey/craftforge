@@ -65,8 +65,8 @@ export const SceneGalleryPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-br from-bg-primary via-bg-primary to-bg-secondary text-text-primary">
-      <div className="max-w-7xl mx-auto p-8">
+    <div className="h-screen overflow-y-auto bg-gradient-to-br from-bg-primary via-bg-primary to-bg-secondary text-text-primary">
+      <div className="max-w-7xl mx-auto p-8 pb-20">
         {/* 顶部 */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ const SceneCard: React.FC<{
       {/* 主体 */}
       <div className="p-4 space-y-2">
         <h3 className="text-base font-bold">{data.meta.name}</h3>
-        <p className="text-xs text-text-secondary line-clamp-2 min-h-[2.5rem]">
+        <p className="text-xs text-text-secondary line-clamp-3 min-h-[3.75rem]">
           {data.meta.description}
         </p>
 

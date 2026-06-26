@@ -190,7 +190,7 @@ function Beam({
   );
 }
 
-// ============= 1. 海洋（波浪顶点动画） =============
+// ============= 1. 海洋（波浪顶点动画，大幅海浪） =============
 function Ocean() {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -204,9 +204,10 @@ function Ocean() {
       const x = pos.getX(i);
       const y = pos.getY(i);
       const wave =
-        Math.sin(x * 0.3 + t * 0.8) * 0.4 +
-        Math.cos(y * 0.25 + t * 0.6) * 0.4 +
-        Math.sin((x + y) * 0.15 + t * 1.2) * 0.2;
+        Math.sin(x * 0.25 + t * 0.7) * 1.2 +
+        Math.cos(y * 0.2 + t * 0.5) * 1.0 +
+        Math.sin((x + y) * 0.12 + t * 1.0) * 0.6 +
+        Math.cos(x * 0.08 - y * 0.06 + t * 0.3) * 0.8;
       pos.setZ(i, wave);
     }
     pos.needsUpdate = true;
@@ -215,7 +216,7 @@ function Ocean() {
 
   return (
     <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-      <planeGeometry args={[140, 140, 40, 40]} />
+      <planeGeometry args={[160, 160, 60, 60]} />
       <meshStandardMaterial
         color={COLORS.ocean}
         metalness={0.6}
@@ -240,6 +241,153 @@ function DeepWater() {
         side={THREE.BackSide}
       />
     </mesh>
+  );
+}
+
+// ============= 天空云彩（漂浮白色云朵，缓慢移动） =============
+function Clouds() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  // 生成8朵云，每朵由3-5个球体组成
+  const clouds = useMemo(() => {
+    return Array.from({ length: 8 }, (_, ci) => {
+      const angle = (ci / 8) * Math.PI * 2 + Math.random() * 0.5;
+      const dist = 30 + Math.random() * 30;
+      return {
+        basePos: [Math.cos(angle) * dist, 18 + Math.random() * 8, Math.sin(angle) * dist] as [number, number, number],
+        scale: 1.5 + Math.random() * 2.0,
+        speed: 0.02 + Math.random() * 0.03,
+        puffs: Array.from({ length: 3 + Math.floor(Math.random() * 3) }, (_, pi) => ({
+          offset: [(pi - 1.5) * 1.2 + Math.random() * 0.5, Math.random() * 0.6 - 0.2, Math.random() * 0.8 - 0.4] as [number, number, number],
+          radius: 1.0 + Math.random() * 0.8,
+        })),
+      };
+    });
+  }, []);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (!groupRef.current) return;
+    groupRef.current.children.forEach((child, i) => {
+      const cloud = clouds[i];
+      if (!cloud) return;
+      // 云朵水平漂移
+      child.position.x = cloud.basePos[0] + Math.sin(t * cloud.speed + i) * 5;
+      child.position.z = cloud.basePos[2] + Math.cos(t * cloud.speed + i * 0.7) * 3;
+      // 轻微上下浮动
+      child.position.y = cloud.basePos[1] + Math.sin(t * 0.3 + i) * 0.3;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {clouds.map((cloud, ci) => (
+        <group key={ci} position={cloud.basePos} scale={cloud.scale}>
+          {cloud.puffs.map((puff, pi) => (
+            <mesh key={pi} position={puff.offset}>
+              <sphereGeometry args={[puff.radius, 12, 10]} />
+              <meshStandardMaterial
+                color="#ffffff"
+                transparent
+                opacity={0.85}
+                roughness={1.0}
+                metalness={0.0}
+                emissive="#ffffff"
+                emissiveIntensity={0.05}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ============= 海鸥（展翅飞翔的小鸟，绕平台盘旋） =============
+function Seagulls() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  // 生成5只海鸥，各自有独立的飞行参数
+  const gulls = useMemo(() => {
+    return Array.from({ length: 5 }, (_, i) => ({
+      // 盘旋半径
+      radius: 15 + Math.random() * 12,
+      // 盘旋高度
+      baseY: 10 + Math.random() * 8,
+      // 盘旋角速度
+      angularSpeed: 0.15 + Math.random() * 0.1,
+      // 初始角度
+      phase: (i / 5) * Math.PI * 2,
+      // 上下振翅频率
+      bobSpeed: 0.8 + Math.random() * 0.5,
+      bobAmp: 0.5 + Math.random() * 0.8,
+      // 翅膀扇动频率
+      wingSpeed: 6 + Math.random() * 3,
+      scale: 0.15 + Math.random() * 0.08,
+      // 是否顺时针
+      clockwise: i % 2 === 0,
+    }));
+  }, []);
+
+  // 翅膀mesh引用，用于扇动动画
+  const wingRefs = useRef<THREE.Mesh[]>([]);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (!groupRef.current) return;
+    groupRef.current.children.forEach((child, i) => {
+      const gull = gulls[i];
+      if (!gull) return;
+      const dir = gull.clockwise ? 1 : -1;
+      const angle = gull.phase + t * gull.angularSpeed * dir;
+      // 盘旋飞行轨迹
+      child.position.x = Math.cos(angle) * gull.radius;
+      child.position.z = Math.sin(angle) * gull.radius;
+      child.position.y = gull.baseY + Math.sin(t * gull.bobSpeed + gull.phase) * gull.bobAmp;
+      // 朝向飞行方向
+      child.rotation.y = -angle + (dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+      // 轻微俯仰
+      child.rotation.z = Math.sin(t * gull.bobSpeed + gull.phase) * 0.15;
+    });
+
+    // 翅膀扇动
+    wingRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const gull = gulls[Math.floor(i / 2)];
+      if (!gull) return;
+      const wingPhase = Math.sin(t * gull.wingSpeed + i * Math.PI);
+      mesh.rotation.z = wingPhase * 0.6;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {gulls.map((gull, gi) => (
+        <group key={gi} scale={gull.scale}>
+          {/* 海鸥身体（小椭球） */}
+          <mesh>
+            <sphereGeometry args={[0.3, 8, 6]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.8} />
+          </mesh>
+          {/* 左翅膀 */}
+          <mesh
+            ref={(m) => { if (m) wingRefs.current[gi * 2] = m; }}
+            position={[-0.15, 0.1, 0]}
+          >
+            <boxGeometry args={[0.9, 0.04, 0.3]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.8} side={THREE.DoubleSide} />
+          </mesh>
+          {/* 右翅膀 */}
+          <mesh
+            ref={(m) => { if (m) wingRefs.current[gi * 2 + 1] = m; }}
+            position={[0.15, 0.1, 0]}
+          >
+            <boxGeometry args={[0.9, 0.04, 0.3]} />
+            <meshStandardMaterial color="#f8fafc" roughness={0.8} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+    </group>
   );
 }
 
@@ -1400,6 +1548,10 @@ function SceneContent() {
       <Ocean />
       <DeepWater />
       <SeaFloor />
+
+      {/* 天空云彩 + 海鸥 */}
+      <Clouds />
+      <Seagulls />
 
       {/* 平台主体 */}
       <PlatformHull />

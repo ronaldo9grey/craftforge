@@ -2,7 +2,7 @@
 export interface Equipment {
   id: string;
   name: string;
-  type: 'reactor' | 'regenerator' | 'fractionator' | 'heater' | 'exchanger' | 'pump' | 'compressor' | 'valve' | 'instrument' | 'robot' | 'conveyor' | 'fixture' | 'weld_gun' | 'control_box' | 'station' | 'cell' | 'cell-iso' | 'crane-iso' | 'pot-ctrl' | 'task-board' | 'form-press';
+  type: 'reactor' | 'regenerator' | 'fractionator' | 'heater' | 'exchanger' | 'pump' | 'compressor' | 'valve' | 'instrument' | 'robot' | 'conveyor' | 'fixture' | 'weld_gun' | 'control_box' | 'station' | 'cell' | 'cell-iso' | 'crane-iso' | 'pot-ctrl' | 'task-board' | 'form-press' | 'cutter-head' | 'main-drive' | 'shield-body' | 'chamber' | 'screw-conveyor' | 'erector' | 'injection-pump' | 'tail-seal' | 'guidance' | 'backup-system' | 'monitor';
   x: number;
   y: number;
   width: number;
@@ -220,6 +220,7 @@ export interface SceneMeta {
   primaryColor: string;             // 主色调（用于卡片高亮等）
   difficulty: 'beginner' | 'intermediate' | 'advanced'; // 推荐难度
   status: 'available' | 'coming-soon';
+  is3D?: boolean;                   // 是否为 3D 场景（如盾构机），渲染层会切换到 Three.js
 }
 
 /** 师傅人设：把"老张/老王/老李"这种角色信息归到场景包里 */

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useDrillStore } from '@/stores/drillStore';
@@ -11,7 +11,40 @@ import type { Equipment } from '@/types';
 import { getSceneMeta } from '@/templates';
 const FALLBACK_DESIGN_SIZE = { width: 1200, height: 680 };
 
+// 3D 场景懒加载（独立 chunk，不影响 2D 场景启动速度）
+const TBMScene3D = lazy(() => import('@/scenes/tbm/TBMScene3D').then((m) => ({ default: m.TBMScene3D })));
+
+/**
+ * FactoryCanvas 现在是渲染路由分发器：
+ * - 检查当前场景 meta 是否标记 is3D
+ * - is3D=true → 渲染 TBMScene3D（Three.js）
+ * - 否则 → 渲染原来的 2D Canvas（FactoryCanvas2D）
+ *
+ * 该 wrapper 仅一个 useEquipmentStore subscribe，hooks 规则始终满足。
+ */
 export const FactoryCanvas: React.FC = () => {
+  const activeTemplate = useUIStore((s) => s.activeTemplate);
+  const sceneMeta = activeTemplate ? getSceneMeta(activeTemplate) : undefined;
+
+  if (sceneMeta?.is3D) {
+    return (
+      <Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#94a3b8', background: '#0a1426' }}>
+          🛞 加载 3D 引擎中...
+        </div>
+      }>
+        <TBMScene3D />
+      </Suspense>
+    );
+  }
+
+  return <FactoryCanvas2D />;
+};
+
+/**
+ * 2D 渲染器：原 FactoryCanvas 实现
+ */
+const FactoryCanvas2D: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const flowOffsetRef = useRef<number>(0);

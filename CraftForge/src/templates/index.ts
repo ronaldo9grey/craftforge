@@ -49,6 +49,12 @@ import { bakingFaults } from './baking/faults';
 import { bakingMeta } from './baking/meta';
 import { bakingCoach } from './baking/coach';
 
+// —— 盾构机隧道掘进（首个 3D 场景）——
+import { tbmEquipments, tbmPipelines } from './tbm/config';
+import { tbmFaults } from './tbm/faults';
+import { tbmMeta } from './tbm/meta';
+import { tbmCoach } from './tbm/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -101,6 +107,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: bakingEquipments,
     pipelines: bakingPipelines,
     faults: bakingFaults,
+  },
+  tbm: {
+    meta: tbmMeta,
+    coach: tbmCoach,
+    equipments: tbmEquipments,
+    pipelines: tbmPipelines,
+    faults: tbmFaults,
   },
 };
 

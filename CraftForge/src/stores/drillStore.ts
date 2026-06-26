@@ -225,7 +225,7 @@ export const useDrillStore = create<DrillState>((set, get) => ({
       }, 600);
       // 1.2s 后报警一声（中等级别），代表故障已生效
       setTimeout(() => {
-        if (soundOn()) soundService.playAlarm(2);
+        if (soundOn()) soundService.playAlarm(2, activeTpl);
       }, 1200);
     }
   },
@@ -476,7 +476,7 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         intervenePending = true;
         lastInterveneAt = Date.now();
         // 老张介入时给一声轻警告，提示学员"师傅要说话了"
-        if (soundOn()) soundService.playAlarm(1);
+        if (soundOn()) soundService.playAlarm(1, useUIStore.getState().activeTemplate ?? 'fcc');
         const ai = useAIStore.getState();
         // 占位空 ai 消息 + 流式 append
         ai.sendMessage('', 'ai');

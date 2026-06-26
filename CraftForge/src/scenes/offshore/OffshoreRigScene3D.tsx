@@ -36,12 +36,12 @@ class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError
       return (
         <div style={{
           width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', background: '#0a1929', color: '#38bdf8', padding: 24, textAlign: 'center',
+          alignItems: 'center', justifyContent: 'center', background: '#7dd3fc', color: '#0c4a6e', padding: 24, textAlign: 'center',
         }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}> offshore</div>
           <div style={{ fontSize: 16, marginBottom: 8 }}>3D 场景加载失败</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', maxWidth: 480 }}>{this.state.error}</div>
-          <div style={{ fontSize: 11, color: '#64748b', marginTop: 16 }}>
+          <div style={{ fontSize: 12, color: '#075985', maxWidth: 480 }}>{this.state.error}</div>
+          <div style={{ fontSize: 11, color: '#0369a1', marginTop: 16 }}>
             提示：可能是浏览器不支持 WebGL 或显卡驱动有问题，请切换到 2D 场景
           </div>
         </div>
@@ -53,10 +53,10 @@ class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError
 
 // ============= 颜色常量 =============
 const COLORS = {
-  // 海洋
-  ocean: '#0c4a6e',
-  oceanDeep: '#0a1929',
-  seaFloor: '#1a1a2e',
+  // 海洋（白天天蓝色）
+  ocean: '#0ea5e9',
+  oceanDeep: '#075985',
+  seaFloor: '#1e3a5f',
   // 平台结构
   pontoon: '#475569',
   column: '#64748b',
@@ -96,8 +96,8 @@ const COLORS = {
 
 function labelStyle(color: string): React.CSSProperties {
   return {
-    background: 'rgba(10, 25, 41, 0.92)',
-    color, padding: '3px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+    background: 'rgba(186, 230, 253, 0.88)',
+    color: '#0c4a6e', padding: '3px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
     border: `1px solid ${color}`, whiteSpace: 'nowrap',
     transform: 'translate(-50%, -50%)', pointerEvents: 'none',
   };
@@ -218,16 +218,16 @@ function Ocean() {
       <planeGeometry args={[140, 140, 40, 40]} />
       <meshStandardMaterial
         color={COLORS.ocean}
-        metalness={0.3}
-        roughness={0.4}
+        metalness={0.6}
+        roughness={0.2}
         transparent
-        opacity={0.88}
+        opacity={0.82}
       />
     </mesh>
   );
 }
 
-// ============= 深水体积（海面以下渐变到深黑） =============
+// ============= 深水体积（海面以下渐变到深蓝） =============
 function DeepWater() {
   return (
     <mesh position={[0, -12, 0]}>
@@ -235,7 +235,7 @@ function DeepWater() {
       <meshStandardMaterial
         color={COLORS.oceanDeep}
         transparent
-        opacity={0.6}
+        opacity={0.5}
         depthWrite={false}
         side={THREE.BackSide}
       />
@@ -269,8 +269,8 @@ function SeaFloor() {
       {rocks.map((rock, i) => (
         <mesh key={i} position={rock.pos} rotation={rock.rot} scale={[rock.scale, rock.scale * 0.7, rock.scale]}>
           <sphereGeometry args={[1, 6, 5]} />
-          <meshStandardMaterial color="#2d2d44" roughness={0.9} />
-          <Edges color="#1a1a2e" />
+          <meshStandardMaterial color="#3d4f6b" roughness={0.9} />
+          <Edges color="#2d3a52" />
         </mesh>
       ))}
 
@@ -1174,15 +1174,15 @@ function ClickableZones() {
             {isSelected && selectedEq && (
               <Html position={[0, -(radius + 0.5), 0]}>
                 <div style={{
-                  background: 'rgba(10, 25, 41, 0.95)',
+                  background: 'rgba(186, 230, 253, 0.95)',
                   borderRadius: 8, padding: '8px 12px', minWidth: 160,
                   border: '1px solid rgba(34, 197, 94, 0.5)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
                   transform: 'translate(-50%, 0)',
                   pointerEvents: 'none',
                 }}>
                   <div style={{
-                    color: '#22c55e', fontSize: 10, fontWeight: 700,
+                    color: '#0c4a6e', fontSize: 10, fontWeight: 700,
                     marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
                   }}>
                     {selectedEq.name}
@@ -1194,9 +1194,9 @@ function ClickableZones() {
                         display: 'flex', justifyContent: 'space-between',
                         alignItems: 'center', gap: 12, marginBottom: 3,
                       }}>
-                        <span style={{ color: '#94a3b8', fontSize: 10 }}>{p.name}</span>
+                        <span style={{ color: '#475569', fontSize: 10 }}>{p.name}</span>
                         <span style={{
-                          color: isOutOfRange ? '#ef4444' : '#e2e8f0',
+                          color: isOutOfRange ? '#ef4444' : '#0c4a6e',
                           fontSize: 11, fontWeight: 600,
                           fontFamily: 'monospace',
                         }}>
@@ -1207,8 +1207,8 @@ function ClickableZones() {
                   })}
                   <div style={{
                     marginTop: 5, paddingTop: 5,
-                    borderTop: '1px solid rgba(148,163,184,0.2)',
-                    color: '#64748b', fontSize: 9, textAlign: 'center',
+                    borderTop: '1px solid rgba(12, 74, 110, 0.2)',
+                    color: '#0369a1', fontSize: 9, textAlign: 'center',
                   }}>
                     点击右侧面板调整参数 →
                   </div>
@@ -1332,9 +1332,9 @@ function FaultBriefingCard({ fault, onClose }: { fault: { id: string; title: str
   return (
     <div style={{
       position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
-      background: 'rgba(10, 25, 41, 0.96)', color: '#fff',
+      background: 'rgba(186, 230, 253, 0.96)', color: '#0c4a6e',
       padding: '16px 24px', borderRadius: 10, fontSize: 13,
-      border: '1px solid #ef4444', boxShadow: '0 4px 24px rgba(239,68,68,0.3)',
+      border: '1px solid #ef4444', boxShadow: '0 4px 24px rgba(239,68,68,0.2)',
       maxWidth: 560, zIndex: 100,
       animation: 'faultSlideIn 0.3s ease',
     }}>
@@ -1353,15 +1353,15 @@ function FaultBriefingCard({ fault, onClose }: { fault: { id: string; title: str
           <span style={{ color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1 }} onClick={onClose}>x</span>
         </div>
       </div>
-      <div style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 8, lineHeight: 1.5 }}>
+      <div style={{ color: '#475569', fontSize: 12, marginBottom: 8, lineHeight: 1.5 }}>
         {fault.description}
       </div>
       <div style={{
-        background: 'rgba(239, 68, 68, 0.15)', borderRadius: 6, padding: '8px 12px',
+        background: 'rgba(239, 68, 68, 0.1)', borderRadius: 6, padding: '8px 12px',
         border: '1px solid rgba(239, 68, 68, 0.3)',
       }}>
-        <span style={{ color: '#fca5a5', fontSize: 11, fontWeight: 600 }}>处理要点：</span>
-        <span style={{ color: '#fef3c7', fontSize: 11, marginLeft: 4 }}>{fault.hint}</span>
+        <span style={{ color: '#dc2626', fontSize: 11, fontWeight: 600 }}>处理要点：</span>
+        <span style={{ color: '#7c2d12', fontSize: 11, marginLeft: 4 }}>{fault.hint}</span>
       </div>
     </div>
   );
@@ -1387,14 +1387,14 @@ function SceneContent() {
 
   return (
     <>
-      {/* 光照：环境 + 主光 + 补光 */}
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[20, 30, 15]} intensity={0.8} color="#fef3c7" />
-      <directionalLight position={[-15, 20, -10]} intensity={0.3} color="#60a5fa" />
+      {/* 光照：白天环境 + 太阳主光 + 补光 */}
+      <ambientLight intensity={0.8} />
+      <directionalLight position={[30, 40, 20]} intensity={1.2} color="#fffbeb" />
+      <directionalLight position={[-20, 25, -15]} intensity={0.4} color="#bae6fd" />
       {/* 甲板工作灯 */}
-      <pointLight position={[0, 12, 0]} intensity={0.8} color="#ffffff" distance={30} />
-      <pointLight position={[8, 11, 2]} intensity={0.5} color="#fbbf24" distance={20} />
-      <pointLight position={[-8, 11, -2]} intensity={0.5} color="#fbbf24" distance={20} />
+      <pointLight position={[0, 12, 0]} intensity={0.5} color="#ffffff" distance={30} />
+      <pointLight position={[8, 11, 2]} intensity={0.3} color="#fbbf24" distance={20} />
+      <pointLight position={[-8, 11, -2]} intensity={0.3} color="#fbbf24" distance={20} />
 
       {/* 海洋 + 深水 + 海底 */}
       <Ocean />
@@ -1495,15 +1495,15 @@ export function OffshoreRigScene3D() {
 
   return (
     <Scene3DErrorBoundary>
-      <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0a1929' }}>
+      <div style={{ width: '100%', height: '100%', position: 'relative', background: '#7dd3fc' }}>
         <Canvas
           camera={{ position: preset.pos, fov: 50, near: 0.1, far: 300 }}
           key={viewId}
           gl={{ antialias: true, alpha: false }}
           onPointerMissed={() => useUIStore.getState().selectEquipment(null)}
         >
-          <color attach="background" args={['#0a1929']} />
-          <fog attach="fog" args={['#0a1929', 60, 180]} />
+          <color attach="background" args={['#7dd3fc']} />
+          <fog attach="fog" args={['#bae6fd', 80, 250]} />
           <Suspense fallback={null}>
             <SceneContent />
           </Suspense>
@@ -1525,9 +1525,9 @@ export function OffshoreRigScene3D() {
               key={v.id}
               onClick={() => setViewId(v.id)}
               style={{
-                background: viewId === v.id ? 'rgba(56, 189, 248, 0.2)' : 'rgba(10,25,41,0.7)',
-                color: viewId === v.id ? '#38bdf8' : '#94a3b8',
-                border: viewId === v.id ? '1px solid #38bdf8' : '1px solid rgba(148,163,184,0.2)',
+                background: viewId === v.id ? 'rgba(14, 165, 233, 0.25)' : 'rgba(186, 230, 253, 0.7)',
+                color: viewId === v.id ? '#0284c7' : '#0c4a6e',
+                border: viewId === v.id ? '1px solid #0284c7' : '1px solid rgba(12, 74, 110, 0.2)',
                 borderRadius: 6, padding: '6px 10px', fontSize: 11, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s',
               }}
@@ -1543,19 +1543,19 @@ export function OffshoreRigScene3D() {
 
         {/* 顶部提示 */}
         <div style={{
-          position: 'absolute', top: 12, left: 12, color: '#94a3b8',
-          background: 'rgba(10,25,41,0.7)', padding: '6px 10px', borderRadius: 6, fontSize: 12,
-          border: '1px solid rgba(148,163,184,0.2)',
+          position: 'absolute', top: 12, left: 12, color: '#0c4a6e',
+          background: 'rgba(186, 230, 253, 0.8)', padding: '6px 10px', borderRadius: 6, fontSize: 12,
+          border: '1px solid rgba(12, 74, 110, 0.2)',
         }}>
            海上钻井平台 3D · 鼠标拖动旋转 / 滚轮缩放 / 右键平移
         </div>
 
         {/* 版本标签 */}
         <div style={{
-          position: 'absolute', bottom: 12, right: 12, color: '#38bdf8',
-          background: 'rgba(10,25,41,0.7)', padding: '4px 8px', borderRadius: 4, fontSize: 10,
+          position: 'absolute', bottom: 12, right: 12, color: '#0c4a6e',
+          background: 'rgba(186, 230, 253, 0.8)', padding: '4px 8px', borderRadius: 4, fontSize: 10,
         }}>
-          v1.0 offshore-3d (视角预设+参数浮窗+故障简报)
+          v1.1 offshore-3d (天蓝色海洋+视角预设+参数浮窗+故障简报)
         </div>
       </div>
     </Scene3DErrorBoundary>

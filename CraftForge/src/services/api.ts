@@ -450,3 +450,61 @@ export const analyticsApi = {
   classOverview: (classId: string) => apiFetch<ClassAnalyticsResponse>(`/analytics/teacher/class/${classId}/overview`),
   aiInsight: (classId: string) => apiFetch<AIInsightResponse>(`/analytics/teacher/class/${classId}/ai-insight`, { method: 'POST' }),
 };
+
+// =============================================================
+// 专家经验蒸馏 (Experience Distillation)
+// =============================================================
+
+export interface DistilledExperience {
+  key_decisions: Array<{ step: number; timing: string; action: string; reasoning: string; priority: 'critical' | 'recommended' }>;
+  param_thresholds: Array<{ param: string; danger_zone: string; expert_action: string; normal_range: string }>;
+  rhythm: string;
+  intuition_rules: string[];
+  common_mistakes: Array<{ mistake: string; why_wrong: string; correct_alternative: string }>;
+  master_insight: string;
+}
+
+export interface ExperienceRule {
+  id: string;
+  scene_id: string;
+  fault_id: string | null;
+  fault_name: string;
+  title: string;
+  raw_transcript?: string;
+  raw_annotations?: string | null;
+  distilled: DistilledExperience | null;
+  expert_name: string | null;
+  expert_title: string | null;
+  source_type: string;
+  status: string;
+  created_at: number;
+  updated_at: number;
+  distill_error?: string | null;
+}
+
+export interface CollectResponse {
+  id: string;
+  distilled: DistilledExperience | null;
+  distill_error: string | null;
+  message: string;
+}
+
+export const experienceApi = {
+  collect: (data: {
+    scene_id: string; fault_name: string; title: string; raw_transcript: string;
+    fault_id?: string; raw_annotations?: string; expert_name?: string; expert_title?: string; source_type?: string;
+  }) => apiFetch<CollectResponse>('/experience/collect', { method: 'POST', body: JSON.stringify(data) }),
+  redistill: (id: string) => apiFetch<{ id: string; distilled: DistilledExperience; message: string }>(`/experience/${id}/redistill`, { method: 'POST' }),
+  list: (params?: { scene_id?: string; fault_id?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.scene_id) qs.set('scene_id', params.scene_id);
+    if (params?.fault_id) qs.set('fault_id', params.fault_id);
+    const q = qs.toString();
+    return apiFetch<{ experiences: ExperienceRule[] }>(`/experience${q ? '?' + q : ''}`);
+  },
+  detail: (id: string) => apiFetch<ExperienceRule>(`/experience/${id}`),
+  update: (id: string, data: Partial<ExperienceRule>) => apiFetch<{ message: string; id: string }>(`/experience/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id: string) => apiFetch<{ message: string; id: string }>(`/experience/${id}`, { method: 'DELETE' }),
+  getByScene: (sceneId: string) => apiFetch<{ experiences: ExperienceRule[] }>(`/experience/scene/${sceneId}`),
+  getByFault: (sceneId: string, faultId: string) => apiFetch<{ experience: ExperienceRule | null }>(`/experience/fault/${sceneId}/${faultId}`),
+};

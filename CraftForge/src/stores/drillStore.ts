@@ -325,7 +325,7 @@ export const useDrillStore = create<DrillState>((set, get) => ({
         return;
       }
 
-      coachClosing(breakdown)
+      coachClosing(breakdown, useUIStore.getState().activeTemplate ?? undefined, currentFault?.id)
         .then((text) => {
           const finalText = text?.trim() || breakdown.coachComment || '本次演练已结束。';
           // 一次性 set（coachClosing 是 chatOnce），借用 streamMessage 把全文写入占位

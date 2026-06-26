@@ -250,29 +250,65 @@ export async function coachOpening(scenario: {
 }
 
 /** 演练讲评：基于 breakdown 生成一句话点评 */
-export async function coachClosing(breakdown: ScoreBreakdown): Promise<string> {
+export async function coachClosing(breakdown: ScoreBreakdown, sceneId?: string, faultId?: string): Promise<string> {
   // 维度详情，让模型看到"各项满分多少 / 实际得多少"，避免在 D 级时夸"工况平稳"等空话
   const dimsLines = breakdown.dimensions
     .map((d) => `- ${d.label}：${d.score}/${d.max}`)
     .join('\n');
+
+  // 查询专家经验（如果有），注入到 system prompt
+  let experienceContext = '';
+  if (sceneId && faultId) {
+    try {
+      const { experienceApi } = await import('@/services/api');
+      const { experience } = await experienceApi.getByFault(sceneId, faultId);
+      if (experience?.distilled) {
+        const d = experience.distilled;
+        const expLines: string[] = [
+          `\n\n【⚠️ 老师傅真实经验（来自专家口述蒸馏）⚠️】`,
+          `以下是真实老师傅处理同类故障的经验，请在讲评中引用对比：`,
+        ];
+        if (d.key_decisions?.length) {
+          expLines.push('专家关键操作：');
+          d.key_decisions.forEach(kd => {
+            expLines.push(`  第${kd.step}步：${kd.action}（时机：${kd.timing}，原因：${kd.reasoning}）`);
+          });
+        }
+        if (d.common_mistakes?.length) {
+          expLines.push('新手常见错误：');
+          d.common_mistakes.forEach(cm => {
+            expLines.push(`  ${cm.mistake} → 正确做法：${cm.correct_alternative}`);
+          });
+        }
+        if (d.master_insight) {
+          expLines.push(`核心经验：${d.master_insight}`);
+        }
+        expLines.push('请在讲评中对比学生操作和专家经验，指出差异，引用专家的具体建议。');
+        experienceContext = expLines.join('\n');
+      }
+    } catch {
+      // 经验库查询失败不影响正常讲评
+    }
+  }
 
   const userPrompt =
     `【本次演练评分】\n` +
     `总分 ${breakdown.total}（${breakdown.grade} 级）\n${dimsLines}\n\n` +
     `【强项】${breakdown.highlights.length ? breakdown.highlights.join('；') : '无明显强项'}\n` +
     `【短板】${breakdown.improvements.length ? breakdown.improvements.join('；') : '无明显短板'}\n\n` +
-    `请用教练的语气讲评（≤2 句、≤80 字）。要求：\n` +
+    `请用教练的语气讲评（≤3 句、≤120 字）。要求：\n` +
     `1. 评价必须与"总分等级"一致，D/C 级不要说"完成不错"，S/A 级不要泼冷水\n` +
     `2. 至少点出最关键的一个短板（或表扬最突出的一个强项）\n` +
-    `3. 用第二人称"你"或祈使句，不要客套话`;
+    `3. 如果有专家经验，对比学生操作和专家做法，引用专家的具体建议\n` +
+    `4. 用第二人称"你"或祈使句，不要客套话`;
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt() },
+    { role: 'system', content: buildSystemPrompt() + experienceContext },
     { role: 'user', content: userPrompt },
   ];
 
   try {
-    const text = await chatOnce(messages, { temperature: 0.5, maxTokens: 200 });
+    const text = await chatOnce(messages, { temperature: 0.5, maxTokens: 300 });
     return text.trim();
   } catch (err: unknown) {
     console.warn('[aiCoach] coachClosing 失败', err instanceof Error ? err.message : err);

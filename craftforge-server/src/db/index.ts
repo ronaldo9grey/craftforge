@@ -132,6 +132,26 @@ CREATE TABLE IF NOT EXISTS mistakes (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_mistakes_user_status ON mistakes(user_id, status);
+
+-- 专家经验蒸馏库：从老专家口述/操作记录中LLM蒸馏出的结构化经验
+CREATE TABLE IF NOT EXISTS experience_rules (
+  id              TEXT PRIMARY KEY,
+  scene_id        TEXT NOT NULL,
+  fault_id        TEXT,
+  fault_name      TEXT NOT NULL,
+  title           TEXT NOT NULL,
+  raw_transcript  TEXT,
+  raw_annotations TEXT,
+  distilled       TEXT,                               -- JSON: 蒸馏出的结构化经验
+  expert_name     TEXT,
+  expert_title    TEXT,
+  source_type     TEXT DEFAULT 'think_aloud',         -- think_aloud | interview | observation
+  status          TEXT DEFAULT 'active',              -- active | archived
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_exp_scene ON experience_rules(scene_id, status);
+CREATE INDEX IF NOT EXISTS idx_exp_fault ON experience_rules(scene_id, fault_id, status);
 `;
 
 // 执行 schema（用 transaction 确保原子性）

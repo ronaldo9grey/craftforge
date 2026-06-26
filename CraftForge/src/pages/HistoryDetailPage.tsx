@@ -2,9 +2,9 @@
 // 展示：基本信息 / 得分拆解 / 师傅评语 / 操作流水
 
 import { useEffect, useState } from 'react';
-import { drillApi, mistakeApi, type DrillRecord } from '@/services/api';
+import { drillApi, mistakeApi, experienceApi, type DrillRecord, type DistilledExperience } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
-import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer, BookmarkPlus } from 'lucide-react';
+import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer, BookmarkPlus, Sparkles, Target, AlertCircle, Zap, Clock } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 const SCENE_LABEL: Record<string, string> = {
@@ -33,13 +33,22 @@ export const HistoryDetailPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
   const [record, setRecord] = useState<DrillRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expertExp, setExpertExp] = useState<DistilledExperience | null>(null);
 
   useEffect(() => {
     if (!detailRecordId) return;
     setLoading(true);
     drillApi
       .detail(detailRecordId)
-      .then((r) => setRecord(r.record))
+      .then((r) => {
+        setRecord(r.record);
+        // 加载专家经验
+        if (r.record?.scene_id && r.record?.fault_id) {
+          experienceApi.getByFault(r.record.scene_id, r.record.fault_id)
+            .then(({ experience }) => setExpertExp(experience?.distilled ?? null))
+            .catch(() => setExpertExp(null));
+        }
+      })
       .finally(() => setLoading(false));
   }, [detailRecordId]);
 
@@ -211,6 +220,98 @@ export const HistoryDetailPage: React.FC = () => {
             <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-line">
               {coachComment}
             </p>
+          </div>
+        )}
+
+        {/* 专家做法对比 */}
+        {expertExp && (
+          <div className="bg-bg-secondary border border-purple-500/30 rounded-lg p-4">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              老师傅经验对比
+            </h3>
+            <div className="space-y-4">
+              {/* 核心经验 */}
+              {expertExp.master_insight && (
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <p className="text-sm text-purple-300 italic">"{expertExp.master_insight}"</p>
+                </div>
+              )}
+
+              {/* 专家关键操作 */}
+              {expertExp.key_decisions?.length > 0 && (
+                <div>
+                  <div className="text-xs text-text-muted font-medium mb-2 flex items-center gap-1">
+                    <Target className="w-3.5 h-3.5" />
+                    专家关键操作
+                  </div>
+                  <div className="space-y-1.5">
+                    {expertExp.key_decisions.map((d, i) => (
+                      <div key={i} className="flex items-start gap-2 p-2 bg-bg-tertiary rounded">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${d.priority === 'critical' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          {d.priority === 'critical' ? '关键' : '建议'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-text-primary">
+                            第{d.step}步：{d.action}
+                          </div>
+                          <div className="text-[10px] text-text-muted mt-0.5">
+                            时机：{d.timing} · 原因：{d.reasoning}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 操作节奏 */}
+              {expertExp.rhythm && (
+                <div className="flex items-start gap-2 p-2 bg-bg-tertiary rounded">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-xs text-text-muted">操作节奏：</span>
+                    <span className="text-xs text-text-secondary">{expertExp.rhythm}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 新手常见错误 */}
+              {expertExp.common_mistakes?.length > 0 && (
+                <div>
+                  <div className="text-xs text-text-muted font-medium mb-2 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    新手常见错误（对照你的操作）
+                  </div>
+                  <div className="space-y-1.5">
+                    {expertExp.common_mistakes.map((m, i) => (
+                      <div key={i} className="p-2 bg-red-500/5 border border-red-500/20 rounded">
+                        <div className="text-xs text-red-400">{m.mistake}</div>
+                        <div className="text-[10px] text-text-muted mt-0.5">原因：{m.why_wrong}</div>
+                        <div className="text-[10px] text-green-400 mt-0.5">正确做法：{m.correct_alternative}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 经验直觉 */}
+              {expertExp.intuition_rules?.length > 0 && (
+                <div>
+                  <div className="text-xs text-text-muted font-medium mb-2 flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5" />
+                    经验直觉
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {expertExp.intuition_rules.map((r, i) => (
+                      <span key={i} className="text-xs px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400/80 rounded">
+                        {r}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -4,7 +4,7 @@
 // - 操作：去重练（跳工作台 + 锁定该故障）/ 标记已掌握
 
 import { useEffect, useState } from 'react';
-import { mistakeApi, type Mistake } from '@/services/api';
+import { mistakeApi, experienceApi, type Mistake, type DistilledExperience } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -12,7 +12,7 @@ import { useAIStore } from '@/stores/aiStore';
 import {
   ArrowLeft, BookOpen, Play, CheckCircle2, RefreshCw, AlertTriangle,
   ChevronDown, ChevronUp, Clock, TrendingUp, TrendingDown, Minus,
-  Lightbulb, Target, AlertCircle, History, Wrench
+  Lightbulb, Target, AlertCircle, History, Wrench, Sparkles
 } from 'lucide-react';
 import { confirmDialog } from '@/components/ConfirmDialog';
 
@@ -175,6 +175,21 @@ const MistakeCard: React.FC<{
   onMaster: () => void;
 }> = ({ mistake: m, expanded, onToggle, onRetry, onMaster }) => {
   const isMastered = m.status === 'mastered';
+  const [expertExp, setExpertExp] = useState<DistilledExperience | null>(null);
+  const [expLoaded, setExpLoaded] = useState(false);
+
+  // 展开时加载专家经验
+  useEffect(() => {
+    if (!expanded || expLoaded) return;
+    if (m.scene_id && m.fault_id) {
+      experienceApi.getByFault(m.scene_id, m.fault_id)
+        .then(({ experience }) => setExpertExp(experience?.distilled ?? null))
+        .catch(() => setExpertExp(null))
+        .finally(() => setExpLoaded(true));
+    } else {
+      setExpLoaded(true);
+    }
+  }, [expanded, m.scene_id, m.fault_id, expLoaded]);
 
   const trend = m.score_history && m.score_history.length >= 2
     ? m.score_history[0].score > m.score_history[m.score_history.length - 1].score ? 'improving' : 'declining'
@@ -390,6 +405,36 @@ const MistakeCard: React.FC<{
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* 专家经验建议 */}
+          {expertExp && (
+            <div className="border border-purple-500/30 rounded-lg p-3 bg-purple-500/5">
+              <div className="text-xs text-purple-400 font-medium mb-2 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" />
+                老师傅经验指导
+              </div>
+              {expertExp.master_insight && (
+                <p className="text-xs text-purple-300 italic mb-2">"{expertExp.master_insight}"</p>
+              )}
+              {expertExp.common_mistakes?.length > 0 && (
+                <div className="space-y-1">
+                  {expertExp.common_mistakes.map((cm, i) => (
+                    <div key={i} className="text-xs">
+                      <span className="text-red-400">✗ {cm.mistake}</span>
+                      <span className="text-text-muted"> → </span>
+                      <span className="text-green-400">✓ {cm.correct_alternative}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {expertExp.rhythm && (
+                <div className="text-xs text-text-muted mt-2">
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  节奏：{expertExp.rhythm}
+                </div>
+              )}
             </div>
           )}
 

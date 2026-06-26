@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 
-export type AppPage = 'dashboard' | 'gallery' | 'workbench' | 'history' | 'history-detail' | 'mistakes' | 'leaderboard' | 'analytics';
+export type AppPage = 'dashboard' | 'gallery' | 'workbench' | 'history' | 'history-detail' | 'mistakes' | 'leaderboard' | 'analytics' | 'experience';
 
 interface PageState {
   page: AppPage;

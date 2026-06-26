@@ -16,6 +16,7 @@ import { drillRecordsRouter, achievementsRouter, teacherRouter } from './routes/
 import mistakesRouter from './routes/mistakes';
 import leaderboardRouter from './routes/leaderboard';
 import { analyticsRouter } from './routes/analytics';
+import { experienceRouter } from './routes/experience';
 import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
 import { writeAccessLog, writeErrorLog } from './utils/logger';
 
@@ -63,6 +64,9 @@ app.use('/api/leaderboard', leaderboardRouter);
 
 // 学习数据分析
 app.use('/api/analytics', analyticsRouter);
+
+// 专家经验蒸馏
+app.use('/api/experience', experienceRouter);
 
 // 404
 app.use((req: Request, res: Response) => {

@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { teacherApi, classApi, type ClassDashboard, type PublicUser } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award, BarChart3, LogOut } from 'lucide-react';
+import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award, BarChart3, LogOut, Sparkles } from 'lucide-react';
 import { confirmDialog } from '@/components/ConfirmDialog';
 
 const SCENE_LABEL: Record<string, string> = {
@@ -139,6 +139,13 @@ export const TeacherDashboard: React.FC = () => {
             >
               <BarChart3 className="w-4 h-4" />
               学习分析
+            </button>
+            <button
+              onClick={() => setPage('experience')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-purple-400/40 text-purple-400 rounded-lg flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              经验蒸馏
             </button>
             <button
               onClick={() => setShowCreate(true)}

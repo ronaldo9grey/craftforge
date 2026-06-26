@@ -858,6 +858,247 @@ function ClickableZones({ shieldZ }: { shieldZ: number }) {
   );
 }
 
+// ============= B: 6条管道3D流动效果 =============
+// 管道定义：from→to 设备3D坐标（跟随 shieldZ），颜色+名称
+const PIPE_DEFS = [
+  // 1. 进浆：后配套台车(T-25) → 泥水仓(前盾内)
+  { from: [0, -12, -15], to: [0, -14, 1.5], color: '#3b82f6', name: '进浆', radius: 0.15 },
+  // 2. 泥水排出：泥水仓 → 螺旋输送机入口
+  { from: [0, -14, 1.5], to: [2.5, -16, -1], color: '#854d0e', name: '泥水排出', radius: 0.15 },
+  // 3. 渣土回流：螺旋输送机 → 后配套台车
+  { from: [2.5, -16, -4], to: [0, -12, -15], color: '#78350f', name: '渣土回流', radius: 0.13 },
+  // 4. 同步注浆：注浆泵(尾盾) → 盾尾密封
+  { from: [0, -14, -5.5], to: [0, -14, -7], color: '#facc15', name: '同步注浆', radius: 0.12 },
+  // 5. 导向信号：导向系统 → 盾体
+  { from: [0, -13, -2], to: [0, -14, -2], color: '#a855f7', name: '导向信号', radius: 0.08 },
+  // 6. 主轴驱动：主驱动 → 刀盘
+  { from: [0, -14, 2.5], to: [0, -14, 3.8], color: '#ef4444', name: '主轴驱动', radius: 0.10 },
+];
+
+function Pipelines3D({ shieldZ }: { shieldZ: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const particleRefs = useRef<THREE.Mesh[]>([]);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    particleRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const def = PIPE_DEFS[i];
+      const from = [def.from[0], def.from[1], def.from[2] + shieldZ];
+      const to = [def.to[0], def.to[1], def.to[2] + shieldZ];
+      // 粒子沿管道从 from→to 流动，每条管道 2 个粒子错开
+      const phase = (t * 0.4 + i * 0.15) % 1;
+      mesh.position.set(
+        from[0] + (to[0] - from[0]) * phase,
+        from[1] + (to[1] - from[1]) * phase,
+        from[2] + (to[2] - from[2]) * phase,
+      );
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      mat.emissiveIntensity = 0.6 + 0.4 * Math.sin(t * 3 + i);
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {PIPE_DEFS.map((def, i) => {
+        const from: [number, number, number] = [def.from[0], def.from[1], def.from[2] + shieldZ];
+        const to: [number, number, number] = [def.to[0], def.to[1], def.to[2] + shieldZ];
+        const mid: [number, number, number] = [
+          (from[0] + to[0]) / 2 + (i % 2 === 0 ? 1.5 : -1.5),
+          (from[1] + to[1]) / 2 + 1,
+          (from[2] + to[2]) / 2,
+        ];
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(...from),
+          new THREE.Vector3(...mid),
+          new THREE.Vector3(...to),
+        ]);
+        const points = curve.getPoints(24);
+        const geom = new THREE.BufferGeometry().setFromPoints(points);
+        return (
+          <group key={i}>
+            {/* 管道线 */}
+            <line>
+                              <primitive object={geom} attach="geometry" />
+                              <lineBasicMaterial color={def.color} transparent opacity={0.5} />
+            </line>
+            {/* 流动粒子 */}
+            <mesh
+              ref={(m) => { if (m) particleRefs.current[i] = m; }}
+            >
+              <sphereGeometry args={[def.radius * 2, 8, 8]} />
+              <meshStandardMaterial
+                color={def.color}
+                emissive={def.color}
+                emissiveIntensity={0.8}
+                transparent
+                opacity={0.9}
+              />
+            </mesh>
+            {/* 管道标签（中点） */}
+            <Html position={mid}>
+              <div style={{
+                ...labelStyle(def.color),
+                fontSize: 9, padding: '1px 5px', opacity: 0.7,
+              }}>
+                {def.name}
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+// ============= C5: 螺旋输送机出土粒子 =============
+function ScrewDischargeParticles({ z, screwRpm }: { z: number; screwRpm: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const PARTICLE_COUNT = 30;
+  const particles = useRef(
+    Array.from({ length: PARTICLE_COUNT }, () => ({
+      pos: new THREE.Vector3(2.5 + Math.random() * 0.8, -18 - Math.random() * 2, z - 4 + Math.random() * 1.5),
+      vel: new THREE.Vector3(1.5 + Math.random(), -0.5 - Math.random() * 0.5, -0.3 - Math.random() * 0.5),
+      life: Math.random(),
+    })),
+  );
+
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    const speed = Math.max(0.1, screwRpm / 10);
+    ref.current.children.forEach((child, i) => {
+      const p = particles.current[i];
+      if (!p) return;
+      p.life += dt * speed;
+      if (p.life > 1) {
+        // 重生
+        p.life = 0;
+        p.pos.set(2.5 + Math.random() * 0.5, -17.5, z - 4 + Math.random() * 1);
+        p.vel.set(1.5 + Math.random(), -0.5 - Math.random() * 0.5, -0.3 - Math.random() * 0.5);
+      }
+      p.pos.addScaledVector(p.vel, dt);
+      child.position.copy(p.pos);
+      const mesh = child as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = (1 - p.life) * 0.8;
+    });
+  });
+
+  return (
+    <group ref={ref}>
+      {particles.current.map((_, i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[0.08 + Math.random() * 0.06, 6, 6]} />
+          <meshStandardMaterial color="#92400e" emissive="#92400e" emissiveIntensity={0.2} transparent opacity={0.8} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ============= C6: 同步注浆流动效果 =============
+function GroutFlow({ z }: { z: number }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime;
+    ref.current.children.forEach((child, i) => {
+      const mesh = child as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      // 沿尾盾后方圆周分布的注浆孔，每个孔浆液脉动流出
+      mat.emissiveIntensity = 0.3 + 0.4 * Math.abs(Math.sin(t * 2 + i * 0.5));
+      mesh.scale.y = 1 + 0.3 * Math.sin(t * 3 + i);
+    });
+  });
+
+  // 尾盾后方圆周 8 个注浆孔
+  const groutHoles = Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2;
+    return {
+      x: Math.cos(a) * 3.0,
+      y: -14 + Math.sin(a) * 3.0,
+      z: z - 6.5,
+    };
+  });
+
+  return (
+    <group ref={ref}>
+      {groutHoles.map((hole, i) => (
+        <mesh key={i} position={[hole.x, hole.y, hole.z]}>
+          <cylinderGeometry args={[0.12, 0.08, 1.5, 8]} />
+          <meshStandardMaterial
+            color="#facc15"
+            emissive="#facc15"
+            emissiveIntensity={0.4}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ============= C7: 刀盘切削碎屑 =============
+function CuttingDebris({ z, rpm }: { z: number; rpm: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const COUNT = 25;
+  const debris = useRef(
+    Array.from({ length: COUNT }, () => ({
+      pos: new THREE.Vector3(
+        (Math.random() - 0.5) * 6,
+        -14 + (Math.random() - 0.5) * 6,
+        z + 4 + Math.random() * 2,
+      ),
+      vel: new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+        1 + Math.random() * 2,
+      ),
+      life: Math.random(),
+    })),
+  );
+
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    const speed = Math.max(0.1, rpm / 2);
+    ref.current.children.forEach((child, i) => {
+      const p = debris.current[i];
+      if (!p) return;
+      p.life += dt * speed * 0.5;
+      if (p.life > 1) {
+        p.life = 0;
+        p.pos.set(
+          (Math.random() - 0.5) * 5,
+          -14 + (Math.random() - 0.5) * 5,
+          z + 3.5,
+        );
+        p.vel.set(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          1 + Math.random() * 2,
+        );
+      }
+      p.pos.addScaledVector(p.vel, dt);
+      child.position.copy(p.pos);
+      const mesh = child as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = (1 - p.life) * 0.7;
+    });
+  });
+
+  return (
+    <group ref={ref}>
+      {debris.current.map((_, i) => (
+        <mesh key={i}>
+          <boxGeometry args={[0.06, 0.06, 0.06]} />
+          <meshStandardMaterial color="#92704f" emissive="#6b4423" emissiveIntensity={0.15} transparent opacity={0.7} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 // ============= 场景内容 =============
 function SceneContent() {
   const equipments = useEquipmentStore((s) => s.equipments);
@@ -950,6 +1191,18 @@ function SceneContent() {
 
         {/* 可点击设备区域：点击选中设备 → 弹出参数面板 */}
         <ClickableZones shieldZ={shieldZ} />
+
+        {/* B: 6条管道3D流动效果 */}
+        <Pipelines3D shieldZ={shieldZ} />
+
+        {/* C5: 螺旋输送机出土粒子 */}
+        <ScrewDischargeParticles z={shieldZ} screwRpm={screwRpm} />
+
+        {/* C6: 同步注浆流动效果 */}
+        <GroutFlow z={shieldZ} />
+
+        {/* C7: 刀盘切削碎屑 */}
+        <CuttingDebris z={shieldZ} rpm={rpm} />
       </group>
     </>
   );

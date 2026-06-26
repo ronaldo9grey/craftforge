@@ -244,65 +244,6 @@ function DeepWater() {
   );
 }
 
-// ============= 天空云彩（漂浮白色云朵，缓慢移动） =============
-function Clouds() {
-  const groupRef = useRef<THREE.Group>(null);
-
-  // 生成8朵云，每朵由3-5个球体组成
-  const clouds = useMemo(() => {
-    return Array.from({ length: 8 }, (_, ci) => {
-      const angle = (ci / 8) * Math.PI * 2 + Math.random() * 0.5;
-      const dist = 30 + Math.random() * 30;
-      return {
-        basePos: [Math.cos(angle) * dist, 18 + Math.random() * 8, Math.sin(angle) * dist] as [number, number, number],
-        scale: 1.5 + Math.random() * 2.0,
-        speed: 0.02 + Math.random() * 0.03,
-        puffs: Array.from({ length: 3 + Math.floor(Math.random() * 3) }, (_, pi) => ({
-          offset: [(pi - 1.5) * 1.2 + Math.random() * 0.5, Math.random() * 0.6 - 0.2, Math.random() * 0.8 - 0.4] as [number, number, number],
-          radius: 1.0 + Math.random() * 0.8,
-        })),
-      };
-    });
-  }, []);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (!groupRef.current) return;
-    groupRef.current.children.forEach((child, i) => {
-      const cloud = clouds[i];
-      if (!cloud) return;
-      // 云朵水平漂移
-      child.position.x = cloud.basePos[0] + Math.sin(t * cloud.speed + i) * 5;
-      child.position.z = cloud.basePos[2] + Math.cos(t * cloud.speed + i * 0.7) * 3;
-      // 轻微上下浮动
-      child.position.y = cloud.basePos[1] + Math.sin(t * 0.3 + i) * 0.3;
-    });
-  });
-
-  return (
-    <group ref={groupRef}>
-      {clouds.map((cloud, ci) => (
-        <group key={ci} position={cloud.basePos} scale={cloud.scale}>
-          {cloud.puffs.map((puff, pi) => (
-            <mesh key={pi} position={puff.offset}>
-              <sphereGeometry args={[puff.radius, 12, 10]} />
-              <meshStandardMaterial
-                color="#ffffff"
-                transparent
-                opacity={0.85}
-                roughness={1.0}
-                metalness={0.0}
-                emissive="#ffffff"
-                emissiveIntensity={0.05}
-              />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
-  );
-}
-
 // ============= 海鸥（展翅飞翔的小鸟，绕平台盘旋） =============
 function Seagulls() {
   const groupRef = useRef<THREE.Group>(null);
@@ -1549,8 +1490,7 @@ function SceneContent() {
       <DeepWater />
       <SeaFloor />
 
-      {/* 天空云彩 + 海鸥 */}
-      <Clouds />
+      {/* 海鸥 */}
       <Seagulls />
 
       {/* 平台主体 */}

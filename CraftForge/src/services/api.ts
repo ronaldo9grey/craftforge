@@ -350,3 +350,85 @@ export const leaderboardApi = {
     }>(`/leaderboard?${qs.toString()}`);
   },
 };
+
+// =============================================================
+// 学习数据分析 (Learning Analytics)
+// =============================================================
+
+export interface WeaknessResponse {
+  total_drills: number;
+  avg_score: number;
+  score_trend: 'improving' | 'declining' | 'stable';
+  scene_weakness: SceneWeakness[];
+  fault_difficulty: FaultDifficulty[];
+  parameter_errors: ParameterError[];
+  dimension_scores: Record<string, { avg: number; max: number; trend: string }>;
+  time_analysis: { avg_duration: number; fastest: number; slowest: number; trend: string };
+  recommendations: Recommendation[];
+}
+
+export interface SceneWeakness {
+  scene_id: string;
+  scene_name: string;
+  drill_count: number;
+  avg_score: number;
+  best_score: number;
+  avg_duration: number;
+  weakness_tags: string[];
+  score_trend: string;
+  last_drill_at: number;
+}
+
+export interface FaultDifficulty {
+  fault_id: string;
+  fault_name: string;
+  scene_id: string;
+  scene_name: string;
+  attempt_count: number;
+  avg_score: number;
+  best_grade: string;
+  avg_duration: number;
+  common_errors: string[];
+  is_mastered: boolean;
+}
+
+export interface ParameterError {
+  param_id: string;
+  param_name: string;
+  scene_id: string;
+  scene_name: string;
+  error_count: number;
+  avg_deviation: number;
+  direction: 'high' | 'low';
+  typical_value: number;
+}
+
+export interface Recommendation {
+  type: string;
+  priority: 'high' | 'medium' | 'low';
+  scene_id?: string;
+  scene_name?: string;
+  fault_id?: string;
+  fault_name?: string;
+  reason: string;
+  suggested_action: string;
+}
+
+export interface RadarResponse {
+  radar: Array<{ dimension: string; score: number; max: number }>;
+}
+
+export interface ClassAnalyticsResponse {
+  total_drills: number;
+  avg_score: number;
+  student_count: number;
+  scene_weakness: Array<{ scene_id: string; scene_name: string; drill_count: number; avg_score: number; student_coverage: number }>;
+  at_risk_students: Array<{ user_id: string; name: string; avg_score: number; drill_count: number; trend: string; risk_level: string; reasons: string[]; last_drill_at: number }>;
+  top_students: Array<{ user_id: string; name: string; avg_score: number; drill_count: number; s_count: number }>;
+}
+
+export const analyticsApi = {
+  myWeakness: () => apiFetch<WeaknessResponse>('/analytics/me/weakness'),
+  myRadar: () => apiFetch<RadarResponse>('/analytics/me/radar'),
+  classOverview: (classId: string) => apiFetch<ClassAnalyticsResponse>(`/analytics/teacher/class/${classId}/overview`),
+};

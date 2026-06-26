@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { drillApi, achievementApi, classApi, type Achievement, type ClassRow } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
-import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History, BookOpen, Award } from 'lucide-react';
+import { Trophy, Target, Sparkles, Activity, Play, RefreshCw, Users, UserPlus, History, BookOpen, Award, BarChart3 } from 'lucide-react';
 
 interface Summary {
   total: number;
@@ -120,6 +120,13 @@ export const StudentDashboard: React.FC = () => {
             >
               <History className="w-4 h-4" />
               演练历史
+            </button>
+            <button
+              onClick={() => setPage('analytics')}
+              className="px-3 py-2 text-sm bg-bg-secondary hover:bg-bg-tertiary border border-cyan-400/40 text-cyan-400 rounded-lg flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              学习分析
             </button>
             <button
               onClick={() => setPage('gallery')}

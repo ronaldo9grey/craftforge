@@ -12,6 +12,7 @@ import { MistakeBookPage } from '@/pages/MistakeBookPage';
 import { LeaderboardPage } from '@/pages/LeaderboardPage';
 import { LearningAnalyticsPage } from '@/pages/LearningAnalyticsPage';
 import { ToastHost } from '@/components/Toast';
+import { ConfirmHost } from '@/components/ConfirmDialog';
 import App from './App';
 
 /**
@@ -80,6 +81,7 @@ export const AppRoot: React.FC = () => {
     <>
       {renderPage()}
       <ToastHost />
+      <ConfirmHost />
     </>
   );
 };

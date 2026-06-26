@@ -9,6 +9,7 @@ import { teacherApi, classApi, type ClassDashboard, type PublicUser } from '@/se
 import { useAuthStore } from '@/stores/authStore';
 import { usePageStore } from '@/stores/pageStore';
 import { Users, Trophy, BookOpenCheck, RefreshCw, Plus, Copy, Trash2, RotateCw, X, Play, Check, UserMinus, BellRing, Award } from 'lucide-react';
+import { confirmDialog } from '@/components/ConfirmDialog';
 
 const SCENE_LABEL: Record<string, string> = {
   fcc: '催化裂化',
@@ -90,7 +91,13 @@ export const TeacherDashboard: React.FC = () => {
 
   const handleKick = async (userId: string) => {
     if (!selectedClassId) return;
-    if (!confirm('确认把该学员移出班级？历史成绩仍然保留。')) return;
+    const ok = await confirmDialog({
+      title: '确认把该学员移出班级？',
+      description: '该学员的历史成绩仍然保留，之后可通过邀请码重新加入。',
+      danger: true,
+      confirmText: '移出',
+    });
+    if (!ok) return;
     await classApi.kick(selectedClassId, userId);
     await loadMembers(selectedClassId);
     await loadDashboard();
@@ -318,7 +325,12 @@ const ClassCard: React.FC<{
 
   const regen = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('重新生成邀请码？旧码立即失效，已加入的学生不受影响。')) return;
+    const ok = await confirmDialog({
+      title: '重新生成邀请码？',
+      description: '旧码立即失效，已加入的学生不受影响。',
+      confirmText: '重新生成',
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await classApi.regenCode(data.class_id);
@@ -330,7 +342,13 @@ const ClassCard: React.FC<{
 
   const remove = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`确认删除班级"${data.class_name}"？所有班级关联数据将清除，无法撤销。`)) return;
+    const ok = await confirmDialog({
+      title: `确认删除班级"${data.class_name}"？`,
+      description: '所有班级关联数据将清除，无法撤销。',
+      danger: true,
+      confirmText: '删除',
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await classApi.remove(data.class_id);

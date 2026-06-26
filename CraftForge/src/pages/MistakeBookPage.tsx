@@ -9,6 +9,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useAIStore } from '@/stores/aiStore';
 import { ArrowLeft, BookOpen, Play, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { confirmDialog } from '@/components/ConfirmDialog';
 
 const SCENE_LABEL: Record<string, string> = {
   fcc: '催化裂化',
@@ -54,7 +55,13 @@ export const MistakeBookPage: React.FC = () => {
   };
 
   const handleMaster = async (m: Mistake) => {
-    if (!confirm(`确认把"${m.fault_name}"标记为已掌握？`)) return;
+    const ok = await confirmDialog({
+      title: `确认把"${m.fault_name}"标记为已掌握？`,
+      description: '标记后该错题将移入"已掌握"列表，可随时重新标记。',
+      icon: 'question',
+      confirmText: '标记掌握',
+    });
+    if (!ok) return;
     await mistakeApi.master(m.id);
     await load();
   };

@@ -693,76 +693,48 @@ const EQUIP_NAMES: Record<string, string> = {
   'TBM-MON-101': '地表监测',
 };
 
-function FaultHighlight({ affectedEquipments, shieldZ }: { affectedEquipments: string[]; shieldZ: number }) {
+// ============= 故障发光包裹器 =============
+// 包裹设备组件，故障时遍历所有子 mesh，把 emissive 设为红色并闪烁
+// 非故障时不干预材质，保持设备原色
+function FaultGlow({ isFaulty, children }: { isFaulty: boolean; children: ReactNode }) {
   const groupRef = useRef<THREE.Group>(null);
-  const matRefs = useRef<THREE.MeshStandardMaterial[]>([]);
+  const originalEmissive = useRef<Map<THREE.Mesh, { color: THREE.Color; intensity: number }>>(new Map());
+
   useFrame((state) => {
-    // 闪烁动画：emissiveIntensity + opacity + scale 三重脉动，确保肉眼可见
+    if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
-    const wave = Math.sin(t * 5);
-    const emissivePulse = 0.4 + 0.5 * wave;
-    const opacityPulse = 0.12 + 0.3 * Math.abs(wave);
-    matRefs.current.forEach((mat) => {
-      if (mat) {
-        mat.emissiveIntensity = emissivePulse;
-        mat.opacity = opacityPulse;
+    // 5Hz 闪烁，0.2~0.9 脉动
+    const pulse = isFaulty ? 0.2 + 0.7 * Math.abs(Math.sin(t * 5)) : 0;
+
+    groupRef.current.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const mat = child.material as THREE.MeshStandardMaterial;
+      if (!mat || !mat.emissive) return;
+
+      // 首次遍历时保存原始 emissive
+      if (!originalEmissive.current.has(child)) {
+        originalEmissive.current.set(child, {
+          color: mat.emissive.clone(),
+          intensity: mat.emissiveIntensity ?? 0,
+        });
+      }
+
+      if (isFaulty) {
+        // 强制红色发光闪烁
+        mat.emissive.setRGB(1, 0.05, 0.05);
+        mat.emissiveIntensity = pulse;
+      } else {
+        // 恢复原始值
+        const orig = originalEmissive.current.get(child);
+        if (orig) {
+          mat.emissive.copy(orig.color);
+          mat.emissiveIntensity = orig.intensity;
+        }
       }
     });
-    // 整体缩放脉动
-    if (groupRef.current) {
-      const s = 1 + 0.08 * wave;
-      groupRef.current.scale.setScalar(s);
-    }
   });
 
-  return (
-    <group ref={groupRef}>
-      {affectedEquipments.map((eqId, idx) => {
-        const pos = EQUIP_3D_POS[eqId];
-        if (!pos) return null;
-        const name = EQUIP_NAMES[eqId] || eqId;
-        const isMonitor = eqId === 'TBM-MON-101';
-        const actualPos: [number, number, number] = isMonitor
-          ? [pos[0], pos[1], pos[2]]
-          : [pos[0], pos[1] - 14, pos[2] + shieldZ];
-        return (
-          <group key={eqId} position={actualPos}>
-            {/* 红色半透明闪烁球体 */}
-            <mesh>
-              <sphereGeometry args={[4.5, 16, 16]} />
-              <meshStandardMaterial
-                ref={(m) => { if (m) matRefs.current[idx] = m; }}
-                color="#ef4444"
-                emissive="#ef4444"
-                emissiveIntensity={0.6}
-                transparent
-                opacity={0.25}
-                depthWrite={false}
-              />
-            </mesh>
-            {/* 故障标签 */}
-            <Html position={[0, 5, 0]}>
-              <div style={{
-                background: 'rgba(239, 68, 68, 0.9)',
-                color: '#fff',
-                padding: '4px 10px',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 700,
-                whiteSpace: 'nowrap',
-                transform: 'translate(-50%, -50%)',
-                pointerEvents: 'none',
-                border: '1px solid #fca5a5',
-                boxShadow: '0 0 12px rgba(239,68,68,0.6)',
-              }}>
-                ⚠ {name} · 故障
-              </div>
-            </Html>
-          </group>
-        );
-      })}
-    </group>
-  );
+  return <group ref={groupRef}>{children}</group>;
 }
 
 // ============= 可点击设备区域（3D 交互核心） =============
@@ -900,21 +872,48 @@ function SceneContent() {
       {/* 整体放大1.2倍，让盾构机占画面更大比例 */}
       <group scale={1.2}>
         <SoilLayers />
-        <GroundSurface settlement={settlement} />
         <CompletedTunnel shieldZ={shieldZ} />
-        <ShieldBody z={shieldZ} roll={roll} />
-        <CutterHead rpm={rpm} wear={wear} z={shieldZ} />
-        <Erector z={shieldZ} />
-        <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
-        <BackupCars z={shieldZ} />
+
+        {/* 故障设备：部件本身红色闪烁（不再用浮动球体/标签） */}
+        {(() => {
+          const faultySet = new Set(isDrillRunning && currentFault ? currentFault.affectedEquipments : []);
+          return (
+            <>
+              {/* 刀盘 + 主驱动（共用前盾区域） */}
+              <FaultGlow isFaulty={faultySet.has('TBM-CHE-101') || faultySet.has('TBM-DRV-101')}>
+                <CutterHead rpm={rpm} wear={wear} z={shieldZ} />
+              </FaultGlow>
+
+              {/* 盾体（含前盾/中盾/尾盾/油缸） */}
+              <FaultGlow isFaulty={faultySet.has('TBM-SHL-101') || faultySet.has('TBM-CHB-101') || faultySet.has('TBM-SEAL-101')}>
+                <ShieldBody z={shieldZ} roll={roll} />
+              </FaultGlow>
+
+              {/* 管片拼装机 */}
+              <FaultGlow isFaulty={faultySet.has('TBM-ERE-101')}>
+                <Erector z={shieldZ} />
+              </FaultGlow>
+
+              {/* 螺旋输送机 */}
+              <FaultGlow isFaulty={faultySet.has('TBM-SCR-101')}>
+                <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
+              </FaultGlow>
+
+              {/* 后配套台车 */}
+              <FaultGlow isFaulty={faultySet.has('TBM-BCK-101')}>
+                <BackupCars z={shieldZ} />
+              </FaultGlow>
+
+              {/* 地表监测点闪烁 */}
+              <FaultGlow isFaulty={faultySet.has('TBM-MON-101')}>
+                <GroundSurface settlement={settlement} />
+              </FaultGlow>
+            </>
+          );
+        })()}
 
         {/* 可点击设备区域：点击选中设备 → 弹出参数面板 */}
         <ClickableZones shieldZ={shieldZ} />
-
-        {/* 演练中：故障设备红色闪烁高亮 */}
-        {isDrillRunning && currentFault && (
-          <FaultHighlight affectedEquipments={currentFault.affectedEquipments} shieldZ={shieldZ} />
-        )}
       </group>
     </>
   );

@@ -106,7 +106,7 @@ export const TeacherDashboard: React.FC = () => {
   const selectedClass = classes.find((c) => c.class_id === selectedClassId);
 
   return (
-    <div className="h-full overflow-y-auto bg-bg-primary text-text-primary">
+    <div className="h-screen overflow-y-auto bg-bg-primary text-text-primary">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* 头部 */}
         <div className="flex items-center justify-between">

@@ -93,6 +93,27 @@ router.get('/mine', requireAuth, (req: Request, res: Response) => {
 // =============================================================
 // GET /api/classes/:id  班级详情
 // =============================================================
+// 注意：静态路由（/mine, /my-request）必须在动态路由（/:id）之前注册，
+// 否则 Express 会把 "my-request" 当作 :id 参数匹配
+router.get('/my-request', requireAuth, (req: Request, res: Response) => {
+  const me = req.authUser!;
+  if (me.role !== 'student') {
+    res.json({ request: null });
+    return;
+  }
+  const row = db
+    .prepare(
+      `SELECT r.id, r.user_id, r.class_id, r.status, r.created_at, r.reviewed_at, r.reviewed_by,
+              c.name AS class_name, c.join_code
+       FROM class_join_requests r
+       JOIN classes c ON c.id = r.class_id
+       WHERE r.user_id = ?
+       ORDER BY r.created_at DESC LIMIT 1`,
+    )
+    .get(me.id);
+  res.json({ request: row ?? null });
+});
+
 router.get('/:id', requireAuth, (req: Request, res: Response) => {
   const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(req.params.id) as ClassRow | undefined;
   if (!cls) {
@@ -181,29 +202,6 @@ router.post('/join', requireAuth, (req: Request, res: Response) => {
     `INSERT INTO class_join_requests (id, user_id, class_id, status, created_at) VALUES (?, ?, ?, 'pending', ?)`,
   ).run(reqId, me.id, cls.id, now);
   res.status(201).json({ status: 'pending', class: cls, request_id: reqId });
-});
-
-// =============================================================
-// GET /api/classes/my-request  学生查我的当前申请状态
-// 返回最新一条申请（任意状态），如无返回 null
-// =============================================================
-router.get('/my-request', requireAuth, (req: Request, res: Response) => {
-  const me = req.authUser!;
-  if (me.role !== 'student') {
-    res.json({ request: null });
-    return;
-  }
-  const row = db
-    .prepare(
-      `SELECT r.id, r.user_id, r.class_id, r.status, r.created_at, r.reviewed_at, r.reviewed_by,
-              c.name AS class_name, c.join_code
-       FROM class_join_requests r
-       JOIN classes c ON c.id = r.class_id
-       WHERE r.user_id = ?
-       ORDER BY r.created_at DESC LIMIT 1`,
-    )
-    .get(me.id);
-  res.json({ request: row ?? null });
 });
 
 // =============================================================

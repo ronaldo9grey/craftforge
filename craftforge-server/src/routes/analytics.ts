@@ -829,7 +829,7 @@ analyticsRouter.post('/teacher/class/:classId/ai-insight', requireAuth, async (r
       return;
     }
 
-    const data = await resp.json();
+    const data = await resp.json() as any;
     const insight = data?.choices?.[0]?.message?.content || 'AI未能生成洞察内容';
 
     res.json({ insight });

@@ -80,8 +80,8 @@ export const StudentDashboard: React.FC = () => {
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   return (
-    <div className="h-full overflow-y-auto bg-bg-primary text-text-primary">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+    <div className="h-screen overflow-y-auto bg-bg-primary text-text-primary">
+      <div className="max-w-6xl mx-auto p-6 pb-20 space-y-6">
         {/* 头部欢迎 */}
         <div className="flex items-center justify-between">
           <div>

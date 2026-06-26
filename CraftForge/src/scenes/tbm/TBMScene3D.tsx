@@ -8,7 +8,7 @@
  *  5. 增强emissive自发光 → 暗背景下部件醒目
  *  6. 刀盘正对相机方向 → 刀齿分布一目了然
  */
-import { Suspense, useRef, Component, type ReactNode } from 'react';
+import { Suspense, useRef, useState, useEffect, useMemo, Component, type ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html, Edges } from '@react-three/drei';
 import * as THREE from 'three';
@@ -778,6 +778,10 @@ function FaultGlow({ isFaulty, children }: { isFaulty: boolean; children: ReactN
 function ClickableZones({ shieldZ }: { shieldZ: number }) {
   const selectEquipment = useUIStore((s) => s.selectEquipment);
   const selectedEquipmentId = useUIStore((s) => s.selectedEquipmentId);
+  const equipments = useEquipmentStore((s) => s.equipments);
+
+  // 选中设备的参数数据
+  const selectedEq = equipments.find((e) => e.id === selectedEquipmentId);
 
   // 设备点击区域大小（根据设备体积差异化）
   const RADII: Record<string, number> = {
@@ -848,6 +852,51 @@ function ClickableZones({ shieldZ }: { shieldZ: number }) {
                   border: '1px solid #86efac',
                 }}>
                   ✓ {name} · 已选中
+                </div>
+              </Html>
+            )}
+            {/* A2: 选中设备3D参数浮窗 */}
+            {isSelected && selectedEq && (
+              <Html position={[0, -(radius + 0.5), 0]}>
+                <div style={{
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  borderRadius: 8, padding: '8px 12px', minWidth: 160,
+                  border: '1px solid rgba(34, 197, 94, 0.5)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+                  transform: 'translate(-50%, 0)',
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{
+                    color: '#22c55e', fontSize: 10, fontWeight: 700,
+                    marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5,
+                  }}>
+                    {selectedEq.name}
+                  </div>
+                  {selectedEq.parameters.slice(0, 4).map((p) => {
+                    const isOutOfRange = p.value < p.min || p.value > p.max;
+                    return (
+                      <div key={p.id} style={{
+                        display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', gap: 12, marginBottom: 3,
+                      }}>
+                        <span style={{ color: '#94a3b8', fontSize: 10 }}>{p.name}</span>
+                        <span style={{
+                          color: isOutOfRange ? '#ef4444' : '#e2e8f0',
+                          fontSize: 11, fontWeight: 600,
+                          fontFamily: 'monospace',
+                        }}>
+                          {p.value.toFixed(p.unit === '%' ? 1 : 2)}{p.unit && ` ${p.unit}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div style={{
+                    marginTop: 5, paddingTop: 5,
+                    borderTop: '1px solid rgba(148,163,184,0.2)',
+                    color: '#64748b', fontSize: 9, textAlign: 'center',
+                  }}>
+                    点击右侧面板调整参数 →
+                  </div>
                 </div>
               </Html>
             )}
@@ -1208,14 +1257,125 @@ function SceneContent() {
   );
 }
 
+// ============= A1: 视角预设 =============
+const VIEW_PRESETS = [
+  { id: 'overview',  label: '全景',     icon: '🌍', pos: [18, -3, 22],     target: [0, -14, -6] },
+  { id: 'cutter',    label: '刀盘特写', icon: '🛞', pos: [6, -11, 8],      target: [0, -14, 3.5] },
+  { id: 'shield',    label: '盾体侧面', icon: '🛡️', pos: [16, -14, 0],     target: [0, -14, -2] },
+  { id: 'backup',    label: '台车尾部', icon: '🚃', pos: [10, -10, -25],   target: [0, -14, -20] },
+  { id: 'surface',   label: '地表俯瞰', icon: '🏢', pos: [0, 25, 5],       target: [0, 0, -10] },
+];
+
+// ============= A3: 故障简报卡片 =============
+function FaultBriefingCard({ fault, onClose }: { fault: { id: string; title: string; description: string; hint: string } | null; onClose: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const timerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (fault) {
+      setVisible(true);
+      setCollapsed(false);
+      // 4秒后自动收起
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => setCollapsed(true), 4000);
+    } else {
+      setVisible(false);
+    }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [fault]);
+
+  if (!visible || !fault) return null;
+
+  if (collapsed) {
+    return (
+      <div style={{
+        position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
+        background: 'rgba(127, 29, 29, 0.92)', color: '#fff',
+        padding: '6px 16px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+        border: '1px solid #fca5a5', boxShadow: '0 0 16px rgba(239,68,68,0.4)',
+        display: 'flex', alignItems: 'center', gap: 8,
+        zIndex: 100,
+      }} onClick={() => setCollapsed(false)}>
+        <span>⚠ {fault.title}</span>
+        <span style={{ opacity: 0.6, fontSize: 10 }}>点击展开</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
+      background: 'rgba(15, 23, 42, 0.96)', color: '#fff',
+      padding: '16px 24px', borderRadius: 10, fontSize: 13,
+      border: '1px solid #ef4444', boxShadow: '0 4px 24px rgba(239,68,68,0.3)',
+      maxWidth: 560, zIndex: 100,
+      animation: 'faultSlideIn 0.3s ease',
+    }}>
+      <style>{`
+        @keyframes faultSlideIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+      `}</style>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ color: '#ef4444', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+          ⚠ {fault.title}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <span style={{ color: '#64748b', fontSize: 10, cursor: 'pointer' }} onClick={() => setCollapsed(true)}>收起</span>
+          <span style={{ color: '#64748b', fontSize: 14, cursor: 'pointer', lineHeight: 1 }} onClick={onClose}>×</span>
+        </div>
+      </div>
+      <div style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 8, lineHeight: 1.5 }}>
+        {fault.description}
+      </div>
+      <div style={{
+        background: 'rgba(239, 68, 68, 0.15)', borderRadius: 6, padding: '8px 12px',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+      }}>
+        <span style={{ color: '#fca5a5', fontSize: 11, fontWeight: 600 }}>💡 处理要点：</span>
+        <span style={{ color: '#fef3c7', fontSize: 11, marginLeft: 4 }}>{fault.hint}</span>
+      </div>
+    </div>
+  );
+}
+
 // ============= 主组件 =============
 export function TBMScene3D() {
+  const [viewId, setViewId] = useState('overview');
+  const [dismissedFaultId, setDismissedFaultId] = useState<string | null>(null);
+
+  // 监听演练故障状态（A3）
+  const isDrillRunning = useDrillStore((s) => s.isRunning);
+  const currentFault = useDrillStore((s) => s.currentFault);
+
+  // 故障简报：演练开始+有故障+未被手动关闭时显示
+  const faultBriefing = useMemo(() => {
+    if (!isDrillRunning || !currentFault) return null;
+    if (dismissedFaultId === currentFault.id) return null;
+    return {
+      id: currentFault.id,
+      title: currentFault.name,
+      description: currentFault.description,
+      hint: currentFault.steps.find((s) => s.correct)?.action ?? '请查看参数面板进行调整',
+    };
+  }, [isDrillRunning, currentFault, dismissedFaultId]);
+
+  // 故障变化时重置关闭状态
+  useEffect(() => {
+    if (currentFault) setDismissedFaultId(null);
+  }, [currentFault?.id]);
+
+  const preset = VIEW_PRESETS.find((v) => v.id === viewId) ?? VIEW_PRESETS[0];
+
   return (
     <Scene3DErrorBoundary>
       <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0a1426' }}>
         <Canvas
-          /* 相机：侧前俯视角度，同时看清刀盘正面 + 盾体侧面 + 台车 */
-          camera={{ position: [18, -3, 22], fov: 50, near: 0.1, far: 200 }}
+          /* 相机：跟随视角预设 */
+          camera={{ position: preset.pos as [number, number, number], fov: 50, near: 0.1, far: 200 }}
+          key={viewId}
           gl={{ antialias: true, alpha: false }}
           /* 点击空白区域取消选中 → 关闭参数面板 */
           onPointerMissed={() => useUIStore.getState().selectEquipment(null)}
@@ -1227,12 +1387,37 @@ export function TBMScene3D() {
           </Suspense>
           <OrbitControls
             enablePan enableZoom enableRotate
-            minDistance={8}
+            minDistance={5}
             maxDistance={60}
             maxPolarAngle={Math.PI * 0.49}
-            target={[0, -14, -6]}
+            target={preset.target as [number, number, number]}
           />
         </Canvas>
+
+        {/* A1: 视角预设按钮 */}
+        <div style={{
+          position: 'absolute', right: 12, top: 48, display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          {VIEW_PRESETS.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setViewId(v.id)}
+              style={{
+                background: viewId === v.id ? 'rgba(251, 191, 36, 0.2)' : 'rgba(15,23,42,0.7)',
+                color: viewId === v.id ? '#fbbf24' : '#94a3b8',
+                border: viewId === v.id ? '1px solid #fbbf24' : '1px solid rgba(148,163,184,0.2)',
+                borderRadius: 6, padding: '6px 10px', fontSize: 11, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s',
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{v.icon}</span>
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        {/* A3: 故障简报卡片 */}
+        <FaultBriefingCard fault={faultBriefing} onClose={() => setDismissedFaultId(currentFault?.id ?? null)} />
 
         <div style={{
           position: 'absolute', top: 12, left: 12, color: '#94a3b8',
@@ -1245,7 +1430,7 @@ export function TBMScene3D() {
           position: 'absolute', bottom: 12, right: 12, color: '#fbbf24',
           background: 'rgba(15,23,42,0.7)', padding: '4px 8px', borderRadius: 4, fontSize: 10,
         }}>
-          v3.3 tbm-3d (描边+点击交互+故障闪烁+动力学)
+          v3.7 tbm-3d (视角预设+参数浮窗+故障简报)
         </div>
       </div>
     </Scene3DErrorBoundary>

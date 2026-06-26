@@ -425,10 +425,21 @@ export interface ClassAnalyticsResponse {
   scene_weakness: Array<{ scene_id: string; scene_name: string; drill_count: number; avg_score: number; student_coverage: number }>;
   at_risk_students: Array<{ user_id: string; name: string; avg_score: number; drill_count: number; trend: string; risk_level: string; reasons: string[]; last_drill_at: number }>;
   top_students: Array<{ user_id: string; name: string; avg_score: number; drill_count: number; s_count: number }>;
+  // 深化维度
+  grade_distribution?: Record<string, number>;
+  activity_trend?: Array<{ date: string; drill_count: number; avg_score: number }>;
+  class_dimensions?: Array<{ key: string; label: string; avg: number; max: number; rate: number }>;
+  fault_hotspots?: Array<{ fault_id: string; fault_name: string; scene_id: string; scene_name: string; fail_count: number; total_count: number; fail_rate: number; open_mistakes: number }>;
+  all_students?: Array<{ user_id: string; name: string; avg_score: number; best_score: number; drill_count: number; s_count: number; trend: string; last_drill_at: number }>;
+}
+
+export interface AIInsightResponse {
+  insight: string;
 }
 
 export const analyticsApi = {
   myWeakness: () => apiFetch<WeaknessResponse>('/analytics/me/weakness'),
   myRadar: () => apiFetch<RadarResponse>('/analytics/me/radar'),
   classOverview: (classId: string) => apiFetch<ClassAnalyticsResponse>(`/analytics/teacher/class/${classId}/overview`),
+  aiInsight: (classId: string) => apiFetch<AIInsightResponse>(`/analytics/teacher/class/${classId}/ai-insight`, { method: 'POST' }),
 };

@@ -1,17 +1,21 @@
 /**
- * TBM 盾构机 3D 主场景 (v1.2 - 错误边界 + 简化版)
- * 使用 @react-three/fiber + drei 构建，跟现有 2D FactoryCanvas 并列存在。
- * 由 FactoryCanvas 通过 sceneMeta.is3D 切换到本组件。
+ * TBM 盾构机 3D 主场景 (v3 - 视觉大幅优化版)
+ * 核心改动（解决"看不出轮廓及样子"）：
+ *  1. 所有关键部件加 Edges 亮色描边线 → 轮廓清晰可辨
+ *  2. 相机调整为侧前俯视角度 → 同时看清刀盘正面 + 盾体侧面 + 台车
+ *  3. 地层极度透明(0.08~0.12) → 不遮挡盾构机
+ *  4. 盾构机整体放大1.2倍 → 占画面更大比例
+ *  5. 增强emissive自发光 → 暗背景下部件醒目
+ *  6. 刀盘正对相机方向 → 刀齿分布一目了然
  */
 import { Suspense, useRef, Component, type ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
+import { OrbitControls, Html, Edges } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEquipmentStore } from '@/stores/equipmentStore';
 import { useUIStore } from '@/stores/uiStore';
 
 // ============= 错误边界 =============
-// 防止 3D 渲染错误冒泡导致整个应用 unmount 并触发认证重置（跳登录页）
 class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -43,68 +47,79 @@ class Scene3DErrorBoundary extends Component<{ children: ReactNode }, { hasError
   }
 }
 
-// 颜色常量
 const COLORS = {
-  soil1: '#a78b6c',
-  soil2: '#d4a574',
-  soil3: '#5b8aa0',
-  soil4: '#6b7280',
-  shieldBody: '#f59e0b',
-  cutterHead: '#7c2d12',
-  cutterTeeth: '#fbbf24',
-  segment: '#9ca3af',
-  screwBody: '#854d0e',
-  backup: '#1f2937',
+  soil1: '#92704f',
+  soil2: '#c4956a',
+  soil3: '#4a7a95',
+  soil4: '#5a6470',
+  // 盾构机分段颜色（更鲜明）
+  frontShield: '#f59e0b',   // 前盾：亮琥珀
+  midShield: '#ea580c',     // 中盾：橙红
+  tailShield: '#c2410c',    // 尾盾：深橙红
+  cutterDisk: '#7c2d12',    // 刀盘盘体：深红棕
+  cutterDiskInner: '#9a3412',
+  cutterArm: '#94a3b8',     // 辐条：银灰
+  cutterTooth: '#fde047',   // 刀齿：亮金
+  cutterToothWorn: '#ef4444', // 磨损刀齿：红
+  cutterHub: '#1e293b',     // 中心毂：深灰蓝
+  segment: '#d6d3d1',       // 管片：浅混凝土
+  screwShell: '#78350f',    // 螺旋外壳
+  screwBlade: '#fbbf24',    // 螺旋叶片
+  backup: '#475569',        // 后配套台车
+  backupTop: '#64748b',     // 台车顶部设备
+  hydraulic: '#eab308',     // 液压油缸：黄
+  // 描边颜色
+  edgeGold: '#fde047',
+  edgeWhite: '#f1f5f9',
+  edgeOrange: '#fb923c',
 };
 
 function labelStyle(color: string): React.CSSProperties {
   return {
-    background: 'rgba(15, 23, 42, 0.85)',
-    color,
-    padding: '4px 8px',
-    borderRadius: 4,
-    fontSize: 11,
-    fontWeight: 600,
-    border: `1px solid ${color}`,
-    whiteSpace: 'nowrap',
-    transform: 'translate(-50%, -50%)',
-    pointerEvents: 'none',
+    background: 'rgba(15, 23, 42, 0.92)',
+    color, padding: '3px 7px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+    border: `1px solid ${color}`, whiteSpace: 'nowrap',
+    transform: 'translate(-50%, -50%)', pointerEvents: 'none',
   };
 }
 
-// ============= 地层 =============
+// ============= 地层（极度透明，仅做背景暗示） =============
 function SoilLayers() {
-  const W = 30;
-  const L = 80;
   return (
     <group>
-      <mesh position={[0, -1.5, 0]}>
-        <boxGeometry args={[W, 3, L]} />
-        <meshStandardMaterial color={COLORS.soil1} roughness={0.95} />
+      {/* 杂填土 */}
+      <mesh position={[0, -1.5, -10]}>
+        <boxGeometry args={[36, 3, 50]} />
+        <meshStandardMaterial color={COLORS.soil1} roughness={0.95} transparent opacity={0.1} />
       </mesh>
-      <mesh position={[0, -7.5, 0]}>
-        <boxGeometry args={[W, 9, L]} />
-        <meshStandardMaterial color={COLORS.soil2} roughness={0.95} />
+      {/* 砂质粉土 */}
+      <mesh position={[0, -7.5, -10]}>
+        <boxGeometry args={[36, 9, 50]} />
+        <meshStandardMaterial color={COLORS.soil2} roughness={0.95} transparent opacity={0.08} />
       </mesh>
-      <mesh position={[0, -15, 0]}>
-        <boxGeometry args={[W, 6, L]} />
-        <meshStandardMaterial color={COLORS.soil3} roughness={0.9} transparent opacity={0.92} />
+      {/* 含水砂层 */}
+      <mesh position={[0, -15, -10]}>
+        <boxGeometry args={[36, 6, 50]} />
+        <meshStandardMaterial color={COLORS.soil3} roughness={0.9} transparent opacity={0.09} />
       </mesh>
-      <mesh position={[0, -24, 0]}>
-        <boxGeometry args={[W, 12, L]} />
-        <meshStandardMaterial color={COLORS.soil4} roughness={0.95} />
+      {/* 风化岩 */}
+      <mesh position={[0, -24, -10]}>
+        <boxGeometry args={[36, 12, 50]} />
+        <meshStandardMaterial color={COLORS.soil4} roughness={0.95} transparent opacity={0.1} />
       </mesh>
-      <Html position={[W / 2 + 1, -1.5, L / 2 - 5]}>
-        <div style={labelStyle('#a78b6c')}>杂填土 0~-3m</div>
+
+      {/* 地层标签（放在远处边缘） */}
+      <Html position={[15, -1.5, -30]}>
+        <div style={labelStyle('#c4956a')}>杂填土 0~-3m</div>
       </Html>
-      <Html position={[W / 2 + 1, -7.5, L / 2 - 5]}>
-        <div style={labelStyle('#d4a574')}>砂质粉土 -3~-12m</div>
+      <Html position={[15, -7.5, -30]}>
+        <div style={labelStyle('#c4956a')}>砂质粉土 -3~-12m</div>
       </Html>
-      <Html position={[W / 2 + 1, -15, L / 2 - 5]}>
-        <div style={labelStyle('#5b8aa0')}>含水砂层 -12~-18m 💧</div>
+      <Html position={[15, -15, -30]}>
+        <div style={labelStyle('#4a7a95')}>含水砂层 -12~-18m 💧</div>
       </Html>
-      <Html position={[W / 2 + 1, -24, L / 2 - 5]}>
-        <div style={labelStyle('#6b7280')}>风化岩 -18~-30m</div>
+      <Html position={[15, -24, -30]}>
+        <div style={labelStyle('#7a8290')}>风化岩 -18~-30m</div>
       </Html>
     </group>
   );
@@ -113,31 +128,30 @@ function SoilLayers() {
 // ============= 地表 =============
 function GroundSurface({ settlement }: { settlement: number }) {
   const buildings = [
-    { x: -10, z: -25, w: 4, h: 8, d: 4 },
-    { x: -4, z: -20, w: 3, h: 12, d: 3 },
-    { x: 4, z: -15, w: 5, h: 6, d: 5 },
-    { x: 10, z: -8, w: 3, h: 10, d: 3 },
+    { x: -12, z: -20, w: 4, h: 8, d: 4 },
+    { x: -5, z: -15, w: 3, h: 12, d: 3 },
+    { x: 6, z: -10, w: 5, h: 6, d: 5 },
   ];
-  const monitorZs = [-30, -15, 0, 15, 30];
+  const monitorZs = [-22, -10, 2, 14, 24];
   return (
     <group>
-      {/* 道路 */}
-      <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[30, 80]} />
-        <meshStandardMaterial color="#1f2937" roughness={0.95} />
+      <mesh position={[0, 0.01, -10]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[36, 50]} />
+        <meshStandardMaterial color="#1e293b" roughness={0.95} />
       </mesh>
-      {/* 道路虚线 */}
-      {[-30, -20, -10, 0, 10, 20, 30].map((z, i) => (
-        <mesh key={i} position={[0, 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[0.3, 4]} />
+      {/* 地面沉降裂缝标记 */}
+      {[-25, -18, -11, -4, 3, 10, 17, 24].map((z, i) => (
+        <mesh key={i} position={[0, 0.02, z - 10]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[0.4, 4]} />
           <meshBasicMaterial color="#fbbf24" />
         </mesh>
       ))}
-      {/* 建筑物 */}
+      {/* 地表建筑物 */}
       {buildings.map((b, i) => (
-        <mesh key={i} position={[b.x, b.h / 2, b.z]}>
+        <mesh key={i} position={[b.x, b.h / 2, b.z - 10]}>
           <boxGeometry args={[b.w, b.h, b.d]} />
           <meshStandardMaterial color="#475569" roughness={0.8} />
+          <Edges color={COLORS.edgeWhite} />
         </mesh>
       ))}
       {/* 沉降监测点 */}
@@ -145,18 +159,18 @@ function GroundSurface({ settlement }: { settlement: number }) {
         const isAlert = Math.abs(settlement) > 10;
         const color = isAlert ? '#ef4444' : '#22c55e';
         return (
-          <group key={i} position={[12, 0.5, z]}>
+          <group key={i} position={[12, 0.5, z - 10]}>
             <mesh>
-              <coneGeometry args={[0.4, 1, 4]} />
-              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+              <coneGeometry args={[0.5, 1.2, 4]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
             </mesh>
-            <Html position={[0, 1.2, 0]}>
+            <Html position={[0, 1.5, 0]}>
               <div style={{
                 background: isAlert ? '#7f1d1d' : '#14532d',
                 color: '#fff', padding: '2px 6px', borderRadius: 3, fontSize: 10,
                 whiteSpace: 'nowrap', transform: 'translate(-50%, -50%)', pointerEvents: 'none',
               }}>
-                M{i + 1}: {settlement.toFixed(1)} mm
+                M{i + 1}: {settlement.toFixed(1)}mm
               </div>
             </Html>
           </group>
@@ -166,129 +180,341 @@ function GroundSurface({ settlement }: { settlement: number }) {
   );
 }
 
-// ============= 已建隧道 =============
+// ============= 已建隧道管片（加描边） =============
 function CompletedTunnel({ shieldZ }: { shieldZ: number }) {
   const segs: number[] = [];
-  for (let z = -38; z < shieldZ - 3; z += 1.5) segs.push(z);
+  for (let z = -28; z < shieldZ - 4; z += 1.5) segs.push(z);
   return (
-    <group position={[0, -22, 0]}>
+    <group position={[0, -14, 0]}>
       {segs.map((z, i) => (
-        <mesh key={i} position={[0, 0, z]} rotation={[0, 0, Math.PI / 2]}>
-          <torusGeometry args={[3, 0.18, 8, 24]} />
-          <meshStandardMaterial color={COLORS.segment} roughness={0.85} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-// ============= 刀盘 =============
-function CutterHead({ rpm, wear, z }: { rpm: number; wear: number; z: number }) {
-  const ref = useRef<THREE.Group>(null);
-  useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.z += (rpm * 2 * Math.PI / 60) * dt;
-  });
-  const wearColor = wear > 70 ? '#dc2626' : wear > 40 ? '#f59e0b' : COLORS.cutterTeeth;
-  return (
-    <group ref={ref} position={[0, -22, z + 5]} rotation={[Math.PI / 2, 0, 0]}>
-      <mesh>
-        <cylinderGeometry args={[3.14, 3.14, 0.5, 32]} />
-        <meshStandardMaterial color={COLORS.cutterHead} metalness={0.7} roughness={0.4} />
-      </mesh>
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return (
-          <mesh key={i} position={[Math.cos(a) * 1.4, 0.3, Math.sin(a) * 1.4]} rotation={[0, -a, 0]}>
-            <boxGeometry args={[2.5, 0.3, 0.4]} />
-            <meshStandardMaterial color="#374151" metalness={0.5} />
+        <group key={i} position={[0, 0, z]}>
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <torusGeometry args={[3.2, 0.25, 8, 32]} />
+            <meshStandardMaterial color={COLORS.segment} roughness={0.8} />
+            <Edges color="#a8a29e" />
           </mesh>
-        );
-      })}
-      {Array.from({ length: 32 }, (_, i) => {
-        const a = (i / 32) * Math.PI * 2;
-        return (
-          <mesh key={i} position={[Math.cos(a) * 2.9, 0.4, Math.sin(a) * 2.9]}>
-            <coneGeometry args={[0.12, 0.4, 4]} />
-            <meshStandardMaterial color={wearColor} emissive={wearColor} emissiveIntensity={wear > 70 ? 0.3 : 0.05} />
-          </mesh>
-        );
-      })}
-      <mesh position={[0, 0.3, 0]}>
-        <cylinderGeometry args={[0.6, 0.6, 0.8, 16]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-// ============= 盾体 =============
-function ShieldBody({ z, roll }: { z: number; roll: number }) {
-  return (
-    <group position={[0, -22, z]} rotation={[0, 0, (roll * Math.PI) / 180]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[3.15, 3.15, 9, 32, 1, true]} />
-        <meshStandardMaterial color={COLORS.shieldBody} metalness={0.4} roughness={0.5} side={THREE.DoubleSide} />
-      </mesh>
-      {Array.from({ length: 16 }, (_, i) => {
-        const a = (i / 16) * Math.PI * 2;
-        return (
-          <mesh key={i} position={[Math.cos(a) * 2.6, Math.sin(a) * 2.6, -4]}>
-            <cylinderGeometry args={[0.15, 0.15, 1.5, 8]} />
-            <meshStandardMaterial color="#fbbf24" metalness={0.7} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-// ============= 螺旋输送机 =============
-function ScrewConveyor({ z, screwRpm }: { z: number; screwRpm: number }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.z += (screwRpm * 2 * Math.PI / 60) * dt;
-  });
-  return (
-    <group position={[1.5, -23.5, z - 2]} rotation={[0, 0, -Math.PI / 9]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.5, 0.5, 8, 16]} />
-        <meshStandardMaterial color={COLORS.screwBody} transparent opacity={0.45} />
-      </mesh>
-      <mesh ref={ref} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.35, 0.05, 4, 60, Math.PI * 8]} />
-        <meshStandardMaterial color="#fbbf24" metalness={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
-// ============= 后配套台车 =============
-function BackupCars({ z }: { z: number }) {
-  return (
-    <group position={[0, -22, z]}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <group key={i} position={[0, 0, -8 - i * 3.5]}>
-          <mesh>
-            <boxGeometry args={[2.5, 1.8, 3]} />
-            <meshStandardMaterial color={COLORS.backup} metalness={0.5} />
-          </mesh>
-          <mesh position={[0, 1.2, 0]}>
-            <boxGeometry args={[2, 0.5, 2.5]} />
-            <meshStandardMaterial color="#fbbf24" />
-          </mesh>
-          {[-1, 1].map((sign) => (
-            <mesh key={sign} position={[sign * 1.1, -0.9, -1]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[0.35, 0.35, 0.3, 12]} />
-              <meshStandardMaterial color="#0f172a" />
-            </mesh>
-          ))}
+          {i % 3 === 0 && [0, 1, 2, 3].map((j) => {
+            const a = (j / 4) * Math.PI * 2;
+            return (
+              <mesh key={j} position={[Math.cos(a) * 3.2, 0, Math.sin(a) * 3.2]}>
+                <sphereGeometry args={[0.12, 8, 8]} />
+                <meshStandardMaterial color="#64748b" metalness={0.8} roughness={0.3} />
+              </mesh>
+            );
+          })}
         </group>
       ))}
     </group>
   );
 }
 
-// ============= 整体场景内容 =============
+// ============= 刀盘（精细化 + 描边，正对相机方向） =============
+function CutterHead({ rpm, wear, z }: { rpm: number; wear: number; z: number }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.z += (rpm * 2 * Math.PI / 60) * dt;
+  });
+  const wearColor = wear > 70 ? COLORS.cutterToothWorn : wear > 40 ? '#f59e0b' : COLORS.cutterTooth;
+  const wearEmissive = wear > 70 ? 0.5 : 0.15;
+
+  return (
+    <group ref={ref} position={[0, -14, z + 3.8]} rotation={[Math.PI / 2, 0, 0]}>
+      {/* 外层主盘体（厚实，带描边） */}
+      <mesh>
+        <cylinderGeometry args={[3.5, 3.5, 0.7, 48]} />
+        <meshStandardMaterial color={COLORS.cutterDisk} metalness={0.6} roughness={0.4} emissive={COLORS.cutterDisk} emissiveIntensity={0.1} />
+        <Edges color={COLORS.edgeGold} />
+      </mesh>
+      {/* 内层副盘 */}
+      <mesh position={[0, -0.2, 0]}>
+        <cylinderGeometry args={[2.8, 2.8, 0.5, 36]} />
+        <meshStandardMaterial color={COLORS.cutterDiskInner} metalness={0.5} roughness={0.5} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+
+      {/* 6 条粗辐条（带描边） */}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i / 6) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 1.5, 0.15, Math.sin(a) * 1.5]} rotation={[0, -a, 0]}>
+            <boxGeometry args={[3.0, 0.5, 0.6]} />
+            <meshStandardMaterial color={COLORS.cutterArm} metalness={0.7} roughness={0.3} />
+            <Edges color={COLORS.edgeWhite} />
+          </mesh>
+        );
+      })}
+
+      {/* 外圈 36 把滚刀（带刀座 + 描边） */}
+      {Array.from({ length: 36 }, (_, i) => {
+        const a = (i / 36) * Math.PI * 2;
+        return (
+          <group key={i} position={[Math.cos(a) * 3.1, 0.5, Math.sin(a) * 3.1]} rotation={[0, -a, 0]}>
+            <mesh>
+              <boxGeometry args={[0.5, 0.3, 0.4]} />
+              <meshStandardMaterial color="#374151" metalness={0.8} roughness={0.3} />
+              <Edges color={COLORS.edgeWhite} />
+            </mesh>
+            <mesh position={[0, 0.35, 0]}>
+              <coneGeometry args={[0.18, 0.5, 8]} />
+              <meshStandardMaterial color={wearColor} emissive={wearColor} emissiveIntensity={wearEmissive} metalness={0.6} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* 内圈 12 把切刀 */}
+      {Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 1.9, 0.4, Math.sin(a) * 1.9]} rotation={[0, -a, 0]}>
+            <coneGeometry args={[0.12, 0.35, 6]} />
+            <meshStandardMaterial color={wearColor} emissive={wearColor} emissiveIntensity={wearEmissive * 0.8} />
+          </mesh>
+        );
+      })}
+
+      {/* 中心毂（大法兰盘 + 描边） */}
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.9, 1.0, 1.2, 24]} />
+        <meshStandardMaterial color={COLORS.cutterHub} metalness={0.85} roughness={0.2} />
+        <Edges color={COLORS.edgeGold} />
+      </mesh>
+      {/* 中心毂螺栓 */}
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.65, 0.8, Math.sin(a) * 0.65]}>
+            <cylinderGeometry args={[0.08, 0.08, 0.2, 6]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.15} />
+          </mesh>
+        );
+      })}
+
+      <Html position={[0, 0, 4.2]}>
+        <div style={labelStyle('#fde047')}>🛞 刀盘 · {rpm.toFixed(1)} rpm</div>
+      </Html>
+    </group>
+  );
+}
+
+// ============= 盾体（分段 + 描边 + 油缸） =============
+function ShieldBody({ z, roll }: { z: number; roll: number }) {
+  return (
+    <group position={[0, -14, z]} rotation={[0, 0, (roll * Math.PI) / 180]}>
+      {/* —— 前盾（刀盘驱动区，最粗，带描边） —— */}
+      <mesh position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[3.5, 3.5, 3, 36, 1, true]} />
+        <meshStandardMaterial color={COLORS.frontShield} metalness={0.5} roughness={0.4} emissive={COLORS.frontShield} emissiveIntensity={0.12} side={THREE.DoubleSide} />
+        <Edges color={COLORS.edgeGold} />
+      </mesh>
+      {/* 前盾法兰圈 */}
+      <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[3.5, 0.22, 8, 36]} />
+        <meshStandardMaterial color="#92651a" metalness={0.7} roughness={0.3} />
+        <Edges color={COLORS.edgeGold} />
+      </mesh>
+
+      {/* —— 中盾（推进油缸 + 拼装机区，带描边） —— */}
+      <mesh position={[0, 0, -2]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[3.4, 3.4, 4, 36, 1, true]} />
+        <meshStandardMaterial color={COLORS.midShield} metalness={0.5} roughness={0.4} emissive={COLORS.midShield} emissiveIntensity={0.12} side={THREE.DoubleSide} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+      {/* 中盾法兰圈 */}
+      <mesh position={[0, 0, -4]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[3.4, 0.2, 8, 36]} />
+        <meshStandardMaterial color="#7a5610" metalness={0.7} roughness={0.3} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+
+      {/* —— 尾盾（密封区，稍细，带描边） —— */}
+      <mesh position={[0, 0, -5.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[3.3, 3.2, 3, 36, 1, true]} />
+        <meshStandardMaterial color={COLORS.tailShield} metalness={0.5} roughness={0.4} emissive={COLORS.tailShield} emissiveIntensity={0.1} side={THREE.DoubleSide} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+      {/* 尾盾末端圆环 */}
+      <mesh position={[0, 0, -7]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[3.2, 0.24, 8, 36]} />
+        <meshStandardMaterial color="#6b4010" metalness={0.7} roughness={0.3} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+
+      {/* —— 16 个推进油缸（中盾内壁环布，带描边） —— */}
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = (i / 16) * Math.PI * 2;
+        const x = Math.cos(a) * 2.9;
+        const y = Math.sin(a) * 2.9;
+        return (
+          <group key={i} position={[x, y, -1.5]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.18, 0.18, 2.5, 10]} />
+              <meshStandardMaterial color={COLORS.hydraulic} metalness={0.8} roughness={0.2} emissive={COLORS.hydraulic} emissiveIntensity={0.15} />
+              <Edges color={COLORS.edgeGold} />
+            </mesh>
+            <mesh position={[0, 0, 1.5]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.1, 0.1, 1.2, 8]} />
+              <meshStandardMaterial color="#e2e8f0" metalness={0.9} roughness={0.1} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* 设备标签 */}
+      <Html position={[0, 3.8, 1.5]}>
+        <div style={labelStyle('#f59e0b')}>前盾 · 刀盘驱动</div>
+      </Html>
+      <Html position={[0, 3.7, -2]}>
+        <div style={labelStyle('#ea580c')}>中盾 · 推进/拼装</div>
+      </Html>
+      <Html position={[0, 3.6, -5.5]}>
+        <div style={labelStyle('#c2410c')}>尾盾 · 密封</div>
+      </Html>
+    </group>
+  );
+}
+
+// ============= 螺旋输送机（加描边） =============
+function ScrewConveyor({ z, screwRpm }: { z: number; screwRpm: number }) {
+  const ref = useRef<THREE.Mesh>(null);
+  useFrame((_, dt) => {
+    if (ref.current) ref.current.rotation.z += (screwRpm * 2 * Math.PI / 60) * dt;
+  });
+  return (
+    <group position={[2.5, -16, z - 1]} rotation={[Math.PI / 2.5, 0, 0.3]}>
+      {/* 外壳（半透明，看到内部螺旋） */}
+      <mesh>
+        <cylinderGeometry args={[0.65, 0.65, 7, 16, 1, true]} />
+        <meshStandardMaterial color={COLORS.screwShell} transparent opacity={0.45} side={THREE.DoubleSide} />
+        <Edges color={COLORS.edgeOrange} />
+      </mesh>
+      {/* 螺旋叶片 */}
+      <mesh ref={ref}>
+        <torusGeometry args={[0.45, 0.06, 4, 80, Math.PI * 14]} />
+        <meshStandardMaterial color={COLORS.screwBlade} metalness={0.7} roughness={0.2} emissive={COLORS.screwBlade} emissiveIntensity={0.1} />
+      </mesh>
+      {/* 出土口 */}
+      <mesh position={[0, -4, 0]}>
+        <cylinderGeometry args={[0.5, 0.35, 1.5, 12]} />
+        <meshStandardMaterial color="#4a3020" roughness={0.8} />
+        <Edges color={COLORS.edgeWhite} />
+      </mesh>
+      <Html position={[0, 0.8, 0]}>
+        <div style={labelStyle('#fbbf24')}>螺旋输送机</div>
+      </Html>
+    </group>
+  );
+}
+
+// ============= 后配套台车（精细版 + 描边） =============
+function BackupCars({ z }: { z: number }) {
+  return (
+    <group position={[0, -14, z]}>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const cz = -9 - i * 3.8;
+        return (
+          <group key={i} position={[0, 0, cz]}>
+            {/* 台车主体（带描边） */}
+            <mesh>
+              <boxGeometry args={[4.8, 2.4, 3.4]} />
+              <meshStandardMaterial color={COLORS.backup} metalness={0.5} roughness={0.4} />
+              <Edges color={COLORS.edgeWhite} />
+            </mesh>
+            {/* 顶部设备（带描边） */}
+            <mesh position={[0, 1.5, 0]}>
+              <boxGeometry args={[3.8, 0.9, 2.8]} />
+              <meshStandardMaterial color={COLORS.backupTop} metalness={0.6} roughness={0.3} />
+              <Edges color={COLORS.edgeWhite} />
+            </mesh>
+            {/* 顶部小设备（每节不同） */}
+            {i === 0 && (
+              <mesh position={[0, 2.2, 0]}>
+                <cylinderGeometry args={[0.5, 0.5, 0.6, 12]} />
+                <meshStandardMaterial color="#fbbf24" metalness={0.7} emissive="#fbbf24" emissiveIntensity={0.2} />
+                <Edges color={COLORS.edgeGold} />
+              </mesh>
+            )}
+            {i === 1 && (
+              <mesh position={[-1, 2.2, 0]}>
+                <boxGeometry args={[0.8, 0.6, 0.8]} />
+                <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.15} />
+                <Edges color={COLORS.edgeWhite} />
+              </mesh>
+            )}
+            {i === 2 && (
+              <mesh position={[1, 2.2, 0]}>
+                <cylinderGeometry args={[0.4, 0.4, 0.8, 8]} />
+                <meshStandardMaterial color="#3b82f6" metalness={0.6} emissive="#3b82f6" emissiveIntensity={0.15} />
+                <Edges color={COLORS.edgeWhite} />
+              </mesh>
+            )}
+            {i === 3 && (
+              <mesh position={[0, 2.2, 0]}>
+                <boxGeometry args={[1.5, 0.5, 1.0]} />
+                <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.1} />
+                <Edges color={COLORS.edgeWhite} />
+              </mesh>
+            )}
+            {/* 轮子（4个，带描边） */}
+            {[[-2, -1.3], [2, -1.3], [-2, 1.3], [2, 1.3]].map(([wx, wz], j) => (
+              <mesh key={j} position={[wx, -1.3, wz]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.45, 0.45, 0.35, 14]} />
+                <meshStandardMaterial color="#0f172a" metalness={0.4} roughness={0.6} />
+                <Edges color="#475569" />
+              </mesh>
+            ))}
+            {/* 台车间连接通道 */}
+            {i < 4 && (
+              <mesh position={[0, 0, -2.1]}>
+                <boxGeometry args={[3.2, 1.6, 1.4]} />
+                <meshStandardMaterial color="#1e293b" metalness={0.3} roughness={0.6} />
+                <Edges color="#334155" />
+              </mesh>
+            )}
+            {/* 台车编号标签 */}
+            <Html position={[2.6, 0, 0]}>
+              <div style={labelStyle('#94a3b8')}>T{i + 1}</div>
+            </Html>
+          </group>
+        );
+      })}
+      <Html position={[0, 2.5, z - 20]}>
+        <div style={labelStyle('#94a3b8')}>后配套台车 ×5</div>
+      </Html>
+    </group>
+  );
+}
+
+// ============= 管片拼装机（中盾内，新增可见部件） =============
+function Erector({ z }: { z: number }) {
+  return (
+    <group position={[0, -14, z - 3]}>
+      {/* 拼装机旋转环 */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[2.5, 0.3, 8, 32]} />
+        <meshStandardMaterial color="#64748b" metalness={0.7} roughness={0.3} />
+        <Edges color={COLORS.edgeWhite} />
+      </mesh>
+      {/* 拼装臂 */}
+      <mesh position={[0, 0, 0.3]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[4.5, 0.4, 0.5]} />
+        <meshStandardMaterial color="#94a3b8" metalness={0.6} roughness={0.4} />
+        <Edges color={COLORS.edgeWhite} />
+      </mesh>
+      {/* 真空吸盘 */}
+      <mesh position={[2.0, 0, 0.3]}>
+        <cylinderGeometry args={[0.5, 0.6, 0.5, 12]} />
+        <meshStandardMaterial color="#334155" metalness={0.5} roughness={0.5} />
+        <Edges color={COLORS.edgeGold} />
+      </mesh>
+      <Html position={[2.0, 1.2, 0.3]}>
+        <div style={labelStyle('#94a3b8')}>管片拼装机</div>
+      </Html>
+    </group>
+  );
+}
+
+// ============= 场景内容 =============
 function SceneContent() {
   const equipments = useEquipmentStore((s) => s.equipments);
   const activeTpl = useUIStore((s) => s.activeTemplate);
@@ -307,8 +533,8 @@ function SceneContent() {
 
   const shieldZRef = useRef(0);
   useFrame((_, dt) => {
-    shieldZRef.current += (advanceSpeed / 1000 / 60) * dt * 1500;
-    if (shieldZRef.current > 35) shieldZRef.current = 0;
+    shieldZRef.current += (advanceSpeed / 1000 / 60) * dt * 800;
+    if (shieldZRef.current > 25) shieldZRef.current = -5;
   });
   const shieldZ = shieldZRef.current;
 
@@ -324,17 +550,26 @@ function SceneContent() {
 
   return (
     <>
+      {/* 光照：环境 + 主光 + 补光 */}
       <ambientLight intensity={0.55} />
-      <directionalLight position={[15, 25, 12]} intensity={1.0} />
-      <pointLight position={[0, -22, 5]} intensity={0.6} color="#fbbf24" />
+      <directionalLight position={[15, 25, 15]} intensity={0.9} />
+      <pointLight position={[0, -10, shieldZ + 6]} intensity={1.5} color="#fbbf24" distance={35} />
+      <pointLight position={[10, -8, shieldZ]} intensity={1.0} color="#ffffff" distance={30} />
+      <pointLight position={[-10, -8, shieldZ]} intensity={0.8} color="#60a5fa" distance={30} />
+      {/* 刀盘前方工作灯（模拟施工照明） */}
+      <spotLight position={[0, -8, shieldZ + 10]} target-position={[0, -14, shieldZ + 3]} intensity={2} color="#fef3c7" angle={0.6} penumbra={0.5} distance={25} />
 
-      <SoilLayers />
-      <GroundSurface settlement={settlement} />
-      <CompletedTunnel shieldZ={shieldZ} />
-      <ShieldBody z={shieldZ} roll={roll} />
-      <CutterHead rpm={rpm} wear={wear} z={shieldZ} />
-      <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
-      <BackupCars z={shieldZ} />
+      {/* 整体放大1.2倍，让盾构机占画面更大比例 */}
+      <group scale={1.2}>
+        <SoilLayers />
+        <GroundSurface settlement={settlement} />
+        <CompletedTunnel shieldZ={shieldZ} />
+        <ShieldBody z={shieldZ} roll={roll} />
+        <CutterHead rpm={rpm} wear={wear} z={shieldZ} />
+        <Erector z={shieldZ} />
+        <ScrewConveyor z={shieldZ} screwRpm={screwRpm} />
+        <BackupCars z={shieldZ} />
+      </group>
     </>
   );
 }
@@ -343,28 +578,23 @@ function SceneContent() {
 export function TBMScene3D() {
   return (
     <Scene3DErrorBoundary>
-      <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0f172a' }}>
+      <div style={{ width: '100%', height: '100%', position: 'relative', background: '#0a1426' }}>
         <Canvas
-          camera={{ position: [25, 8, 25], fov: 50, near: 0.1, far: 200 }}
+          /* 相机：侧前俯视角度，同时看清刀盘正面 + 盾体侧面 + 台车 */
+          camera={{ position: [18, -3, 22], fov: 50, near: 0.1, far: 200 }}
           gl={{ antialias: true, alpha: false }}
-          onCreated={({ gl }) => {
-            console.log('[TBM3D] WebGL 上下文创建成功');
-            void gl;
-          }}
         >
           <color attach="background" args={['#0a1426']} />
-          <fog attach="fog" args={['#0a1426', 60, 150]} />
+          <fog attach="fog" args={['#0a1426', 50, 140]} />
           <Suspense fallback={null}>
             <SceneContent />
           </Suspense>
           <OrbitControls
-            enablePan
-            enableZoom
-            enableRotate
+            enablePan enableZoom enableRotate
             minDistance={8}
-            maxDistance={80}
+            maxDistance={60}
             maxPolarAngle={Math.PI * 0.49}
-            target={[0, -10, 0]}
+            target={[0, -14, -6]}
           />
         </Canvas>
 
@@ -379,7 +609,7 @@ export function TBMScene3D() {
           position: 'absolute', bottom: 12, right: 12, color: '#fbbf24',
           background: 'rgba(15,23,42,0.7)', padding: '4px 8px', borderRadius: 4, fontSize: 10,
         }}>
-          v1.2 tbm-3d (错误边界 · 简化稳定版)
+          v3.0 tbm-3d (描边轮廓 · 侧前俯视 · 放大1.2x)
         </div>
       </div>
     </Scene3DErrorBoundary>

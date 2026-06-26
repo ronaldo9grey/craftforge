@@ -13,11 +13,12 @@ const FALLBACK_DESIGN_SIZE = { width: 1200, height: 680 };
 
 // 3D 场景懒加载（独立 chunk，不影响 2D 场景启动速度）
 const TBMScene3D = lazy(() => import('@/scenes/tbm/TBMScene3D').then((m) => ({ default: m.TBMScene3D })));
+const OffshoreRigScene3D = lazy(() => import('@/scenes/offshore/OffshoreRigScene3D').then((m) => ({ default: m.OffshoreRigScene3D })));
 
 /**
  * FactoryCanvas 现在是渲染路由分发器：
  * - 检查当前场景 meta 是否标记 is3D
- * - is3D=true → 渲染 TBMScene3D（Three.js）
+ * - is3D=true → 根据场景ID渲染对应3D组件（TBM/Offshore）
  * - 否则 → 渲染原来的 2D Canvas（FactoryCanvas2D）
  *
  * 该 wrapper 仅一个 useEquipmentStore subscribe，hooks 规则始终满足。
@@ -27,13 +28,16 @@ export const FactoryCanvas: React.FC = () => {
   const sceneMeta = activeTemplate ? getSceneMeta(activeTemplate) : undefined;
 
   if (sceneMeta?.is3D) {
+    // 根据场景ID选择3D渲染器
+    const Scene3D = activeTemplate === 'offshore' ? OffshoreRigScene3D : TBMScene3D;
+    const loadingIcon = activeTemplate === 'offshore' ? '🏗️' : '🛞';
     return (
       <Suspense fallback={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#94a3b8', background: '#0a1426' }}>
-          🛞 加载 3D 引擎中...
+          {loadingIcon} 加载 3D 引擎中...
         </div>
       }>
-        <TBMScene3D />
+        <Scene3D />
       </Suspense>
     );
   }

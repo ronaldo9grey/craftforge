@@ -19,6 +19,7 @@ import { aluminumCouplings } from '@/templates/aluminum/dynamics';
 import { anodeCouplings } from '@/templates/anode/dynamics';
 import { bakingCouplings } from '@/templates/baking/dynamics';
 import { tbmCouplings } from '@/templates/tbm/dynamics';
+import { offshoreCouplings } from '@/templates/offshore/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -88,6 +89,12 @@ function App() {
     } else if (activeTemplate === 'tbm') {
       // 盾构机 3D 场景：刀盘转速→扭矩/螺旋转速/温度，推进速度→磨损/仓压/沉降/推力 等 12 条耦合
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, tbmCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'offshore') {
+      // 海上钻井平台 3D 场景：钻压→扭矩/大钩载荷，泥浆流量→泵压/返出/处理量，节流阀→环空压力 等 12 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, offshoreCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

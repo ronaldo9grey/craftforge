@@ -55,6 +55,12 @@ import { tbmFaults } from './tbm/faults';
 import { tbmMeta } from './tbm/meta';
 import { tbmCoach } from './tbm/coach';
 
+// —— 海上钻井平台（第二个 3D 场景）——
+import { offshoreEquipments, offshorePipelines } from './offshore/config';
+import { offshoreFaults } from './offshore/faults';
+import { offshoreMeta } from './offshore/meta';
+import { offshoreCoach } from './offshore/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -114,6 +120,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: tbmEquipments,
     pipelines: tbmPipelines,
     faults: tbmFaults,
+  },
+  offshore: {
+    meta: offshoreMeta,
+    coach: offshoreCoach,
+    equipments: offshoreEquipments,
+    pipelines: offshorePipelines,
+    faults: offshoreFaults,
   },
 };
 

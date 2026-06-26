@@ -91,6 +91,7 @@ export function buildContext(): string {
       : ui.activeTemplate === 'anode' ? '阳极振压成型'
       : ui.activeTemplate === 'baking' ? '阳极焙烧炉'
       : ui.activeTemplate === 'tbm' ? '盾构机隧道掘进（TBM）'
+      : ui.activeTemplate === 'offshore' ? '海上钻井平台'
       : ui.activeTemplate === 'mixed' ? '混合产线'
       : '未选择';
   lines.push(`## 当前模板\n${tplName}`);

@@ -7,6 +7,7 @@ import { aluminumKnowledge } from '@/templates/aluminum/knowledge';
 import { anodeKnowledge } from '@/templates/anode/knowledge';
 import { bakingKnowledge } from '@/templates/baking/knowledge';
 import { tbmKnowledge } from '@/templates/tbm/knowledge';
+import { offshoreKnowledge } from '@/templates/offshore/knowledge';
 import { askCoach } from '@/services/aiCoach';
 import { ttsService } from '@/services/ttsService';
 
@@ -160,6 +161,8 @@ export const useAIStore = create<AIState>((set, get) => ({
       set({ knowledgeBase: bakingKnowledge });
     } else if (template === 'tbm') {
       set({ knowledgeBase: tbmKnowledge });
+    } else if (template === 'offshore') {
+      set({ knowledgeBase: offshoreKnowledge });
     } else {
       // 其他场景暂无知识库，置空（不影响演练逻辑）
       set({ knowledgeBase: [] });

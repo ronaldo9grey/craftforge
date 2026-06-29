@@ -17,8 +17,10 @@ import mistakesRouter from './routes/mistakes';
 import leaderboardRouter from './routes/leaderboard';
 import { analyticsRouter } from './routes/analytics';
 import { experienceRouter } from './routes/experience';
+import { adminRouter } from './routes/admin';
 import './db';  // 触发 SQLite 初始化 + 种子 admin 账号
-import { writeAccessLog, writeErrorLog } from './utils/logger';
+import { writeAccessLog, writeErrorLog, writeEventLog } from './utils/logger';
+import { securityHeaders } from './middleware/securityHeaders';
 
 const PORT = Number(process.env.PORT || 3001);
 
@@ -35,6 +37,9 @@ if (corsOrigin === '*' || corsOrigin === '') {
 
 // 信任前置代理（拿到真实 IP 用于日志和限流）
 app.set('trust proxy', true);
+
+// 安全响应头
+app.use(securityHeaders);
 
 // JSON body（5mb 上限，足够容纳 1000+ 操作记录的演练 payload）
 app.use(express.json({ limit: '5mb' }));
@@ -67,6 +72,9 @@ app.use('/api/analytics', analyticsRouter);
 
 // 专家经验蒸馏
 app.use('/api/experience', experienceRouter);
+
+// 管理员监控（日志查询 / 系统健康）
+app.use('/api/admin', adminRouter);
 
 // 404
 app.use((req: Request, res: Response) => {
@@ -111,4 +119,9 @@ process.on('uncaughtException', (err: Error) => {
 app.listen(PORT, () => {
   // 启动日志直接打印到 stdout（PM2 会捕获到 pm2-out.log）
   console.log(`[craftforge-server] listening on :${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+  writeEventLog('server_started', {
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version,
+  });
 });

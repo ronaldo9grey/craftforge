@@ -24,6 +24,21 @@ export const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// 安全：在 Linux/macOS 收紧数据库文件权限到 600（仅 owner 可读写）
+// Windows 上 fs.chmodSync 是 no-op，不影响
+if (process.platform !== 'win32') {
+  try {
+    fs.chmodSync(DB_PATH, 0o600);
+    // WAL / SHM 文件如果存在也一并收紧
+    for (const ext of ['-wal', '-shm']) {
+      const p = DB_PATH + ext;
+      if (fs.existsSync(p)) fs.chmodSync(p, 0o600);
+    }
+  } catch (e) {
+    console.warn('[db] 设置数据库文件权限失败（非致命）:', (e as Error).message);
+  }
+}
+
 // =============================================================
 // 表结构（首次运行自动建表，重复执行无副作用）
 // =============================================================

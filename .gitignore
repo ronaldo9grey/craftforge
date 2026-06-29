@@ -5,11 +5,21 @@ dist/
 # Env
 .env
 .env.local
+.env.production
 *.local
+!.env.production.example
 
 # Logs
 logs/
 *.log
+
+# Backups
+backups/
+
+# Deploy package (重新生成即可，不提交)
+craftforge-deploy.zip
+craftforge-deploy*.zip
+craftforge-deploy*.tar.gz
 
 # IDE
 .vscode/

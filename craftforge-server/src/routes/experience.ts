@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { db, uuid } from '../db';
 import { requireAuth, requireRole } from '../middleware/jwtAuth';
+import { writeEventLog } from '../utils/logger';
 
 export const experienceRouter = Router();
 
@@ -139,8 +140,22 @@ experienceRouter.post('/collect', requireAuth, requireRole('teacher', 'admin'), 
       distilled = await distillWithLLM(raw_transcript, scene_id, fault_name, raw_annotations);
       db.prepare('UPDATE experience_rules SET distilled = ?, updated_at = ? WHERE id = ?')
         .run(JSON.stringify(distilled), Date.now(), id);
+      writeEventLog('experience_distilled', {
+        userId: req.authUser!.id,
+        experienceId: id,
+        sceneId: scene_id,
+        faultId: fault_id,
+        expertName: expert_name,
+      });
     } catch (err: any) {
       distillError = err.message;
+      writeEventLog('experience_distill_failed', {
+        userId: req.authUser!.id,
+        experienceId: id,
+        sceneId: scene_id,
+        faultId: fault_id,
+        error: err.message,
+      });
     }
 
     res.json({

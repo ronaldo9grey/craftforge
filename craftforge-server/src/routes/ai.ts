@@ -2,7 +2,7 @@
 // /api/ai/tts  路由：APP_TOKEN 鉴权 + 限流 + 腾讯云 TTS 合成
 import { Router, Request, Response } from 'express';
 import { requireAppToken } from '../middleware/auth';
-import { rateLimit } from '../middleware/rateLimit';
+import { rateLimitAI } from '../middleware/rateLimit';
 import { streamDeepSeek, ChatMessage } from '../services/deepseek';
 import { synthesizeVoice } from '../services/tencentTts';
 import { writeAccessLog, writeErrorLog } from '../utils/logger';
@@ -43,7 +43,7 @@ function validateBody(body: any): { ok: true; messages: ChatMessage[]; temperatu
  *           ...
  *           data: [DONE]\n\n
  */
-router.post('/chat', requireAppToken, rateLimit, async (req: Request, res: Response) => {
+router.post('/chat', requireAppToken, rateLimitAI, async (req: Request, res: Response) => {
   const startedAt = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
 
@@ -119,7 +119,7 @@ router.post('/chat', requireAppToken, rateLimit, async (req: Request, res: Respo
  *         400  { error }
  *         502  { error }
  */
-router.post('/tts', requireAppToken, rateLimit, async (req: Request, res: Response) => {
+router.post('/tts', requireAppToken, rateLimitAI, async (req: Request, res: Response) => {
   const startedAt = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
 

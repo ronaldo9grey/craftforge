@@ -11,13 +11,28 @@ import { Request, Response, NextFunction } from 'express';
 import { db, uuid } from '../db';
 import type { UserRole, UserRow, PublicUser } from '../db/types';
 import { toPublicUser } from '../db/types';
+import { writeEventLog } from '../utils/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'craftforge-dev-secret-CHANGE-ME-IN-PROD';
+const JWT_SECRET = (() => {
+  const env = process.env.JWT_SECRET;
+  // 生产环境强制要求强 secret（>= 32 字符）
+  if (process.env.NODE_ENV === 'production') {
+    if (!env || env.length < 32) {
+      console.error(
+        '[auth] ❌ JWT_SECRET 未配置或长度 < 32 字符，生产环境拒绝启动。\n' +
+          '          请在 .env 中设置 JWT_SECRET=<64 字节随机串>'
+      );
+      process.exit(1);
+    }
+    return env;
+  }
+  if (!env) {
+    console.warn('[auth] ⚠️  JWT_SECRET 未配置，使用默认开发值');
+    return 'craftforge-dev-secret-CHANGE-ME-IN-PROD';
+  }
+  return env;
+})();
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
-
-if (!process.env.JWT_SECRET) {
-  console.warn('[auth] ⚠️  JWT_SECRET 未配置，使用默认值（仅限开发环境）');
-}
 
 // JWT payload 结构
 export interface JwtPayload {
@@ -82,6 +97,10 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   }
   const payload = verifyToken(m[1]);
   if (!payload) {
+    writeEventLog('jwt_invalid', {
+      ip: req.ip,
+      path: req.originalUrl,
+    });
     res.status(401).json({ error: 'Invalid or expired token' });
     return;
   }
@@ -106,6 +125,12 @@ export function requireRole(...roles: UserRole[]) {
       return;
     }
     if (!roles.includes(req.authUser.role)) {
+      writeEventLog('role_denied', {
+        userId: req.authUser.id,
+        role: req.authUser.role,
+        need: roles,
+        path: req.originalUrl,
+      });
       res.status(403).json({ error: 'Forbidden', need: roles });
       return;
     }

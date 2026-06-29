@@ -17,6 +17,7 @@ import { db, uuid } from '../db';
 import type { UserRow } from '../db/types';
 import { toPublicUser } from '../db/types';
 import { signToken, requireAuth, requireRole, revokeToken } from '../middleware/jwtAuth';
+import { writeEventLog } from '../utils/logger';
 
 const router = Router();
 
@@ -56,16 +57,19 @@ router.post('/login', (req: Request, res: Response) => {
     .prepare('SELECT * FROM users WHERE username = ?')
     .get(username) as UserRow | undefined;
   if (!user) {
+    writeEventLog('login_fail', { username, reason: 'user_not_found', ip: req.ip });
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
   if (!bcrypt.compareSync(password, user.password_hash)) {
+    writeEventLog('login_fail', { username, userId: user.id, reason: 'bad_password', ip: req.ip });
     res.status(401).json({ error: 'Invalid credentials' });
     return;
   }
   // 更新最后登录时间
   db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), user.id);
   const token = signToken(user);
+  writeEventLog('login_success', { userId: user.id, username, role: user.role, ip: req.ip });
   res.json({
     token,
     user: toPublicUser({ ...user, last_login_at: Date.now() }),

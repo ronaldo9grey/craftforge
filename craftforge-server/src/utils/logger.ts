@@ -1,6 +1,10 @@
-// 按日期切分的 JSONL 日志工具
-// - 单进程内异步追加写，文件名 logs/YYYY-MM-DD.jsonl
-// - 每条日志独占一行 JSON，便于 ELK/grep 分析
+// 按日期切分的 JSONL 日志工具（分级 + 事件埋点）
+// - 单进程内异步追加写
+// - 文件命名：
+//     logs/access-YYYY-MM-DD.jsonl   访问日志
+//     logs/error-YYYY-MM-DD.jsonl    错误日志
+//     logs/event-YYYY-MM-DD.jsonl    业务事件（埋点）
+// - 每条日志独占一行 JSON，便于 grep / ELK
 import fs from 'fs';
 import path from 'path';
 
@@ -24,6 +28,8 @@ export interface AccessLogEntry {
   charsOut?: number;
   /** 错误信息（可选） */
   errorMsg?: string;
+  /** 当前登录用户（可选） */
+  userId?: string;
 }
 
 /** 日志目录，从环境变量 LOG_DIR 读取，默认 logs */
@@ -38,42 +44,65 @@ function ensureLogDir(): string {
   return abs;
 }
 
-/** 取当日日志文件路径 */
-function dailyFilePath(): string {
+/** 取当日日志文件路径（按 prefix 分文件） */
+function dailyFilePath(prefix: 'access' | 'error' | 'event'): string {
   const dir = ensureLogDir();
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  return path.join(dir, `${yyyy}-${mm}-${dd}.jsonl`);
+  return path.join(dir, `${prefix}-${yyyy}-${mm}-${dd}.jsonl`);
 }
 
-/** 写一条访问日志（异步、追加）；失败不抛错，避免影响主流程 */
-export function writeAccessLog(entry: AccessLogEntry): void {
+/** 安全的异步追加，吞掉错误避免影响主流程 */
+function appendLine(file: string, obj: unknown): void {
   try {
-    const line = JSON.stringify(entry) + '\n';
-    fs.appendFile(dailyFilePath(), line, (err) => {
-      if (err) {
-        // 仅打印到 stderr，避免递归
-        console.error('[logger] 写日志失败:', err.message);
-      }
+    const line = JSON.stringify(obj) + '\n';
+    fs.appendFile(file, line, (err) => {
+      if (err) console.error('[logger] 写日志失败:', err.message);
     });
   } catch (e) {
     console.error('[logger] 序列化日志失败:', e);
   }
 }
 
-/** 写一条普通文本日志（独立级别），用于全局异常捕获 */
+/** 写一条访问日志（异步、追加） */
+export function writeAccessLog(entry: AccessLogEntry): void {
+  appendLine(dailyFilePath('access'), entry);
+}
+
+/** 写一条错误日志（独立级别），用于全局异常 / 上游失败 */
 export function writeErrorLog(msg: string, extra?: Record<string, unknown>): void {
-  const entry = {
+  appendLine(dailyFilePath('error'), {
     time: new Date().toISOString(),
     level: 'error',
     msg,
     ...extra,
-  };
-  try {
-    fs.appendFile(dailyFilePath(), JSON.stringify(entry) + '\n', () => {});
-  } catch {
-    /* ignore */
-  }
+  });
 }
+
+/**
+ * 写一条业务事件日志（埋点）
+ * 例如：login_success / login_fail / drill_complete / experience_distilled
+ *       rate_limit_hit / jwt_invalid / admin_action
+ */
+export function writeEventLog(event: string, extra?: Record<string, unknown>): void {
+  appendLine(dailyFilePath('event'), {
+    time: new Date().toISOString(),
+    level: 'event',
+    event,
+    ...extra,
+  });
+}
+
+/**
+ * 简化 API：根据级别一次性记日志
+ *   logger.info('xxx', {a:1}) → event
+ *   logger.error('xxx', {a:1}) → error
+ */
+export const logger = {
+  info: (msg: string, extra?: Record<string, unknown>) => writeEventLog(msg, extra),
+  warn: (msg: string, extra?: Record<string, unknown>) =>
+    writeEventLog(msg, { level: 'warn', ...extra }),
+  error: (msg: string, extra?: Record<string, unknown>) => writeErrorLog(msg, extra),
+};

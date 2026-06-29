@@ -25,6 +25,7 @@ import { toPublicUser } from '../db/types';
 import { requireAuth, requireRole } from '../middleware/jwtAuth';
 import { ACHIEVEMENTS, evaluateAchievements } from '../db/achievements';
 import { syncMistakeOnDrill } from './mistakes';
+import { writeEventLog } from '../utils/logger';
 
 // =============================================================
 // 演练记录
@@ -92,6 +93,16 @@ drillRecordsRouter.post('/', requireAuth, (req: Request, res: Response) => {
   });
 
   res.status(201).json({ id, new_achievements: newAchievements, mistake_action: mistakeAction.action });
+  writeEventLog('drill_complete', {
+    userId: req.authUser!.id,
+    recordId: id,
+    sceneId: d.scene_id,
+    faultId: d.fault_id,
+    score: d.score,
+    grade: d.grade,
+    durationSec: d.duration_sec,
+    newAchievements: newAchievements.length,
+  });
 });
 
 /** GET /api/drill-records  查询自己的记录 */

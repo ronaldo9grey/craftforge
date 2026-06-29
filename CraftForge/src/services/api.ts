@@ -510,6 +510,21 @@ export interface FromRecordPreview {
   suggested_transcript: string;
 }
 
+/** P1-4: 教师可见的高分演练池条目（含学员姓名，用于"从演练记录提升"下拉） */
+export interface HighScoreRecord {
+  id: string;
+  user_id: string;
+  scene_id: string;
+  fault_id: string;
+  fault_name: string;
+  grade: 'S' | 'A';
+  score: number;
+  duration_sec: number;
+  created_at: number;
+  username: string | null;
+  user_name: string | null;
+}
+
 export const experienceApi = {
   collect: (data: {
     scene_id: string; fault_name: string; title: string; raw_transcript: string;
@@ -534,6 +549,14 @@ export const experienceApi = {
   getByFault: (sceneId: string, faultId: string) => apiFetch<{ experience: ExperienceRule | null }>(`/experience/fault/${sceneId}/${faultId}`),
   /** P1-4: 教师把某次演练记录预览为专家时间轴草稿（不落库） */
   fromRecordPreview: (recordId: string) => apiFetch<FromRecordPreview>(`/experience/from-record/${recordId}`),
+  /** P1-4: 教师/管理员可见的全班高分演练池（S/A），用于"从演练记录提升"下拉 */
+  highScorePool: (params?: { scene_id?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.scene_id) qs.set('scene_id', params.scene_id);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const q = qs.toString();
+    return apiFetch<{ records: HighScoreRecord[] }>(`/experience/high-score-pool${q ? '?' + q : ''}`);
+  },
   /** P1-4: 学生侧 — 取自己演练的时间轴（用于对照专家） */
   studentTimeline: (recordId: string) =>
     apiFetch<{ record_id: string; scene_id: string; fault_id: string; timeline: import('./timeline').ExpertTimeline }>(

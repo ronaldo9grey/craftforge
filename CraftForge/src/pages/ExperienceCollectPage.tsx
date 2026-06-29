@@ -4,7 +4,7 @@
 // - 右栏：最新蒸馏结果预览 + 经验库列表（可展开/归档/重新蒸馏/删除/改标题）
 
 import { useEffect, useMemo, useState } from 'react';
-import { experienceApi, drillApi, type ExperienceRule, type DistilledExperience, type CollectResponse, type DrillRecord, type FromRecordPreview } from '@/services/api';
+import { experienceApi, type ExperienceRule, type DistilledExperience, type CollectResponse, type FromRecordPreview, type HighScoreRecord } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useToastStore } from '@/components/Toast';
@@ -93,8 +93,8 @@ export const ExperienceCollectPage: React.FC = () => {
   // =============================================================
   // P1-4: 从演练记录提升 — 数据 + 预览 + 草稿时间轴
   // =============================================================
-  /** 候选高分演练记录（仅 S/A） */
-  const [myRecords, setMyRecords] = useState<DrillRecord[]>([]);
+  /** 候选高分演练记录（仅 S/A，含全班所有用户） */
+  const [myRecords, setMyRecords] = useState<HighScoreRecord[]>([]);
   /** 是否打开从演练记录提升面板 */
   const [showFromRecord, setShowFromRecord] = useState(false);
   /** 当前选中的演练记录 id */
@@ -130,9 +130,10 @@ export const ExperienceCollectPage: React.FC = () => {
 
   useEffect(() => {
     void loadList();
-    // 同步加载教师自己的高分演练记录（S/A）供"从演练记录提升"使用
-    drillApi.list({ limit: 50 })
-      .then((r) => setMyRecords(r.records.filter((rec) => rec.grade === 'S' || rec.grade === 'A')))
+    // P1-4: 用 /experience/high-score-pool 接口拉取全班（所有用户）的 S/A 演练
+    // 而不是 drillApi.list（只能看到自己的），让教师能挑选学生的高分演练做蒸馏
+    experienceApi.highScorePool({ limit: 100 })
+      .then((r) => setMyRecords(r.records))
       .catch(() => setMyRecords([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -360,7 +361,7 @@ export const ExperienceCollectPage: React.FC = () => {
               {showFromRecord && (
                 <div className="mt-3 space-y-3">
                   <div className="text-xs text-text-secondary">
-                    选择一次你自己的 S/A 级演练，系统自动把操作序列转换为时间轴草稿；可手动删除噪声事件，再补充口述说明并蒸馏。
+                    从全班学员的 S/A 评级演练中挑一个，系统自动把操作序列转换为时间轴草稿；可手动删除噪声事件，再补充口述说明并蒸馏。
                   </div>
                   <select
                     value={selectedRecordId}
@@ -371,7 +372,7 @@ export const ExperienceCollectPage: React.FC = () => {
                     <option value="">— 选择一次高分演练 —</option>
                     {filteredCandidates.map((r) => (
                       <option key={r.id} value={r.id}>
-                        [{r.grade}] {sceneName(r.scene_id)} · {r.fault_name} · {fmtTime(r.created_at)} · {r.duration_sec}s
+                        [{r.grade}·{r.score}] {r.user_name || r.username || '匿名'} · {sceneName(r.scene_id)} · {r.fault_name} · {fmtTime(r.created_at)} · {r.duration_sec}s
                       </option>
                     ))}
                   </select>

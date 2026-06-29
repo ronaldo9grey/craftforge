@@ -473,6 +473,10 @@ export interface ExperienceRule {
   raw_transcript?: string;
   raw_annotations?: string | null;
   distilled: DistilledExperience | null;
+  /** P1-4: 专家时间轴（GET 详情 / GET by-fault 才会返回） */
+  timeline?: import('./timeline').ExpertTimeline | null;
+  /** P1-4: 时间轴来源演练记录 id（可空） */
+  source_record_id?: string | null;
   expert_name: string | null;
   expert_title: string | null;
   source_type: string;
@@ -489,10 +493,31 @@ export interface CollectResponse {
   message: string;
 }
 
+/** P1-4: 从演练记录提升为专家时间轴的预览返回 */
+export interface FromRecordPreview {
+  record: {
+    id: string;
+    scene_id: string;
+    fault_id: string;
+    fault_name: string;
+    score: number;
+    grade: string;
+    duration_sec: number;
+    created_at: number;
+  };
+  timeline: import('./timeline').ExpertTimeline;
+  suggested_title: string;
+  suggested_transcript: string;
+}
+
 export const experienceApi = {
   collect: (data: {
     scene_id: string; fault_name: string; title: string; raw_transcript: string;
     fault_id?: string; raw_annotations?: string; expert_name?: string; expert_title?: string; source_type?: string;
+    /** P1-4: 可选时间轴 */
+    timeline?: import('./timeline').ExpertTimeline | null;
+    /** P1-4: 时间轴来源演练记录 id */
+    source_record_id?: string;
   }) => apiFetch<CollectResponse>('/experience/collect', { method: 'POST', body: JSON.stringify(data) }),
   redistill: (id: string) => apiFetch<{ id: string; distilled: DistilledExperience; message: string }>(`/experience/${id}/redistill`, { method: 'POST' }),
   list: (params?: { scene_id?: string; fault_id?: string }) => {
@@ -507,4 +532,11 @@ export const experienceApi = {
   remove: (id: string) => apiFetch<{ message: string; id: string }>(`/experience/${id}`, { method: 'DELETE' }),
   getByScene: (sceneId: string) => apiFetch<{ experiences: ExperienceRule[] }>(`/experience/scene/${sceneId}`),
   getByFault: (sceneId: string, faultId: string) => apiFetch<{ experience: ExperienceRule | null }>(`/experience/fault/${sceneId}/${faultId}`),
+  /** P1-4: 教师把某次演练记录预览为专家时间轴草稿（不落库） */
+  fromRecordPreview: (recordId: string) => apiFetch<FromRecordPreview>(`/experience/from-record/${recordId}`),
+  /** P1-4: 学生侧 — 取自己演练的时间轴（用于对照专家） */
+  studentTimeline: (recordId: string) =>
+    apiFetch<{ record_id: string; scene_id: string; fault_id: string; timeline: import('./timeline').ExpertTimeline }>(
+      `/experience/student-timeline/${recordId}`,
+    ),
 };

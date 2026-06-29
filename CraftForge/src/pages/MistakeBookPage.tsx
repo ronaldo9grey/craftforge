@@ -4,7 +4,8 @@
 // - 操作：去重练（跳工作台 + 锁定该故障）/ 标记已掌握
 
 import { useEffect, useState } from 'react';
-import { mistakeApi, experienceApi, type Mistake, type DistilledExperience } from '@/services/api';
+import { mistakeApi, experienceApi, type Mistake, type DistilledExperience, type ExperienceRule } from '@/services/api';
+import TimelineCompare from '@/components/TimelineCompare';
 import { usePageStore } from '@/stores/pageStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useEquipmentStore } from '@/stores/equipmentStore';
@@ -176,6 +177,9 @@ const MistakeCard: React.FC<{
 }> = ({ mistake: m, expanded, onToggle, onRetry, onMaster }) => {
   const isMastered = m.status === 'mastered';
   const [expertExp, setExpertExp] = useState<DistilledExperience | null>(null);
+  // P1-4: 完整专家经验对象（含 timeline），用于展示专家时间轴
+  const [expertExpFull, setExpertExpFull] = useState<ExperienceRule | null>(null);
+  const [showExpertTimeline, setShowExpertTimeline] = useState(false);
   const [expLoaded, setExpLoaded] = useState(false);
 
   // 展开时加载专家经验
@@ -183,8 +187,14 @@ const MistakeCard: React.FC<{
     if (!expanded || expLoaded) return;
     if (m.scene_id && m.fault_id) {
       experienceApi.getByFault(m.scene_id, m.fault_id)
-        .then(({ experience }) => setExpertExp(experience?.distilled ?? null))
-        .catch(() => setExpertExp(null))
+        .then(({ experience }) => {
+          setExpertExp(experience?.distilled ?? null);
+          setExpertExpFull(experience ?? null);
+        })
+        .catch(() => {
+          setExpertExp(null);
+          setExpertExpFull(null);
+        })
         .finally(() => setExpLoaded(true));
     } else {
       setExpLoaded(true);
@@ -411,9 +421,21 @@ const MistakeCard: React.FC<{
           {/* 专家经验建议 */}
           {expertExp && (
             <div className="border border-purple-500/30 rounded-lg p-3 bg-purple-500/5">
-              <div className="text-xs text-purple-400 font-medium mb-2 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                老师傅经验指导
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-xs text-purple-400 font-medium flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  老师傅经验指导
+                </div>
+                {/* P1-4: 展示专家时间轴（不带学生对比，错题本是按故障聚合的） */}
+                {expertExpFull?.timeline && expertExpFull.timeline.events.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowExpertTimeline((v) => !v)}
+                    className="text-[10px] text-purple-300 hover:text-purple-200"
+                  >
+                    {showExpertTimeline ? '收起时间轴' : '🎬 看专家时间轴'}
+                  </button>
+                )}
               </div>
               {expertExp.master_insight && (
                 <p className="text-xs text-purple-300 italic mb-2">"{expertExp.master_insight}"</p>
@@ -433,6 +455,18 @@ const MistakeCard: React.FC<{
                 <div className="text-xs text-text-muted mt-2">
                   <Clock className="w-3 h-3 inline mr-1" />
                   节奏：{expertExp.rhythm}
+                </div>
+              )}
+              {/* P1-4: 专家时间轴单轨展示（无学生对比） */}
+              {showExpertTimeline && expertExpFull?.timeline && (
+                <div className="mt-3">
+                  <TimelineCompare
+                    expert={expertExpFull.timeline}
+                    student={null}
+                    expertName={expertExpFull.expert_name}
+                    expertTitle={expertExpFull.expert_title}
+                    onClose={() => setShowExpertTimeline(false)}
+                  />
                 </div>
               )}
             </div>

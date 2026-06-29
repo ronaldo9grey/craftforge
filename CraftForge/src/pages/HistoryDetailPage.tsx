@@ -1,11 +1,13 @@
 // 演练详情页：从 pageStore.detailRecordId 读 ID，调 /api/drill-records/:id
-// 展示：基本信息 / 得分拆解 / 师傅评语 / 操作流水
+// 展示：基本信息 / 得分拆解 / 师傅评语 / 操作流水 / 老师傅时间轴对照
 
 import { useEffect, useState } from 'react';
-import { drillApi, mistakeApi, experienceApi, type DrillRecord, type DistilledExperience } from '@/services/api';
+import { drillApi, mistakeApi, experienceApi, type DrillRecord, type DistilledExperience, type ExperienceRule } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
-import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer, BookmarkPlus, Sparkles, Target, AlertCircle, Zap, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Award, Activity, CheckCircle2, XCircle, Printer, BookmarkPlus, Sparkles, Target, AlertCircle, Zap, Clock, PlayCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import TimelineCompare from '@/components/TimelineCompare';
+import type { ExpertTimeline } from '@/services/timeline';
 
 const SCENE_LABEL: Record<string, string> = {
   fcc: '催化裂化',
@@ -34,6 +36,11 @@ export const HistoryDetailPage: React.FC = () => {
   const [record, setRecord] = useState<DrillRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [expertExp, setExpertExp] = useState<DistilledExperience | null>(null);
+  // P1-4: 专家时间轴 + 学生时间轴 + 是否展开对照面板
+  const [expertExpFull, setExpertExpFull] = useState<ExperienceRule | null>(null);
+  const [studentTimeline, setStudentTimeline] = useState<ExpertTimeline | null>(null);
+  const [showTimelineCompare, setShowTimelineCompare] = useState(false);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   useEffect(() => {
     if (!detailRecordId) return;
@@ -42,15 +49,42 @@ export const HistoryDetailPage: React.FC = () => {
       .detail(detailRecordId)
       .then((r) => {
         setRecord(r.record);
-        // 加载专家经验
+        // 加载专家经验 + 时间轴（一并取出，时间轴可能为 null）
         if (r.record?.scene_id && r.record?.fault_id) {
           experienceApi.getByFault(r.record.scene_id, r.record.fault_id)
-            .then(({ experience }) => setExpertExp(experience?.distilled ?? null))
-            .catch(() => setExpertExp(null));
+            .then(({ experience }) => {
+              setExpertExp(experience?.distilled ?? null);
+              setExpertExpFull(experience ?? null);
+            })
+            .catch(() => {
+              setExpertExp(null);
+              setExpertExpFull(null);
+            });
         }
       })
       .finally(() => setLoading(false));
   }, [detailRecordId]);
+
+  /** 学生侧 — 点开"看老师傅时间轴"才懒加载自己的时间轴 */
+  const handleToggleTimeline = async () => {
+    if (showTimelineCompare) {
+      setShowTimelineCompare(false);
+      return;
+    }
+    if (!detailRecordId) return;
+    if (!studentTimeline) {
+      setTimelineLoading(true);
+      try {
+        const r = await experienceApi.studentTimeline(detailRecordId);
+        setStudentTimeline(r.timeline);
+      } catch {
+        // 拉不到则保留 null，对照组件会提示
+      } finally {
+        setTimelineLoading(false);
+      }
+    }
+    setShowTimelineCompare(true);
+  };
 
   /** 导出 PDF：用 window.print()，配合下面 .printable-report 区域的打印样式 */
   const handleExport = () => {
@@ -226,10 +260,42 @@ export const HistoryDetailPage: React.FC = () => {
         {/* 专家做法对比 */}
         {expertExp && (
           <div className="bg-bg-secondary border border-purple-500/30 rounded-lg p-4">
-            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
-              老师傅经验对比
-            </h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                老师傅经验对比
+              </h3>
+              {/* P1-4: 时间轴对照按钮 — 仅当后端返回了时间轴才显示 */}
+              {expertExpFull?.timeline && expertExpFull.timeline.events.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleTimeline}
+                  disabled={timelineLoading}
+                  className="inline-flex items-center gap-1 rounded-md border border-purple-500/40 bg-purple-500/10 px-2.5 py-1 text-xs text-purple-300 hover:bg-purple-500/20 disabled:opacity-50"
+                >
+                  <PlayCircle className="w-3.5 h-3.5" />
+                  {timelineLoading
+                    ? '加载中…'
+                    : showTimelineCompare
+                    ? '收起时间轴对照'
+                    : '🎬 查看老师傅时间轴对照'}
+                </button>
+              )}
+            </div>
+
+            {/* P1-4: 双轨时间轴对照面板（学生 vs 专家） */}
+            {showTimelineCompare && expertExpFull?.timeline && (
+              <div className="mb-4">
+                <TimelineCompare
+                  expert={expertExpFull.timeline}
+                  student={studentTimeline}
+                  expertName={expertExpFull.expert_name}
+                  expertTitle={expertExpFull.expert_title}
+                  onClose={() => setShowTimelineCompare(false)}
+                />
+              </div>
+            )}
+
             <div className="space-y-4">
               {/* 核心经验 */}
               {expertExp.master_insight && (

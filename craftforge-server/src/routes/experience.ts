@@ -8,6 +8,11 @@ import { Router, Request, Response } from 'express';
 import { db, uuid } from '../db';
 import { requireAuth, requireRole } from '../middleware/jwtAuth';
 import { writeEventLog } from '../utils/logger';
+import {
+  buildTimelineFromOperations,
+  parseTimeline,
+  type OperationRecordLike,
+} from '../services/timeline';
 
 export const experienceRouter = Router();
 
@@ -27,6 +32,7 @@ async function distillWithLLM(
   sceneId: string,
   faultName: string,
   annotations?: string,
+  timelineJson?: string | null,
 ): Promise<any> {
   const apiKey = process.env.DEEPSEEK_API_KEY || '';
   const baseUrl = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
@@ -57,9 +63,11 @@ async function distillWithLLM(
   "master_insight": "..."
 }`;
 
-  const userContent = annotations
-    ? `专家口述记录：\n${transcript}\n\n操作标注（JSON）：\n${annotations}`
-    : `专家口述记录：\n${transcript}`;
+  const userContent = [
+    `专家口述记录：\n${transcript}`,
+    annotations ? `\n\n操作标注（JSON）：\n${annotations}` : '',
+    timelineJson ? `\n\n专家时间轴（按时间顺序的事件序列，包含动作与观察期）：\n${timelineJson}\n说明：请重点根据时间轴中的"pause 观察期"和"action 之间的间隔"提炼 rhythm（节奏）；并把每个 action 与 key_decisions 对应。` : '',
+  ].join('');
 
   const endpoint = baseUrl.replace(/\/+$/, '').endsWith('/chat/completions')
     ? baseUrl.replace(/\/+$/, '')
@@ -110,6 +118,8 @@ experienceRouter.post('/collect', requireAuth, requireRole('teacher', 'admin'), 
       expert_name,
       expert_title,
       source_type,
+      timeline,           // P1-4: 可选，专家时间轴（ExpertTimeline 或 null）
+      source_record_id,   // P1-4: 可选，来源演练记录 id
     } = req.body;
 
     if (!scene_id || !fault_name || !title || !raw_transcript) {
@@ -119,17 +129,21 @@ experienceRouter.post('/collect', requireAuth, requireRole('teacher', 'admin'), 
 
     const id = uuid();
     const now = Date.now();
+    const timelineJson = timeline ? JSON.stringify(timeline) : null;
 
     // 先插入记录（distilled暂为null）
     db.prepare(
       `INSERT INTO experience_rules
         (id, scene_id, fault_id, fault_name, title, raw_transcript, raw_annotations,
-         expert_name, expert_title, source_type, status, distilled, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?)`
+         expert_name, expert_title, source_type, status, distilled,
+         timeline_json, source_record_id,
+         created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NULL, ?, ?, ?, ?)`
     ).run(
       id, scene_id, fault_id ?? null, fault_name, title,
       raw_transcript, raw_annotations ?? null,
       expert_name ?? null, expert_title ?? null, source_type ?? 'think_aloud',
+      timelineJson, source_record_id ?? null,
       now, now
     );
 
@@ -137,7 +151,7 @@ experienceRouter.post('/collect', requireAuth, requireRole('teacher', 'admin'), 
     let distilled = null;
     let distillError = null;
     try {
-      distilled = await distillWithLLM(raw_transcript, scene_id, fault_name, raw_annotations);
+      distilled = await distillWithLLM(raw_transcript, scene_id, fault_name, raw_annotations, timelineJson);
       db.prepare('UPDATE experience_rules SET distilled = ?, updated_at = ? WHERE id = ?')
         .run(JSON.stringify(distilled), Date.now(), id);
       writeEventLog('experience_distilled', {
@@ -181,7 +195,7 @@ experienceRouter.post('/:id/redistill', requireAuth, requireRole('teacher', 'adm
       return;
     }
 
-    const distilled = await distillWithLLM(row.raw_transcript, row.scene_id, row.fault_name, row.raw_annotations);
+    const distilled = await distillWithLLM(row.raw_transcript, row.scene_id, row.fault_name, row.raw_annotations, row.timeline_json);
     db.prepare('UPDATE experience_rules SET distilled = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(distilled), Date.now(), req.params.id);
 
@@ -224,6 +238,7 @@ experienceRouter.get('/:id', requireAuth, (req: Request, res: Response) => {
     ...row,
     distilled: safeParse(row.distilled, null),
     raw_annotations: safeParse(row.raw_annotations, null),
+    timeline: parseTimeline(row.timeline_json),
   });
 });
 
@@ -241,6 +256,7 @@ experienceRouter.put('/:id', requireAuth, requireRole('teacher', 'admin'), (req:
   const {
     title, fault_name, expert_name, expert_title,
     distilled, status, raw_transcript,
+    timeline,   // P1-4: 教师可在前端预览页编辑后回写
   } = req.body;
 
   const updates: string[] = [];
@@ -253,6 +269,10 @@ experienceRouter.put('/:id', requireAuth, requireRole('teacher', 'admin'), (req:
   if (raw_transcript !== undefined) { updates.push('raw_transcript = ?'); params.push(raw_transcript); }
   if (distilled !== undefined) { updates.push('distilled = ?'); params.push(typeof distilled === 'string' ? distilled : JSON.stringify(distilled)); }
   if (status !== undefined) { updates.push('status = ?'); params.push(status); }
+  if (timeline !== undefined) {
+    updates.push('timeline_json = ?');
+    params.push(timeline === null ? null : JSON.stringify(timeline));
+  }
 
   if (updates.length === 0) {
     res.json({ message: '无更新', id: req.params.id });
@@ -305,7 +325,7 @@ experienceRouter.get('/scene/:sceneId', requireAuth, (req: Request, res: Respons
 experienceRouter.get('/fault/:sceneId/:faultId', requireAuth, (req: Request, res: Response) => {
   const { sceneId, faultId } = req.params;
   const rows = db.prepare(
-    "SELECT id, scene_id, fault_id, fault_name, title, distilled, expert_name, expert_title FROM experience_rules WHERE scene_id = ? AND fault_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1"
+    "SELECT id, scene_id, fault_id, fault_name, title, distilled, timeline_json, expert_name, expert_title FROM experience_rules WHERE scene_id = ? AND fault_id = ? AND status = 'active' ORDER BY created_at DESC LIMIT 1"
   ).all(sceneId, faultId) as any[];
 
   if (rows.length === 0) {
@@ -318,6 +338,77 @@ experienceRouter.get('/fault/:sceneId/:faultId', requireAuth, (req: Request, res
     experience: {
       ...exp,
       distilled: safeParse(exp.distilled, null),
+      timeline: parseTimeline(exp.timeline_json),
     },
+  });
+});
+
+// =============================================================
+// P1-4: POST /api/experience/from-record/:recordId
+// 一键把某条高分演练记录"提升"为专家时间轴草稿。
+// - 校验该演练记录属于当前 teacher/admin 自己（或 admin 可跨账户）
+// - 自动按 operations 生成 timeline 草稿
+// - 返回 timeline_preview，前端教师可继续编辑后再 POST /collect 正式入库
+// 不直接落库，避免误操作污染经验库
+// =============================================================
+experienceRouter.get('/from-record/:recordId', requireAuth, requireRole('teacher', 'admin'), (req: Request, res: Response) => {
+  const row = db.prepare('SELECT * FROM drill_records WHERE id = ?').get(req.params.recordId) as any;
+  if (!row) {
+    res.status(404).json({ error: '演练记录不存在' });
+    return;
+  }
+  // 仅允许 admin 跨账户访问；teacher 只能用自己的演练
+  if (req.authUser!.role !== 'admin' && row.user_id !== req.authUser!.id) {
+    res.status(403).json({ error: '无权访问他人的演练记录' });
+    return;
+  }
+  const ops: OperationRecordLike[] = safeParse(row.operations, [] as OperationRecordLike[]);
+  // 专家时间轴：噪声过滤更严（< 5% 视为噪声跳过），观察期阈值 15s
+  const timeline = buildTimelineFromOperations(ops, { minPauseSec: 15, noiseRatio: 0.05 });
+  res.json({
+    record: {
+      id: row.id,
+      scene_id: row.scene_id,
+      fault_id: row.fault_id,
+      fault_name: row.fault_name,
+      score: row.score,
+      grade: row.grade,
+      duration_sec: row.duration_sec,
+      created_at: row.created_at,
+    },
+    timeline,
+    // 给前端一个建议草稿，教师可改
+    suggested_title: `${row.fault_name} - ${row.grade} 评级处置`,
+    suggested_transcript: ops
+      .map((o, i) => `[${i + 1}] ${o.action}${o.parameterChange ? `（${o.parameterChange.param}: ${o.parameterChange.from}→${o.parameterChange.to}）` : ''}${o.aiFeedback ? ` -- ${o.aiFeedback}` : ''}`)
+      .join('\n'),
+  });
+});
+
+// =============================================================
+// P1-4: GET /api/experience/student-timeline/:recordId
+// 学生侧"自己演练时间轴" — 直接基于自己的 drill_record.operations 现算
+// 不持久化，节省 DB；学生本人 / admin / 该班教师可查
+// =============================================================
+experienceRouter.get('/student-timeline/:recordId', requireAuth, (req: Request, res: Response) => {
+  const row = db.prepare('SELECT * FROM drill_records WHERE id = ?').get(req.params.recordId) as any;
+  if (!row) {
+    res.status(404).json({ error: '演练记录不存在' });
+    return;
+  }
+  const me = req.authUser!;
+  const owner = row.user_id === me.id;
+  if (!owner && me.role !== 'admin' && me.role !== 'teacher') {
+    res.status(403).json({ error: '无权查看' });
+    return;
+  }
+  const ops: OperationRecordLike[] = safeParse(row.operations, [] as OperationRecordLike[]);
+  // 学生时间轴：不做噪声过滤（学生可能正是因为微调过多被扣分，要展示真实记录）
+  const timeline = buildTimelineFromOperations(ops, { minPauseSec: 15, noiseRatio: 0 });
+  res.json({
+    record_id: row.id,
+    scene_id: row.scene_id,
+    fault_id: row.fault_id,
+    timeline,
   });
 });

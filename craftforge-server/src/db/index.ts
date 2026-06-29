@@ -158,9 +158,11 @@ CREATE TABLE IF NOT EXISTS experience_rules (
   raw_transcript  TEXT,
   raw_annotations TEXT,
   distilled       TEXT,                               -- JSON: 蒸馏出的结构化经验
+  timeline_json   TEXT,                               -- JSON: P1-4 专家时间轴（事件序列）
+  source_record_id TEXT,                              -- P1-4 时间轴来源的演练记录 id（可空）
   expert_name     TEXT,
   expert_title    TEXT,
-  source_type     TEXT DEFAULT 'think_aloud',         -- think_aloud | interview | observation
+  source_type     TEXT DEFAULT 'think_aloud',         -- think_aloud | interview | observation | from_record
   status          TEXT DEFAULT 'active',              -- active | archived
   created_at      INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL
@@ -171,6 +173,20 @@ CREATE INDEX IF NOT EXISTS idx_exp_fault ON experience_rules(scene_id, fault_id,
 
 // 执行 schema（用 transaction 确保原子性）
 db.exec(SCHEMA_SQL);
+
+// =============================================================
+// 增量迁移：兼容已有部署
+// SQLite 不支持 IF NOT EXISTS 加列；用 PRAGMA 检查后再决定是否加
+// =============================================================
+function addColumnIfMissing(table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+// P1-4 时间轴字段（针对老库平滑升级）
+addColumnIfMissing('experience_rules', 'timeline_json', 'TEXT');
+addColumnIfMissing('experience_rules', 'source_record_id', 'TEXT');
 
 // =============================================================
 // 工具：UUID v4（最简实现，避免引入 uuid 包）

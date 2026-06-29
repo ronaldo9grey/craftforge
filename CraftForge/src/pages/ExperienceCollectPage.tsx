@@ -3,8 +3,8 @@
 // - 左栏：采集表单（场景/故障/标题/专家/口述记录）
 // - 右栏：最新蒸馏结果预览 + 经验库列表（可展开/归档/重新蒸馏/删除/改标题）
 
-import { useEffect, useState } from 'react';
-import { experienceApi, type ExperienceRule, type DistilledExperience, type CollectResponse } from '@/services/api';
+import { useEffect, useMemo, useState } from 'react';
+import { experienceApi, drillApi, type ExperienceRule, type DistilledExperience, type CollectResponse, type DrillRecord, type FromRecordPreview } from '@/services/api';
 import { usePageStore } from '@/stores/pageStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useToastStore } from '@/components/Toast';
@@ -12,8 +12,10 @@ import { SCENES } from '@/templates';
 import {
   ArrowLeft, Plus, RefreshCw, Loader2, BookOpen, Lightbulb, AlertTriangle,
   Target, Clock, Zap, User, ChevronDown, ChevronUp, Trash2, Edit3, Save, X, Sparkles,
+  Wand2, PlayCircle,
 } from 'lucide-react';
 import { confirmDialog } from '@/components/ConfirmDialog';
+import type { ExpertTimeline } from '@/services/timeline';
 
 // =============================================================
 // 常量
@@ -23,6 +25,7 @@ const SOURCE_OPTIONS: { value: string; label: string }[] = [
   { value: 'think_aloud', label: '口述实录' },
   { value: 'interview', label: '事后访谈' },
   { value: 'observation', label: '操作观察' },
+  { value: 'from_record', label: '从演练记录' },
 ];
 
 // 蒸馏过程中的轮播提示（约 10-15s，缓解等待焦虑）
@@ -87,6 +90,22 @@ export const ExperienceCollectPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [redistillingId, setRedistillingId] = useState<string | null>(null);
 
+  // =============================================================
+  // P1-4: 从演练记录提升 — 数据 + 预览 + 草稿时间轴
+  // =============================================================
+  /** 候选高分演练记录（仅 S/A） */
+  const [myRecords, setMyRecords] = useState<DrillRecord[]>([]);
+  /** 是否打开从演练记录提升面板 */
+  const [showFromRecord, setShowFromRecord] = useState(false);
+  /** 当前选中的演练记录 id */
+  const [selectedRecordId, setSelectedRecordId] = useState<string>('');
+  /** 后端返回的草稿时间轴预览 */
+  const [preview, setPreview] = useState<FromRecordPreview | null>(null);
+  /** 教师在前端可编辑的时间轴（脱钩自 preview.timeline，方便修改） */
+  const [draftTimeline, setDraftTimeline] = useState<ExpertTimeline | null>(null);
+  /** 拉取预览 loading */
+  const [previewLoading, setPreviewLoading] = useState(false);
+
   // 蒸馏轮播提示
   useEffect(() => {
     if (!distilling) {
@@ -111,8 +130,63 @@ export const ExperienceCollectPage: React.FC = () => {
 
   useEffect(() => {
     void loadList();
+    // 同步加载教师自己的高分演练记录（S/A）供"从演练记录提升"使用
+    drillApi.list({ limit: 50 })
+      .then((r) => setMyRecords(r.records.filter((rec) => rec.grade === 'S' || rec.grade === 'A')))
+      .catch(() => setMyRecords([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** 在选场景的情况下过滤候选记录 */
+  const filteredCandidates = useMemo(() => {
+    if (!form.scene_id) return myRecords;
+    return myRecords.filter((r) => r.scene_id === form.scene_id);
+  }, [myRecords, form.scene_id]);
+
+  /** 拉取某条演练记录的时间轴预览 */
+  const handleLoadPreview = async (recordId: string) => {
+    if (!recordId) return;
+    setPreviewLoading(true);
+    setPreview(null);
+    setDraftTimeline(null);
+    try {
+      const r = await experienceApi.fromRecordPreview(recordId);
+      setPreview(r);
+      setDraftTimeline(r.timeline);
+      // 自动回填到表单（scene_id/fault_id/标题/口述）
+      setForm((f) => ({
+        ...f,
+        scene_id: r.record.scene_id,
+        fault_name: r.record.fault_name,
+        title: r.suggested_title,
+        raw_transcript: r.suggested_transcript,
+        source_type: 'from_record',
+      }));
+      pushToast({
+        type: 'success',
+        title: '已生成时间轴草稿',
+        description: `共 ${r.timeline.events.length} 个事件 / 时长 ${r.timeline.duration_sec}s，请补充口述说明后蒸馏`,
+      });
+    } catch (e: any) {
+      pushToast({ type: 'warning', title: '生成预览失败', description: e?.message ?? '请稍后重试' });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  /** 删除草稿时间轴中的某个事件 */
+  const handleRemoveDraftEvent = (idx: number) => {
+    if (!draftTimeline) return;
+    const newEvents = draftTimeline.events.filter((_, i) => i !== idx);
+    setDraftTimeline({ ...draftTimeline, events: newEvents });
+  };
+
+  /** 重置 / 清空预览面板 */
+  const handleClearPreview = () => {
+    setPreview(null);
+    setDraftTimeline(null);
+    setSelectedRecordId('');
+  };
 
   // —— 提交采集 ——
   const handleCollect = async () => {
@@ -129,11 +203,15 @@ export const ExperienceCollectPage: React.FC = () => {
       const resp = await experienceApi.collect({
         scene_id: form.scene_id,
         fault_name: form.fault_name.trim(),
+        // P1-4: 从演练记录提升时，把原 fault_id 带上，便于学生侧按 fault 查询
+        fault_id: preview?.record.fault_id,
         title: form.title.trim(),
         raw_transcript: form.raw_transcript.trim(),
         expert_name: form.expert_name.trim() || undefined,
         expert_title: form.expert_title.trim() || undefined,
         source_type: form.source_type,
+        timeline: draftTimeline,
+        source_record_id: preview?.record.id,
       });
       setLatestResult(resp);
       if (resp.distill_error) {
@@ -143,8 +221,9 @@ export const ExperienceCollectPage: React.FC = () => {
       } else {
         pushToast({ type: 'info', title: '已保存', description: resp.message ?? '经验记录已入库' });
       }
-      // 清空表单（保留场景与采集方式选择）
+      // 清空表单（保留场景与采集方式选择），同时清掉时间轴草稿
       setForm((f) => ({ ...f, fault_name: '', title: '', expert_name: '', expert_title: '', raw_transcript: '' }));
+      handleClearPreview();
       await loadList();
     } catch (e: any) {
       pushToast({ type: 'warning', title: '采集失败', description: e?.message ?? '请稍后重试' });
@@ -264,6 +343,95 @@ export const ExperienceCollectPage: React.FC = () => {
               <Plus className="w-4 h-4 text-primary" />
               新建经验采集
             </h2>
+
+            {/* P1-4: 从演练记录提升入口 */}
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3">
+              <button
+                type="button"
+                onClick={() => setShowFromRecord((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-cyan-300">
+                  <Wand2 className="h-4 w-4" />
+                  从高分演练记录一键提升为时间轴
+                </span>
+                {showFromRecord ? <ChevronUp className="h-4 w-4 text-cyan-300" /> : <ChevronDown className="h-4 w-4 text-cyan-300" />}
+              </button>
+              {showFromRecord && (
+                <div className="mt-3 space-y-3">
+                  <div className="text-xs text-text-secondary">
+                    选择一次你自己的 S/A 级演练，系统自动把操作序列转换为时间轴草稿；可手动删除噪声事件，再补充口述说明并蒸馏。
+                  </div>
+                  <select
+                    value={selectedRecordId}
+                    onChange={(e) => setSelectedRecordId(e.target.value)}
+                    className={inputCls}
+                    disabled={previewLoading}
+                  >
+                    <option value="">— 选择一次高分演练 —</option>
+                    {filteredCandidates.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        [{r.grade}] {sceneName(r.scene_id)} · {r.fault_name} · {fmtTime(r.created_at)} · {r.duration_sec}s
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!selectedRecordId || previewLoading}
+                      onClick={() => void handleLoadPreview(selectedRecordId)}
+                      className="rounded-md bg-cyan-500/20 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/30 disabled:opacity-50"
+                    >
+                      {previewLoading ? '生成中…' : '生成时间轴草稿'}
+                    </button>
+                    {preview && (
+                      <button
+                        type="button"
+                        onClick={handleClearPreview}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-tertiary"
+                      >
+                        清空草稿
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 时间轴草稿预览 */}
+                  {draftTimeline && (
+                    <div className="rounded-md border border-border bg-bg-tertiary/40 p-2">
+                      <div className="mb-1.5 flex items-center justify-between text-xs text-text-secondary">
+                        <span className="flex items-center gap-1">
+                          <PlayCircle className="h-3.5 w-3.5" />
+                          时间轴 {draftTimeline.events.length} 个事件 · 总长 {draftTimeline.duration_sec}s
+                        </span>
+                        <span className="text-text-muted">点 ✕ 删除噪声事件</span>
+                      </div>
+                      <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                        {draftTimeline.events.map((ev, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 rounded border border-border bg-bg-primary px-2 py-1 text-xs"
+                          >
+                            <span className="font-mono text-text-muted w-12 shrink-0">{Math.floor(ev.t / 60).toString().padStart(2, '0')}:{(ev.t % 60).toString().padStart(2, '0')}</span>
+                            <span className="px-1 text-[10px] uppercase text-text-muted">{ev.type}</span>
+                            <span className="min-w-0 flex-1 truncate text-text-primary">
+                              {ev.type === 'action' ? `${ev.targetLabel || ev.target} ${ev.from}→${ev.to}` : ev.text || ev.targetLabel}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDraftEvent(i)}
+                              className="text-text-muted hover:text-red-400"
+                              title="删除此事件"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 场景 */}
             <div>

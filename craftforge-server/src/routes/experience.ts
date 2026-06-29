@@ -225,6 +225,34 @@ experienceRouter.get('/', requireAuth, (req: Request, res: Response) => {
 });
 
 // =============================================================
+// P1-4: GET /api/experience/high-score-pool
+// 教师 / 管理员可见的高分演练池（S/A 评级 + 有 operations），用于"从演练记录提升"下拉
+// query: scene_id?  limit?(default 50)
+// 返回时附带学员名（便于教师选择"谁的演练"）
+//
+// ⚠️ 路由顺序：必须在 GET /:id 之前注册，否则会被通配 :id 错误匹配为 id='high-score-pool'
+// =============================================================
+experienceRouter.get('/high-score-pool', requireAuth, requireRole('teacher', 'admin'), (req: Request, res: Response) => {
+  const sceneId = (req.query.scene_id as string) || '';
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const baseSql = `
+    SELECT dr.id, dr.user_id, dr.scene_id, dr.fault_id, dr.fault_name,
+           dr.grade, dr.score, dr.duration_sec, dr.created_at,
+           u.username, u.display_name AS user_name
+      FROM drill_records dr
+      LEFT JOIN users u ON u.id = dr.user_id
+     WHERE dr.grade IN ('S','A')
+       AND dr.operations IS NOT NULL
+       AND dr.operations <> '[]'
+  `;
+  const sql = (sceneId ? baseSql + ' AND dr.scene_id = ?' : baseSql)
+    + ' ORDER BY dr.score DESC, dr.created_at DESC LIMIT ?';
+  const params = sceneId ? [sceneId, limit] : [limit];
+  const rows = db.prepare(sql).all(...params);
+  res.json({ records: rows });
+});
+
+// =============================================================
 // GET /api/experience/:id
 // 单条经验详情（含蒸馏结果）
 // =============================================================
@@ -344,9 +372,11 @@ experienceRouter.get('/fault/:sceneId/:faultId', requireAuth, (req: Request, res
 });
 
 // =============================================================
-// P1-4: POST /api/experience/from-record/:recordId
-// 一键把某条高分演练记录"提升"为专家时间轴草稿。
-// - 校验该演练记录属于当前 teacher/admin 自己（或 admin 可跨账户）
+// P1-4: GET /api/experience/from-record/:recordId
+// 教师 / 管理员 把一条演练记录"提升"为专家时间轴草稿。
+// - 仅允许提升 S/A 评级（高分才有教学价值）
+// - admin / teacher 可访问任何用户的 S/A 演练（教学场景中老师常需要把学生
+//   的高分演练沉淀为教材；旧版限制 teacher 只能用自己的演练，已修正）
 // - 自动按 operations 生成 timeline 草稿
 // - 返回 timeline_preview，前端教师可继续编辑后再 POST /collect 正式入库
 // 不直接落库，避免误操作污染经验库
@@ -357,12 +387,15 @@ experienceRouter.get('/from-record/:recordId', requireAuth, requireRole('teacher
     res.status(404).json({ error: '演练记录不存在' });
     return;
   }
-  // 仅允许 admin 跨账户访问；teacher 只能用自己的演练
-  if (req.authUser!.role !== 'admin' && row.user_id !== req.authUser!.id) {
-    res.status(403).json({ error: '无权访问他人的演练记录' });
+  if (row.grade !== 'S' && row.grade !== 'A') {
+    res.status(400).json({ error: '只能从 S 或 A 评级的演练提升为专家时间轴', grade: row.grade });
     return;
   }
   const ops: OperationRecordLike[] = safeParse(row.operations, [] as OperationRecordLike[]);
+  if (!ops.length) {
+    res.status(400).json({ error: '该演练记录没有操作流水，无法生成时间轴' });
+    return;
+  }
   // 专家时间轴：噪声过滤更严（< 5% 视为噪声跳过），观察期阈值 15s
   const timeline = buildTimelineFromOperations(ops, { minPauseSec: 15, noiseRatio: 0.05 });
   res.json({

@@ -163,6 +163,11 @@ export function compareTimelines(
   const diffs: TimelineDiff[] = [];
   const eMap = indexActions(expert);
   const sMap = indexActions(student);
+  // 显示用：target + targetLabel 拼起来更清晰（同一台设备上多个参数容易混淆）
+  const tname = (ev: TimelineEvent) =>
+    ev.targetLabel && ev.targetLabel !== ev.target
+      ? `${ev.targetLabel}·${ev.target}`
+      : ev.target || '';
 
   // 1) 专家做了 student 没做：missing
   for (const [target, eEvs] of eMap) {
@@ -172,7 +177,7 @@ export function compareTimelines(
         kind: 'missing',
         severity: 'critical',
         expertEvent: head,
-        message: `专家调整了 ${head.targetLabel || target}（${head.from}→${head.to}），但你完全没操作`,
+        message: `专家调整了 ${tname(head)}（${head.from}→${head.to}），但你完全没操作`,
       });
     }
   }
@@ -185,7 +190,7 @@ export function compareTimelines(
         kind: 'extra',
         severity: 'warning',
         studentEvent: head,
-        message: `你调整了 ${head.targetLabel || target}（${head.from}→${head.to}），但专家并没有动这里`,
+        message: `你调整了 ${tname(head)}（${head.from}→${head.to}），但专家并没有动这里`,
       });
     }
   }
@@ -205,32 +210,49 @@ export function compareTimelines(
           severity: 'warning',
           expertEvent: eFinal,
           studentEvent: sFinal,
-          message: `${eFinal.targetLabel || target}：专家调到 ${eFinal.to}，你调到 ${sFinal.to}，偏离 ${Math.round((delta / base) * 100)}%`,
+          message: `${tname(eFinal)}：专家调到 ${eFinal.to}，你调到 ${sFinal.to}，偏离 ${Math.round((delta / base) * 100)}%`,
         });
       }
     }
   }
 
-  // 4) skip_observe：专家在某 action 后下一个事件是 pause；学生没有
+  // skip_observe：专家在某 action 后下一个事件是 pause（观察期）；学生处置
+  // 同 target 后却没有等同等长度的观察。算法只看 action 之间的真实间隔，
+  // pause 事件本身不参与计算（避免同 timeline 自比时误判）。
   for (let i = 0; i < expert.events.length - 1; i++) {
     const cur = expert.events[i];
-    const next = expert.events[i + 1];
-    if (cur.type !== 'action' || next.type !== 'pause') continue;
-    // 学生在这个 target 后有没有间隔？
-    const studentMatch = student.events.find(
+    if (cur.type !== 'action') continue;
+    let expectedPauseSec = 0;
+    for (let j = i + 1; j < expert.events.length; j++) {
+      const nx = expert.events[j];
+      if (nx.type === 'pause') {
+        expectedPauseSec += nx.durationSec || 0;
+      } else if (nx.type === 'action') {
+        break;
+      }
+    }
+    if (expectedPauseSec < 15) continue;
+    const studentIdx = student.events.findIndex(
       (s) => s.type === 'action' && s.target === cur.target,
     );
-    if (!studentMatch) continue;
-    const idx = student.events.indexOf(studentMatch);
-    const studentNext = student.events[idx + 1];
-    const studentGap = studentNext ? studentNext.t - studentMatch.t : 999;
-    if (studentGap < (next.durationSec || 15) / 2) {
+    if (studentIdx < 0) continue;
+    const studentAction = student.events[studentIdx];
+    let studentNextActionT: number | null = null;
+    for (let j = studentIdx + 1; j < student.events.length; j++) {
+      if (student.events[j].type === 'action') {
+        studentNextActionT = student.events[j].t;
+        break;
+      }
+    }
+    if (studentNextActionT === null) continue;
+    const studentGap = studentNextActionT - studentAction.t;
+    if (studentGap < expectedPauseSec / 2) {
       diffs.push({
         kind: 'skip_observe',
         severity: 'warning',
         expertEvent: cur,
-        studentEvent: studentMatch,
-        message: `专家调整 ${cur.targetLabel || cur.target} 后等了 ${next.durationSec}s 观察反应；你只等了 ${studentGap}s 就接下一动作`,
+        studentEvent: studentAction,
+        message: `专家调整 ${tname(cur)} 后等了 ${expectedPauseSec}s 观察反应；你只等了 ${studentGap}s 就接下一动作`,
       });
     }
   }

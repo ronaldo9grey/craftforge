@@ -61,6 +61,12 @@ import { offshoreFaults } from './offshore/faults';
 import { offshoreMeta } from './offshore/meta';
 import { offshoreCoach } from './offshore/coach';
 
+// —— 高炉炼铁（第三个 3D 场景，专家级工业故障演练）——
+import { blastfurnaceEquipments, blastfurnacePipelines } from './blastfurnace/config';
+import { blastfurnaceFaults } from './blastfurnace/faults';
+import { blastfurnaceMeta } from './blastfurnace/meta';
+import { blastfurnaceCoach } from './blastfurnace/coach';
+
 // =============================================================
 // 场景注册表
 // =============================================================
@@ -127,6 +133,13 @@ export const SCENES: Record<string, ScenePack> = {
     equipments: offshoreEquipments,
     pipelines: offshorePipelines,
     faults: offshoreFaults,
+  },
+  blastfurnace: {
+    meta: blastfurnaceMeta,
+    coach: blastfurnaceCoach,
+    equipments: blastfurnaceEquipments,
+    pipelines: blastfurnacePipelines,
+    faults: blastfurnaceFaults,
   },
 };
 

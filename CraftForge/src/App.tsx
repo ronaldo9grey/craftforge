@@ -20,6 +20,7 @@ import { anodeCouplings } from '@/templates/anode/dynamics';
 import { bakingCouplings } from '@/templates/baking/dynamics';
 import { tbmCouplings } from '@/templates/tbm/dynamics';
 import { offshoreCouplings } from '@/templates/offshore/dynamics';
+import { blastfurnaceCouplings } from '@/templates/blastfurnace/dynamics';
 import { useDivergenceStore } from '@/stores/divergenceStore';
 
 function App() {
@@ -95,6 +96,12 @@ function App() {
     } else if (activeTemplate === 'offshore') {
       // 海上钻井平台 3D 场景：钻压→扭矩/大钩载荷，泥浆流量→泵压/返出/处理量，节流阀→环空压力 等 12 条耦合
       const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, offshoreCouplings);
+      engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
+      engine.start();
+      engineRef.current = engine;
+    } else if (activeTemplate === 'blastfurnace') {
+      // 高炉炼铁 3D 场景：焦比→炉腹温度，送风温度→铁水温度，风量→炉顶压力 等 12 条耦合
+      const engine = new DynamicsEngine(useEquipmentStore, useDrillStore, blastfurnaceCouplings);
       engine.onDivergenceUpdate = (keys) => useDivergenceStore.getState().setDivergingKeys(keys);
       engine.start();
       engineRef.current = engine;

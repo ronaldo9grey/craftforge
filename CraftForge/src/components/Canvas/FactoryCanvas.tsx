@@ -14,11 +14,12 @@ const FALLBACK_DESIGN_SIZE = { width: 1200, height: 680 };
 // 3D 场景懒加载（独立 chunk，不影响 2D 场景启动速度）
 const TBMScene3D = lazy(() => import('@/scenes/tbm/TBMScene3D').then((m) => ({ default: m.TBMScene3D })));
 const OffshoreRigScene3D = lazy(() => import('@/scenes/offshore/OffshoreRigScene3D').then((m) => ({ default: m.OffshoreRigScene3D })));
+const BlastFurnace3D = lazy(() => import('@/scenes/blastfurnace/BlastFurnace3D').then((m) => ({ default: m.BlastFurnace3D })));
 
 /**
  * FactoryCanvas 现在是渲染路由分发器：
  * - 检查当前场景 meta 是否标记 is3D
- * - is3D=true → 根据场景ID渲染对应3D组件（TBM/Offshore）
+ * - is3D=true → 根据场景ID渲染对应3D组件（TBM/Offshore/BlastFurnace）
  * - 否则 → 渲染原来的 2D Canvas（FactoryCanvas2D）
  *
  * 该 wrapper 仅一个 useEquipmentStore subscribe，hooks 规则始终满足。
@@ -29,8 +30,18 @@ export const FactoryCanvas: React.FC = () => {
 
   if (sceneMeta?.is3D) {
     // 根据场景ID选择3D渲染器
-    const Scene3D = activeTemplate === 'offshore' ? OffshoreRigScene3D : TBMScene3D;
-    const loadingIcon = activeTemplate === 'offshore' ? '🏗️' : '🛞';
+    let Scene3D: React.LazyExoticComponent<React.FC>;
+    let loadingIcon: string;
+    if (activeTemplate === 'offshore') {
+      Scene3D = OffshoreRigScene3D;
+      loadingIcon = '🏗️';
+    } else if (activeTemplate === 'blastfurnace') {
+      Scene3D = BlastFurnace3D;
+      loadingIcon = '⛰️';
+    } else {
+      Scene3D = TBMScene3D;
+      loadingIcon = '🛞';
+    }
     return (
       <Suspense fallback={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#94a3b8', background: '#0a1426' }}>
